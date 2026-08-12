@@ -67,7 +67,7 @@ TEMPLATE = u"""<!DOCTYPE html>
     {body}
     <nav class="pager">{pager}</nav>
     <footer class="foot">
-      <p>이 교안의 모든 예제 스크립트는 <a href="{repo}/tree/main/scripts">scripts/ 폴더</a>에 실행 가능한 <code>.py</code> 파일로도 들어 있습니다.</p>
+      <p>이 교안의 모든 예제 스크립트는 <a href="{repo}/tree/HEAD/scripts">scripts/ 폴더</a>에 실행 가능한 <code>.py</code> 파일로도 들어 있습니다.</p>
       <p>Spotfire는 Cloud Software Group, Inc.의 상표입니다. 본 교안은 비공식 학습 자료입니다.</p>
     </footer>
   </main>

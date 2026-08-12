@@ -95,8 +95,11 @@ python -m http.server 8000 --directory docs
 
 저장소 **Settings → Pages** 에서 둘 중 하나를 고르세요.
 
-- **Deploy from a branch** (간단): Branch = `main`, 폴더 = `/docs`
+- **Deploy from a branch** (간단): Branch = **저장소의 기본 브랜치**, 폴더 = `/docs`
 - **GitHub Actions**: 포함된 [`.github/workflows/pages.yml`](.github/workflows/pages.yml) 이 `docs/`를 배포합니다
+
+워크플로는 `main` 과 `claude/spotfire-ironpython-guide-m9nnv5` 브랜치에서 동작하도록
+설정되어 있습니다. 다른 브랜치를 쓰려면 `pages.yml` 의 `branches:` 목록에 추가하세요.
 
 ## 참고 자료
 
