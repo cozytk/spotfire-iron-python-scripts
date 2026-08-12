@@ -74,6 +74,11 @@ Spotfire의 IronPython 2.7 스크립팅 한국어 교안과, 바로 실행할 �
 
 ## 스크립트 사용법
 
+> [!IMPORTANT]
+> 예제를 돌리기 전에 [`scripts/00_setup_document_properties.py`](scripts/00_setup_document_properties.py)
+> 를 **한 번 실행**하세요. 예제 대부분이 결과를 `Document.Properties["ScriptLog"]` 에 쓰는데,
+> 그 문서 속성이 없으면 마지막 줄에서 실패합니다.
+
 1. Spotfire에서 텍스트 영역을 편집 모드로 열고 **액션 컨트롤 삽입** → 유형 **스크립트**
 2. `scripts/` 의 `.py` 내용을 붙여 넣기
 3. 파일 상단 주석의 **매개변수** 항목대로 스크립트 매개변수를 설정
@@ -95,9 +100,13 @@ content/            교안 원본 (Markdown) — 내용은 여기서 수정
 assets/             사이트 CSS / JS
 docs/               빌드 결과물 (GitHub Pages가 서빙)
 scripts/            예제 스크립트 (content/ 에서 자동 생성)
+checks/             실제 Spotfire에서 API를 확인하는 검증 스크립트와 그 결과 기록
 build.py            content/ -> docs/ 빌드
 extract_scripts.py  content/ -> scripts/ 추출
 ```
+
+`checks/README.md` 에는 실제 Spotfire(IronPython 2.7.12 / Spotfire 14.x)에서 확인한
+API 실측 결과가 정리되어 있습니다. 교안의 "검증 포인트"는 이 결과를 근거로 합니다.
 
 ## 로컬에서 빌드하기
 

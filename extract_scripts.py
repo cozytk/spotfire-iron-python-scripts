@@ -54,6 +54,40 @@ FILENAMES = {
 HEADING = re.compile(r"^## 예제 (\d+)\.\s*(.+?)\s*$", re.M)
 CODE = re.compile(r"```python\n(.*?)```", re.S)
 
+# 예제 번호를 갖지 않는 별도 스크립트 (교안 파일, 섹션 제목, 출력 경로)
+EXTRAS = [
+    ("08-examples-bulk.md", u"## 사전 준비 · 문서 속성 만들기",
+     "00_setup_document_properties.py", u"사전 준비 · 문서 속성 만들기",
+     "08-examples-bulk.html"),
+]
+
+
+def extract_extras():
+    written = 0
+    for mdName, heading, fileName, title, htmlName in EXTRAS:
+        with open(os.path.join(CONTENT, mdName), encoding="utf-8") as fh:
+            text = fh.read()
+        start = text.find(heading)
+        if start < 0:
+            continue
+        code = CODE.search(text, start)
+        if not code:
+            continue
+        body = re.sub(r"^# -\*- coding: utf-8 -\*-\n", "", code.group(1).rstrip() + "\n")
+        header = (
+            u"# -*- coding: utf-8 -*-\n"
+            u"# %s\n"
+            u"#\n"
+            u"# 예제를 실행하기 전에 이 스크립트를 한 번 실행하세요.\n"
+            u"# 설명: %s/%s\n"
+            u"# 이 파일은 content/%s 에서 자동 생성됩니다. 직접 수정하지 마세요.\n"
+            u"\n" % (title, DOC_BASE, htmlName, mdName)
+        )
+        with open(os.path.join(SCRIPTS, fileName), "w", encoding="utf-8") as fh:
+            fh.write(header + body)
+        written += 1
+    return written
+
 
 def main():
     written = 0
@@ -96,6 +130,10 @@ def main():
             with open(path, "w", encoding="utf-8") as fh:
                 fh.write(header + body)
             written += 1
+
+    if not os.path.isdir(SCRIPTS):
+        os.makedirs(SCRIPTS)
+    written += extract_extras()
 
     print("wrote %d scripts -> scripts/" % written)
 

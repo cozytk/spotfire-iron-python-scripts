@@ -41,12 +41,12 @@
 
 ### [`07_snapshot_datasource.py`](07_snapshot_datasource.py)
 
-2차에서 **예제 10(마킹 행 스냅샷)이 깨진다는 것**이 드러났습니다.
-`StdfDataSource` 라는 이름이 존재하지 않습니다. 무엇으로 대체할지 확정하기 위한 확인입니다.
+3차에서 드러난 두 문제를 확정하기 위한 확인입니다.
 
 | 단계 | 내용 | 문서 변경 |
 |------|------|:---------:|
 | 1 | 컬렉션별 숫자 인덱싱 가능 여부 (`Tables[0]` 이 왜 실패했는지 특정) | 없음 |
+| 1-2 | **`IndexSet` 의 올바른 사용법** — `Add()` 가 없으므로 인덱서가 맞는지 | 없음 |
 | 2 | `SbdfDataWriter` / `StdfDataWriter` 로 메모리에 기록 | 없음 |
 | 3 | `SbdfFileDataSource` 등이 **메모리 스트림을 받는지** | 없음 |
 | 4 | 실제 왕복 — 임시 테이블 생성 후 삭제 | **있음** |
@@ -55,7 +55,19 @@
 부담스러우면 파일 맨 위의 `RUN_ROUNDTRIP = True` 를 `False` 로 바꾸면 1~3단계만 돕니다.
 **사본에서 실행**하시길 권합니다.
 
-마지막 "요약" 절에 예제 10 에 쓸 조합이 나옵니다. 그것만 주셔도 됩니다.
+마지막 "요약" 절에 예제 10 에 쓸 조합이 나옵니다.
+**1단계·1-2단계 출력과 요약**만 주셔도 충분합니다.
+
+### [`00_verify_all_examples.py`](00_verify_all_examples.py) 재실행 (선택)
+
+3차 실행에서 제 하네스 버그 두 개를 고쳤습니다.
+
+- `dir()` 결과에서 `.NET` 기본 메서드(`Equals`, `GetType` 등)를 제외
+  — 예제 9의 `[NO] CreateDataWriter(Equals)` 6건은 하네스 버그였습니다
+- 예제 18 검사가 `Tables[0]` 을 쓰던 것을 순회 방식으로 교체
+
+**차트가 있는 페이지**에서 다시 돌리면 예제 3·6·7의 `[SKIP]` 이 실제 검증으로 바뀝니다.
+3차는 활성 페이지에 표와 텍스트 영역만 있어서 축 관련 항목이 전부 건너뛰어졌습니다.
 
 ---
 
@@ -198,3 +210,53 @@ Attempt take snapshot on application thread in state 'Executing'.
 ```
 
 → 예제 8의 `try/except` + 실패 목록 보고 구조가 필요한 이유입니다.
+
+
+---
+
+### 3차 — 예제 21종 일괄 검증 (2026-08-12)
+
+**결과: 통과 16 / 21**
+
+활성 페이지에 `Table` 과 `HtmlTextArea` 만 있어서 축 관련 항목은 `[SKIP]` 되었습니다.
+
+#### 새로 발견한 교안 오류
+
+| 문제 | 실제 | 반영 |
+|------|------|------|
+| `IndexSet.Add(i)` | **`Add` 메서드가 없음** (`hasattr` → `False`) | 예제 12, 6장 수정 → `indexSet[i] = True` |
+| 예제들이 `Document.Properties["ScriptLog"]` 에 쓰는데 속성이 없으면 실패 | `The property named 'ScriptLog' could not be found.` | 8장에 **사전 준비 절** 신설 + `scripts/00_setup_document_properties.py` 추가 |
+| 예제 12가 여전히 `MARKING_NAME = "Marking"` 사용 | 한국어 UI는 `"마킹"` | 예제 12도 `ActiveMarkingSelectionReference` 로 교체 |
+
+#### 하네스(제 검증 스크립트) 버그 — 교안 문제 아님
+
+| 증상 | 원인 |
+|------|------|
+| `[NO] CreateDataWriter(Equals)` 등 6건 | `dir()` 결과에서 .NET 기본 메서드를 안 걸렀음 |
+| `VisualTypeIdentifiers 31종` | 같은 이유. 실제 시각화 유형은 25종 |
+| 예제 18 `scheme[table][column]` 실패 | 검사 코드가 `Tables[0]` 을 씀. 예제 18 본문은 순회하므로 무관할 가능성이 높음 → 3차 확인 대상 |
+
+#### 확정된 것
+
+| 항목 | 결과 |
+|------|------|
+| `Data.WhereClauseExpression` 쓰기 | 가능 (예제 2) |
+| `Legend.Visible`, `visual.Title` 쓰기 | 가능 (예제 4) |
+| `Data.DataTableReference` 쓰기 | 가능 (예제 5) |
+| `visual.TypeId` 쓰기 | 가능 (예제 17) |
+| `Page.Visible` 쓰기 | 가능 (예제 15) |
+| `FilterHandle.Visible` 쓰기 | 가능 (예제 16) |
+| `FilterPanel` 구조 | 테이블 그룹 5개 / 필터 핸들 59개, `Expanded`·`SubGroups`·`Modified`·`InteractiveSearchPattern` 전부 존재 |
+| `ActiveMarkingSelectionReference.Name` | `"마킹"` — 한국어 UI 확인 |
+| `CalculatedColumn` import | 성공 (예제 20의 계산된 컬럼 감사) |
+| `DataTable.Refresh` | 5개 테이블 모두 존재 |
+
+#### 참고 — 확인된 문서 속성 목록
+
+```text
+Description, Keywords, AllowWebPlayerResume, PublicBookmarkCreation,
+PrivateBookmarkCreation, spotfire.Comments, MaxMissingTimeParts,
+FiscalYearOffset, Preview.Thumb, Preview.Mode, 최대, 최소, token
+```
+
+앞의 10개는 Spotfire 내장 속성이고, `최대`·`최소`·`token` 이 사용자가 만든 것입니다.

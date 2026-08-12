@@ -13,6 +13,104 @@
 
 ---
 
+## 사전 준비 · 문서 속성 만들기
+
+!!! danger "이걸 먼저 실행하세요"
+    이 교안의 예제 대부분은 마지막 줄에서 결과를 `Document.Properties["ScriptLog"]` 에 씁니다.
+    **그 문서 속성이 없으면 예제가 마지막에 실패합니다.**
+
+    ```text
+    The property named 'ScriptLog' could not be found.
+    ```
+
+    아래 스크립트를 **한 번만** 실행하면 예제들이 쓰는 문서 속성이 전부 만들어집니다.
+    이미 있는 것은 건드리지 않으므로 여러 번 실행해도 안전합니다.
+
+```python
+# -*- coding: utf-8 -*-
+# 교안 예제들이 사용하는 문서 속성을 한 번에 만든다.
+# 이미 있는 속성은 그대로 두므로 여러 번 실행해도 안전하다.
+
+from Spotfire.Dxp.Data import DataProperty, DataType, DataPropertyClass
+
+# (속성 이름, 타입, 초기값, 쓰는 예제)
+PROPERTIES = [
+    ("ScriptLog",        DataType.String,  "",          u"모든 예제 공통 - 실행 결과 로그"),
+    ("InventoryReport",  DataType.String,  "",          u"예제 1"),
+    ("LimitExpression",  DataType.String,  "",          u"예제 2"),
+    ("SelectedMeasure",  DataType.String,  "",          u"예제 3"),
+    ("SelectedAgg",      DataType.String,  "Sum",       u"예제 3"),
+    ("ShowLegend",       DataType.String,  "True",      u"예제 4"),
+    ("ExportFolder",     DataType.String,  "C:/temp",   u"예제 8, 9"),
+    ("SnapshotName",     DataType.String,  "Snapshot",  u"예제 10"),
+    ("MarkedLabel",      DataType.String,  "",          u"예제 11"),
+    ("MarkedInList",     DataType.String,  "",          u"예제 11"),
+    ("MarkedCount",      DataType.Integer, 0,           u"예제 11"),
+    ("UserRole",         DataType.String,  u"관리자",     u"예제 15"),
+    ("VisibleFilters",   DataType.String,  "",          u"예제 16"),
+    ("ChartType",        DataType.String,  "Bar",       u"예제 17"),
+    ("ResetTargets",     DataType.String,  "",          u"예제 18"),
+    ("AuditSearch",      DataType.String,  "",          u"예제 20"),
+]
+
+
+def property_exists(name):
+    # Contains 시그니처는 버전에 따라 다를 수 있어, 목록을 훑는 방식이 안전하다
+    for prop in Document.Data.Properties.GetProperties(DataPropertyClass.Document):
+        if prop.Name == name:
+            return True
+    return False
+
+
+created = []
+existing = []
+failed = []
+
+for name, dataType, default, usedBy in PROPERTIES:
+    if property_exists(name):
+        existing.append(name)
+        continue
+    try:
+        prototype = DataProperty.CreateCustomPrototype(
+            name, dataType, DataProperty.DefaultAttributes)
+        Document.Data.Properties.AddProperty(DataPropertyClass.Document, prototype)
+        Document.Properties[name] = default
+        created.append(name)
+    except Exception, e:
+        failed.append("%s: %s" % (name, str(e)))
+
+print u"새로 만듦 (%d개): %s" % (len(created), u", ".join(created))
+print u"이미 있음 (%d개): %s" % (len(existing), u", ".join(existing))
+if failed:
+    print u"실패 (%d개):" % len(failed)
+    for message in failed:
+        print u"   ", message
+```
+
+### 스크립트로 만들 수 없는 것
+
+두 가지는 **UI에서 직접** 만들어야 합니다.
+
+| 속성 | 예제 | 이유 |
+|------|------|------|
+| `최소`, `최대` | 예제 7 | 축 타입에 맞는 숫자형(Real/Integer)이어야 하고, 입력 컨트롤과 연결해야 함 |
+| `columns` | 예제 21 | **문자열 목록** 타입이어야 하고, 다중 선택 목록 상자와 연결해야 함 |
+
+`도구 > 문서 속성 > 속성 > 새로 만들기` 에서 만드세요.
+
+### 결과를 화면에서 보려면
+
+`ScriptLog` 는 값만 저장할 뿐 저절로 보이지 않습니다.
+텍스트 영역을 하나 만들고 **속성 컨트롤로 `ScriptLog` 를 삽입**해 두면
+버튼을 누를 때마다 결과가 그 자리에 표시됩니다.
+
+!!! tip "속성을 만들기 싫다면"
+    각 예제의 마지막 줄을 `print` 로 바꿔도 됩니다.
+    단 `print` 출력은 **스크립트 편집 창에서 실행했을 때만** 보입니다
+    → [2.5 참조](02-getting-started.html)
+
+---
+
 ## 예제 1. 문서 전체 시각화 인벤토리 만들기
 
 <ul class="meta">

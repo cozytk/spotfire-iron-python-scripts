@@ -25,6 +25,21 @@ results = []          # (예제번호, 제목, [(수준, 메시지), ...])
 current = None
 
 
+# 모든 .NET 객체가 갖는 기본 메서드 — 목록에서 제외한다
+DOTNET_BASE = ["Equals", "GetHashCode", "GetType", "MemberwiseClone",
+               "ReferenceEquals", "ToString"]
+
+
+def real_members(obj):
+    """.NET 기본 메서드를 뺀 실제 멤버 목록"""
+    result = []
+    for name in dir(obj):
+        if name.startswith("_") or name in DOTNET_BASE:
+            continue
+        result.append(name)
+    return result
+
+
 def clean(value):
     return str(value).replace("<", "[").replace(">", "]")
 
@@ -227,7 +242,7 @@ note(SKIP, "실제 파일 저장은 수행하지 않음")
 start(9, u"데이터 테이블 파일 내보내기")
 try:
     from Spotfire.Dxp.Data.Export import DataWriterTypeIdentifiers
-    names = [n for n in dir(DataWriterTypeIdentifiers) if not n.startswith("_")]
+    names = real_members(DataWriterTypeIdentifiers)
     note(OK, "DataWriterTypeIdentifiers: %s" % clean(", ".join(names)))
     for name in names:
         try:
@@ -294,7 +309,14 @@ try:
         indexSet = IndexSet(table.RowCount, False)
         selection = RowSelection(indexSet)
         note(OK, "IndexSet / RowSelection 생성 성공")
-        note(OK, "IndexSet.Add 존재: %s" % hasattr(indexSet, "Add"))
+        note(OK, "IndexSet.Add 존재: %s (없는 것이 정상)" % hasattr(indexSet, "Add"))
+        try:
+            indexSet[0] = True
+            indexSet[0] = False
+            note(OK, "IndexSet[i] = True 인덱서로 설정 가능")
+        except Exception, e:
+            note(NO, "IndexSet[i] = True -> %s" % clean(str(e)))
+        note(OK, "IndexSet 실제 멤버: %s" % clean(", ".join(real_members(indexSet))))
     marking = Document.ActiveMarkingSelectionReference
     note(OK, "marking.SetSelection 존재: %s" % hasattr(marking, "SetSelection"))
     note(SKIP, "실제 마킹 변경은 수행하지 않음")
@@ -369,15 +391,21 @@ except Exception, e:
 start(17, u"시각화 유형 일괄 토글")
 if allVisuals:
     writable("visual.TypeId (같은 값 재지정)", allVisuals[0], "TypeId")
-    typeNames = [n for n in dir(VisualTypeIdentifiers) if not n.startswith("_")]
+    typeNames = real_members(VisualTypeIdentifiers)
     note(OK, "VisualTypeIdentifiers %d종: %s" % (len(typeNames), clean(", ".join(typeNames))))
 else:
     note(SKIP, "시각화 없음")
 
 start(18, u"원하는 컬럼 필터만 초기화")
 try:
-    scheme = Document.FilteringSchemes[0]
-    dataTable = Document.Data.Tables[0]
+    scheme = None
+    for s in Document.FilteringSchemes:
+        scheme = s
+        break
+    dataTable = None
+    for dt in Document.Data.Tables:
+        dataTable = dt
+        break
     column = dataTable.Columns[0]
     columnFilter = scheme[dataTable][column]
     note(OK, "scheme[table][column] 인덱싱 성공: %s" % clean(columnFilter))

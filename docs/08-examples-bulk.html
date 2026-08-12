@@ -58,6 +58,111 @@
 <li><strong>검증 포인트</strong> — 실행 전에 확인할 것, 버전 의존성, 위험 요소</li>
 </ul>
 <hr />
+<h2 id="_1">사전 준비 · 문서 속성 만들기</h2>
+<div class="admonition danger">
+<p class="admonition-title">이걸 먼저 실행하세요</p>
+<p>이 교안의 예제 대부분은 마지막 줄에서 결과를 <code>Document.Properties["ScriptLog"]</code> 에 씁니다.
+<strong>그 문서 속성이 없으면 예제가 마지막에 실패합니다.</strong></p>
+<p><code>text
+The property named 'ScriptLog' could not be found.</code></p>
+<p>아래 스크립트를 <strong>한 번만</strong> 실행하면 예제들이 쓰는 문서 속성이 전부 만들어집니다.
+이미 있는 것은 건드리지 않으므로 여러 번 실행해도 안전합니다.</p>
+</div>
+<div class="codehilite"><pre><span></span><code><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="c1"># 교안 예제들이 사용하는 문서 속성을 한 번에 만든다.</span>
+<span class="c1"># 이미 있는 속성은 그대로 두므로 여러 번 실행해도 안전하다.</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Data</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataProperty</span><span class="p">,</span> <span class="n">DataType</span><span class="p">,</span> <span class="n">DataPropertyClass</span>
+
+<span class="c1"># (속성 이름, 타입, 초기값, 쓰는 예제)</span>
+<span class="n">PROPERTIES</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">(</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">,</span>        <span class="n">DataType</span><span class="o">.</span><span class="n">String</span><span class="p">,</span>  <span class="s2">&quot;&quot;</span><span class="p">,</span>          <span class="sa">u</span><span class="s2">&quot;모든 예제 공통 - 실행 결과 로그&quot;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s2">&quot;InventoryReport&quot;</span><span class="p">,</span>  <span class="n">DataType</span><span class="o">.</span><span class="n">String</span><span class="p">,</span>  <span class="s2">&quot;&quot;</span><span class="p">,</span>          <span class="sa">u</span><span class="s2">&quot;예제 1&quot;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s2">&quot;LimitExpression&quot;</span><span class="p">,</span>  <span class="n">DataType</span><span class="o">.</span><span class="n">String</span><span class="p">,</span>  <span class="s2">&quot;&quot;</span><span class="p">,</span>          <span class="sa">u</span><span class="s2">&quot;예제 2&quot;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s2">&quot;SelectedMeasure&quot;</span><span class="p">,</span>  <span class="n">DataType</span><span class="o">.</span><span class="n">String</span><span class="p">,</span>  <span class="s2">&quot;&quot;</span><span class="p">,</span>          <span class="sa">u</span><span class="s2">&quot;예제 3&quot;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s2">&quot;SelectedAgg&quot;</span><span class="p">,</span>      <span class="n">DataType</span><span class="o">.</span><span class="n">String</span><span class="p">,</span>  <span class="s2">&quot;Sum&quot;</span><span class="p">,</span>       <span class="sa">u</span><span class="s2">&quot;예제 3&quot;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s2">&quot;ShowLegend&quot;</span><span class="p">,</span>       <span class="n">DataType</span><span class="o">.</span><span class="n">String</span><span class="p">,</span>  <span class="s2">&quot;True&quot;</span><span class="p">,</span>      <span class="sa">u</span><span class="s2">&quot;예제 4&quot;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s2">&quot;ExportFolder&quot;</span><span class="p">,</span>     <span class="n">DataType</span><span class="o">.</span><span class="n">String</span><span class="p">,</span>  <span class="s2">&quot;C:/temp&quot;</span><span class="p">,</span>   <span class="sa">u</span><span class="s2">&quot;예제 8, 9&quot;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s2">&quot;SnapshotName&quot;</span><span class="p">,</span>     <span class="n">DataType</span><span class="o">.</span><span class="n">String</span><span class="p">,</span>  <span class="s2">&quot;Snapshot&quot;</span><span class="p">,</span>  <span class="sa">u</span><span class="s2">&quot;예제 10&quot;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s2">&quot;MarkedLabel&quot;</span><span class="p">,</span>      <span class="n">DataType</span><span class="o">.</span><span class="n">String</span><span class="p">,</span>  <span class="s2">&quot;&quot;</span><span class="p">,</span>          <span class="sa">u</span><span class="s2">&quot;예제 11&quot;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s2">&quot;MarkedInList&quot;</span><span class="p">,</span>     <span class="n">DataType</span><span class="o">.</span><span class="n">String</span><span class="p">,</span>  <span class="s2">&quot;&quot;</span><span class="p">,</span>          <span class="sa">u</span><span class="s2">&quot;예제 11&quot;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s2">&quot;MarkedCount&quot;</span><span class="p">,</span>      <span class="n">DataType</span><span class="o">.</span><span class="n">Integer</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>           <span class="sa">u</span><span class="s2">&quot;예제 11&quot;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s2">&quot;UserRole&quot;</span><span class="p">,</span>         <span class="n">DataType</span><span class="o">.</span><span class="n">String</span><span class="p">,</span>  <span class="sa">u</span><span class="s2">&quot;관리자&quot;</span><span class="p">,</span>     <span class="sa">u</span><span class="s2">&quot;예제 15&quot;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s2">&quot;VisibleFilters&quot;</span><span class="p">,</span>   <span class="n">DataType</span><span class="o">.</span><span class="n">String</span><span class="p">,</span>  <span class="s2">&quot;&quot;</span><span class="p">,</span>          <span class="sa">u</span><span class="s2">&quot;예제 16&quot;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s2">&quot;ChartType&quot;</span><span class="p">,</span>        <span class="n">DataType</span><span class="o">.</span><span class="n">String</span><span class="p">,</span>  <span class="s2">&quot;Bar&quot;</span><span class="p">,</span>       <span class="sa">u</span><span class="s2">&quot;예제 17&quot;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s2">&quot;ResetTargets&quot;</span><span class="p">,</span>     <span class="n">DataType</span><span class="o">.</span><span class="n">String</span><span class="p">,</span>  <span class="s2">&quot;&quot;</span><span class="p">,</span>          <span class="sa">u</span><span class="s2">&quot;예제 18&quot;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s2">&quot;AuditSearch&quot;</span><span class="p">,</span>      <span class="n">DataType</span><span class="o">.</span><span class="n">String</span><span class="p">,</span>  <span class="s2">&quot;&quot;</span><span class="p">,</span>          <span class="sa">u</span><span class="s2">&quot;예제 20&quot;</span><span class="p">),</span>
+<span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">property_exists</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="c1"># Contains 시그니처는 버전에 따라 다를 수 있어, 목록을 훑는 방식이 안전하다</span>
+    <span class="k">for</span> <span class="n">prop</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Properties</span><span class="o">.</span><span class="n">GetProperties</span><span class="p">(</span><span class="n">DataPropertyClass</span><span class="o">.</span><span class="n">Document</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">prop</span><span class="o">.</span><span class="n">Name</span> <span class="o">==</span> <span class="n">name</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">return</span> <span class="kc">False</span>
+
+
+<span class="n">created</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">existing</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">failed</span> <span class="o">=</span> <span class="p">[]</span>
+
+<span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">dataType</span><span class="p">,</span> <span class="n">default</span><span class="p">,</span> <span class="n">usedBy</span> <span class="ow">in</span> <span class="n">PROPERTIES</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">property_exists</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+        <span class="n">existing</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">continue</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">prototype</span> <span class="o">=</span> <span class="n">DataProperty</span><span class="o">.</span><span class="n">CreateCustomPrototype</span><span class="p">(</span>
+            <span class="n">name</span><span class="p">,</span> <span class="n">dataType</span><span class="p">,</span> <span class="n">DataProperty</span><span class="o">.</span><span class="n">DefaultAttributes</span><span class="p">)</span>
+        <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Properties</span><span class="o">.</span><span class="n">AddProperty</span><span class="p">(</span><span class="n">DataPropertyClass</span><span class="o">.</span><span class="n">Document</span><span class="p">,</span> <span class="n">prototype</span><span class="p">)</span>
+        <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">default</span>
+        <span class="n">created</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">failed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)))</span>
+
+<span class="nb">print</span> <span class="sa">u</span><span class="s2">&quot;새로 만듦 (</span><span class="si">%d</span><span class="s2">개): </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">created</span><span class="p">),</span> <span class="sa">u</span><span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">created</span><span class="p">))</span>
+<span class="nb">print</span> <span class="sa">u</span><span class="s2">&quot;이미 있음 (</span><span class="si">%d</span><span class="s2">개): </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">existing</span><span class="p">),</span> <span class="sa">u</span><span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">existing</span><span class="p">))</span>
+<span class="k">if</span> <span class="n">failed</span><span class="p">:</span>
+    <span class="nb">print</span> <span class="sa">u</span><span class="s2">&quot;실패 (</span><span class="si">%d</span><span class="s2">개):&quot;</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">failed</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">failed</span><span class="p">:</span>
+        <span class="nb">print</span> <span class="sa">u</span><span class="s2">&quot;   &quot;</span><span class="p">,</span> <span class="n">message</span>
+</code></pre></div>
+
+<h3 id="_2">스크립트로 만들 수 없는 것</h3>
+<p>두 가지는 <strong>UI에서 직접</strong> 만들어야 합니다.</p>
+<table>
+<thead>
+<tr>
+<th>속성</th>
+<th>예제</th>
+<th>이유</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>최소</code>, <code>최대</code></td>
+<td>예제 7</td>
+<td>축 타입에 맞는 숫자형(Real/Integer)이어야 하고, 입력 컨트롤과 연결해야 함</td>
+</tr>
+<tr>
+<td><code>columns</code></td>
+<td>예제 21</td>
+<td><strong>문자열 목록</strong> 타입이어야 하고, 다중 선택 목록 상자와 연결해야 함</td>
+</tr>
+</tbody>
+</table>
+<p><code>도구 &gt; 문서 속성 &gt; 속성 &gt; 새로 만들기</code> 에서 만드세요.</p>
+<h3 id="_3">결과를 화면에서 보려면</h3>
+<p><code>ScriptLog</code> 는 값만 저장할 뿐 저절로 보이지 않습니다.
+텍스트 영역을 하나 만들고 <strong>속성 컨트롤로 <code>ScriptLog</code> 를 삽입</strong>해 두면
+버튼을 누를 때마다 결과가 그 자리에 표시됩니다.</p>
+<div class="admonition tip">
+<p class="admonition-title">속성을 만들기 싫다면</p>
+<p>각 예제의 마지막 줄을 <code>print</code> 로 바꿔도 됩니다.
+단 <code>print</code> 출력은 <strong>스크립트 편집 창에서 실행했을 때만</strong> 보입니다
+→ <a href="02-getting-started.html">2.5 참조</a></p>
+</div>
+<hr />
 <h2 id="1">예제 1. 문서 전체 시각화 인벤토리 만들기</h2>
 <ul class="meta">
 <li class="badge hard">기본 기능으로 어려움</li>
@@ -387,7 +492,7 @@ Spotfire에는 "모든 시각화에 서식 일괄 적용" 기능이 없습니다
     <span class="sa">u</span><span class="s2">&quot;표시&quot;</span> <span class="k">if</span> <span class="n">visible</span> <span class="k">else</span> <span class="sa">u</span><span class="s2">&quot;숨김&quot;</span><span class="p">,</span> <span class="n">changed</span><span class="p">,</span> <span class="n">noLegend</span><span class="p">)</span>
 </code></pre></div>
 
-<h3 id="_1">변형: 제목도 함께 정리하기</h3>
+<h3 id="_4">변형: 제목도 함께 정리하기</h3>
 <div class="codehilite"><pre><span></span><code><span class="c1"># -*- coding: utf-8 -*-</span>
 <span class="c1"># 범례를 끄고, 제목 앞뒤 공백을 정리하고, 데이터 테이블 이름을 제목에 덧붙인다.</span>
 
@@ -411,7 +516,7 @@ Spotfire에는 "모든 시각화에 서식 일괄 적용" 기능이 없습니다
             <span class="k">pass</span>
 </code></pre></div>
 
-<h3 id="_2">변형: 산점도 마커 크기 일괄 조정</h3>
+<h3 id="_5">변형: 산점도 마커 크기 일괄 조정</h3>
 <p>점이 너무 작아 안 보이거나 너무 커서 뭉칠 때, 모든 산점도를 한 번에 조정합니다.</p>
 <div class="codehilite"><pre><span></span><code><span class="c1"># -*- coding: utf-8 -*-</span>
 <span class="c1"># 모든 산점도의 마커 크기를 한 단계 키운다.</span>
@@ -669,7 +774,7 @@ Spotfire에는 "모든 시각화에 서식 일괄 적용" 기능이 없습니다
     <span class="n">applied</span><span class="p">,</span> <span class="n">AxisMin</span><span class="p">,</span> <span class="n">AxisMax</span><span class="p">)</span>
 </code></pre></div>
 
-<h3 id="_3">변형: 축 범위 고정 해제 (자동 범위로 되돌리기)</h3>
+<h3 id="_6">변형: 축 범위 고정 해제 (자동 범위로 되돌리기)</h3>
 <div class="codehilite"><pre><span></span><code><span class="c1"># -*- coding: utf-8 -*-</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Visuals</span><span class="w"> </span><span class="kn">import</span> <span class="n">VisualContent</span><span class="p">,</span> <span class="n">AxisRange</span>
 
@@ -708,18 +813,23 @@ Spotfire에는 "모든 시각화에 서식 일괄 적용" 기능이 없습니다
   </main>
   <aside class="toc-side" aria-label="현재 문서 목차"><div class="toc">
 <ul>
+<li><a href="#_1">사전 준비 · 문서 속성 만들기</a><ul>
+<li><a href="#_2">스크립트로 만들 수 없는 것</a></li>
+<li><a href="#_3">결과를 화면에서 보려면</a></li>
+</ul>
+</li>
 <li><a href="#1">예제 1. 문서 전체 시각화 인벤토리 만들기</a></li>
 <li><a href="#2">예제 2. 모든 시각화에 데이터 제한 표현식 일괄 적용</a></li>
 <li><a href="#3">예제 3. 축 표현식 동시 전환 (측정지표 스위처)</a></li>
 <li><a href="#4">예제 4. 범례·제목·서식 일괄 통일</a><ul>
-<li><a href="#_1">변형: 제목도 함께 정리하기</a></li>
-<li><a href="#_2">변형: 산점도 마커 크기 일괄 조정</a></li>
+<li><a href="#_4">변형: 제목도 함께 정리하기</a></li>
+<li><a href="#_5">변형: 산점도 마커 크기 일괄 조정</a></li>
 </ul>
 </li>
 <li><a href="#5">예제 5. 모든 시각화의 데이터 테이블 일괄 교체</a></li>
 <li><a href="#6">예제 6. 모든 차트의 줌·축 범위 초기화</a></li>
 <li><a href="#7">예제 7. 여러 차트의 축 범위 동시 고정</a><ul>
-<li><a href="#_3">변형: 축 범위 고정 해제 (자동 범위로 되돌리기)</a></li>
+<li><a href="#_6">변형: 축 범위 고정 해제 (자동 범위로 되돌리기)</a></li>
 </ul>
 </li>
 </ul>

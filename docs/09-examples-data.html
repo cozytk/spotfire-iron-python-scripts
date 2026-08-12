@@ -536,8 +536,8 @@ Spotfire에서 테이블 간 마킹 연동은 <strong>데이터 테이블 관계
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Data</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataValueCursor</span><span class="p">,</span> <span class="n">IndexSet</span><span class="p">,</span> <span class="n">RowSelection</span>
 
-<span class="n">MARKING_NAME</span> <span class="o">=</span> <span class="s2">&quot;Marking&quot;</span>
-<span class="n">marking</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Markings</span><span class="p">[</span><span class="n">MARKING_NAME</span><span class="p">]</span>
+<span class="c1"># 마킹 이름은 하드코딩하지 않는다 (한국어 UI에서는 &quot;마킹&quot;)</span>
+<span class="n">marking</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">ActiveMarkingSelectionReference</span>
 
 <span class="c1"># 1) 원본에서 마킹된 키 값을 집합으로 수집</span>
 <span class="n">markedRows</span> <span class="o">=</span> <span class="n">marking</span><span class="o">.</span><span class="n">GetSelection</span><span class="p">(</span><span class="n">sourceTable</span><span class="p">)</span><span class="o">.</span><span class="n">AsIndexSet</span><span class="p">()</span>
@@ -559,7 +559,7 @@ Spotfire에서 테이블 간 마킹 연동은 <strong>데이터 테이블 관계
 <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">targetTable</span><span class="o">.</span><span class="n">GetRows</span><span class="p">(</span><span class="n">allTargetRows</span><span class="p">,</span> <span class="n">targetCursor</span><span class="p">):</span>
     <span class="n">value</span> <span class="o">=</span> <span class="n">targetCursor</span><span class="o">.</span><span class="n">CurrentValue</span>
     <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
-        <span class="n">hits</span><span class="o">.</span><span class="n">Add</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">Index</span><span class="p">)</span>
+        <span class="n">hits</span><span class="p">[</span><span class="n">row</span><span class="o">.</span><span class="n">Index</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>        <span class="c1"># IndexSet 은 Add() 가 아니라 인덱서로 설정한다</span>
         <span class="n">matched</span> <span class="o">+=</span> <span class="mi">1</span>
 
 <span class="c1"># 3) 대상 테이블에 마킹 적용</span>

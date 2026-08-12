@@ -269,7 +269,7 @@ for name in dir(VisualTypeIdentifiers):
 
 <span class="n">allRows</span> <span class="o">=</span> <span class="n">IndexSet</span><span class="p">(</span><span class="n">table</span><span class="o">.</span><span class="n">RowCount</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>      <span class="c1"># 전부 선택된 상태</span>
 <span class="n">noRows</span> <span class="o">=</span> <span class="n">IndexSet</span><span class="p">(</span><span class="n">table</span><span class="o">.</span><span class="n">RowCount</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>      <span class="c1"># 전부 해제된 상태</span>
-<span class="n">noRows</span><span class="o">.</span><span class="n">Add</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>                                 <span class="c1"># 6번째 행만 추가</span>
+<span class="n">noRows</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>                              <span class="c1"># 6번째 행만 켠다</span>
 
 <span class="n">selection</span> <span class="o">=</span> <span class="n">RowSelection</span><span class="p">(</span><span class="n">noRows</span><span class="p">)</span>              <span class="c1"># 마킹 API에 넘길 형태</span>
 </code></pre></div>
@@ -278,6 +278,15 @@ for name in dir(VisualTypeIdentifiers):
 <li><strong><code>IndexSet</code></strong>: 행 인덱스의 비트 집합. <code>And</code>, <code>Or</code>, <code>Not</code> 연산 가능</li>
 <li><strong><code>RowSelection</code></strong>: 마킹/필터 API가 요구하는 래퍼</li>
 </ul>
+<div class="admonition warning">
+<p class="admonition-title"><code>IndexSet</code> 에는 <code>Add()</code> 가 없습니다</p>
+<p>실측 확인 결과 <code>hasattr(indexSet, "Add")</code> 는 <code>False</code> 입니다.
+파이썬 <code>set</code> 처럼 <code>Add(5)</code> 를 부르면 실패합니다.
+<strong>인덱서로 켜고 끕니다.</strong></p>
+<p><code>python
+indexSet[5] = True     # 6번째 행 켜기
+indexSet[5] = False    # 끄기</code></p>
+</div>
 <div class="codehilite"><pre><span></span><code><span class="n">combined</span> <span class="o">=</span> <span class="n">IndexSet</span><span class="o">.</span><span class="n">And</span><span class="p">(</span><span class="n">setA</span><span class="p">,</span> <span class="n">setB</span><span class="p">)</span>     <span class="c1"># 교집합</span>
 </code></pre></div>
 

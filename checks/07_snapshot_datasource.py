@@ -62,6 +62,34 @@ except Exception, e:
 
 # ---------------------------------------------------------------
 print ""
+print "=== 1-2. IndexSet 실제 API 확인 (예제 12) ==="
+# 00 하네스에서 IndexSet.Add 가 없다는 것이 드러났다. 올바른 방법을 확정한다.
+try:
+    probe = IndexSet(10, False)
+    print "[OK] IndexSet(10, False) 생성"
+    print "     Add 존재:", hasattr(probe, "Add"), "(없는 것이 정상)"
+
+    try:
+        probe[3] = True
+        print "[OK] probe[3] = True  (인덱서로 설정 가능)"
+        print "     probe[3] 값:", probe[3], "| Count:", probe.Count
+        probe[3] = False
+        print "     끄기 후 Count:", probe.Count
+    except Exception, e:
+        print "[NO] probe[3] = True ->", clean(str(e))
+
+    skip = ["Equals", "GetHashCode", "GetType", "MemberwiseClone",
+            "ReferenceEquals", "ToString"]
+    members = []
+    for name in dir(probe):
+        if not name.startswith("_") and name not in skip:
+            members.append(name)
+    print "     IndexSet 실제 멤버:", clean(", ".join(members))
+except Exception, e:
+    print "[NO]", clean(str(e))
+
+
+print ""
 print "=== 2. 스냅샷용 데이터를 메모리에 기록 ==="
 
 # 마킹된 행이 있으면 그걸, 없으면 앞의 10행만 쓴다
@@ -72,7 +100,7 @@ if rows.Count == 0:
     for i in range(table.RowCount):
         if added >= 10:
             break
-        rows.Add(i)
+        rows[i] = True          # IndexSet 은 Add() 가 아니라 인덱서를 쓴다
         added += 1
     print "  마킹이 없어 앞의", rows.Count, "행으로 시험합니다"
 else:

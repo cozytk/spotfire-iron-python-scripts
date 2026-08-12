@@ -444,8 +444,8 @@ Spotfire에서 테이블 간 마킹 연동은 **데이터 테이블 관계(relat
 
 from Spotfire.Dxp.Data import DataValueCursor, IndexSet, RowSelection
 
-MARKING_NAME = "Marking"
-marking = Document.Data.Markings[MARKING_NAME]
+# 마킹 이름은 하드코딩하지 않는다 (한국어 UI에서는 "마킹")
+marking = Document.ActiveMarkingSelectionReference
 
 # 1) 원본에서 마킹된 키 값을 집합으로 수집
 markedRows = marking.GetSelection(sourceTable).AsIndexSet()
@@ -467,7 +467,7 @@ matched = 0
 for row in targetTable.GetRows(allTargetRows, targetCursor):
     value = targetCursor.CurrentValue
     if value is not None and value.strip().upper() in keys:
-        hits.Add(row.Index)
+        hits[row.Index] = True        # IndexSet 은 Add() 가 아니라 인덱서로 설정한다
         matched += 1
 
 # 3) 대상 테이블에 마킹 적용

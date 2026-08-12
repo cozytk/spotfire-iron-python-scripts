@@ -228,13 +228,23 @@ from Spotfire.Dxp.Data import IndexSet, RowSelection
 
 allRows = IndexSet(table.RowCount, True)      # 전부 선택된 상태
 noRows = IndexSet(table.RowCount, False)      # 전부 해제된 상태
-noRows.Add(5)                                 # 6번째 행만 추가
+noRows[5] = True                              # 6번째 행만 켠다
 
 selection = RowSelection(noRows)              # 마킹 API에 넘길 형태
 ```
 
 - **`IndexSet`**: 행 인덱스의 비트 집합. `And`, `Or`, `Not` 연산 가능
 - **`RowSelection`**: 마킹/필터 API가 요구하는 래퍼
+
+!!! warning "`IndexSet` 에는 `Add()` 가 없습니다"
+    실측 확인 결과 `hasattr(indexSet, "Add")` 는 `False` 입니다.
+    파이썬 `set` 처럼 `Add(5)` 를 부르면 실패합니다.
+    **인덱서로 켜고 끕니다.**
+
+    ```python
+    indexSet[5] = True     # 6번째 행 켜기
+    indexSet[5] = False    # 끄기
+    ```
 
 ```python
 combined = IndexSet.And(setA, setB)     # 교집합
