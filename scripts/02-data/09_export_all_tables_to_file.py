@@ -4,50 +4,26 @@
 # 설명과 검증 포인트: https://cozytk.github.io/spotfire-iron-python-scripts/09-examples-data.html
 # 이 파일은 content/09-examples-data.md 에서 자동 생성됩니다. 직접 수정하지 마세요.
 
-# 문서의 모든 데이터 테이블을, 현재 필터가 적용된 행만, 파일로 내보낸다.
-# (Analyst 데스크톱 전용)
+# 표 시각화의 데이터를 탭 구분 텍스트 파일로 내보낸다. (Analyst 전용)
 #
 # 매개변수:
-#   outDir (String) 저장 폴더 경로
+#   vTable (Visualization) 표(Table) 시각화
 
-from Spotfire.Dxp.Data.Export import DataWriterTypeIdentifiers
-from System.IO import File, Path, Directory
-from System import DateTime
+from Spotfire.Dxp.Application.Visuals import TablePlot
+from System.IO import StreamWriter
+from System.Text import Encoding
 
-# 형식 선택 (14.x 에서 실제 확인된 것들)
-#   ExcelXlsDataWriter             → .xls
-#   ExcelXlsxDataWriter            → .xlsx
-#   SpreadsheetDataCsvUtf8Writer   → .csv  (UTF-8, 한글 안전)
-#   SpreadsheetDataCsvWriter       → .csv  (시스템 인코딩)
-#   SbdfDataWriter / StdfDataWriter → Spotfire 이진 형식
-WRITER = DataWriterTypeIdentifiers.SpreadsheetDataCsvUtf8Writer
-EXTENSION = ".csv"
+PATH = "C:/temp/export.txt"
 
-stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss")
-folder = Path.Combine(outDir, "export_" + stamp)
-Directory.CreateDirectory(folder)
+plot = vTable.As[TablePlot]()
 
-exported = []
-
-for table in Document.Data.Tables:
-    # 현재 활성 필터링에서 살아남은 행만
-    filtered = Document.ActiveFilteringSelectionReference.GetSelection(table).AsIndexSet()
-
-    # 전체 행을 내보내려면 위 줄 대신:
-    # from Spotfire.Dxp.Data import IndexSet
-    # filtered = IndexSet(table.RowCount, True)
-
-    columnNames = [c.Name for c in table.Columns]
-
-    writer = Document.Data.CreateDataWriter(WRITER)
-    path = Path.Combine(folder, table.Name + EXTENSION)
-
-    stream = File.OpenWrite(path)
+if not plot.ExportDataEnabled:
+    Document.Properties["ScriptLog"] = u"이 시각화는 데이터 내보내기가 비활성화되어 있습니다."
+else:
+    # 한글이 있으면 UTF-8 로 명시한다
+    writer = StreamWriter(PATH, False, Encoding.UTF8)
     try:
-        writer.Write(stream, table, filtered, columnNames)
+        plot.ExportText(writer)
     finally:
-        stream.Close()
-
-    exported.append(u"%s (%d행)" % (table.Name, filtered.Count))
-
-Document.Properties["ScriptLog"] = u"%s<br>저장 위치: %s" % (u"<br>".join(exported), folder)
+        writer.Close()
+    Document.Properties["ScriptLog"] = u"내보내기 완료: " + PATH

@@ -108,6 +108,12 @@ extract_scripts.py  content/ -> scripts/ 추출
 `checks/README.md` 에는 실제 Spotfire(IronPython 2.7.12 / Spotfire 14.x)에서 확인한
 API 실측 결과가 정리되어 있습니다. 교안의 "검증 포인트"는 이 결과를 근거로 합니다.
 
+**예제 21종이 사용하는 API는 여덟 차례 실행으로 전부 확인했습니다.**
+그 과정에서 교안 오류 8건(`TreemapChart`, `IndexSet.Add`, 마킹 이름 하드코딩,
+`StdfDataSource`, `RenderSync`, `Tables[0]`, `CreateDataWriter`, `ScriptLog` 미생성)을
+잡아 고쳤습니다. 교안을 수정한 뒤에는 `checks/00_verify_all_examples.py` 로
+회귀 확인을 할 수 있습니다.
+
 ## 로컬에서 빌드하기
 
 ```bash

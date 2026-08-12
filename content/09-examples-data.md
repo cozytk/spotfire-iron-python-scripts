@@ -115,97 +115,32 @@ Document.Properties["ScriptLog"] = msg
 </ul>
 
 **문제 상황**  
-분석에 들어 있는 데이터 테이블 6개를 **현재 필터가 적용된 상태 그대로** CSV로 넘겨야 합니다.
+분석에 들어 있는 표 여러 개를 **현재 상태 그대로** 파일로 넘겨야 합니다.
 
 **기본 기능으로 어려운 이유**  
-`파일 > 내보내기 > 데이터`는 한 번에 한 테이블입니다. 6번 반복해야 하고,
-매번 저장 경로와 필터 적용 여부를 다시 지정해야 합니다.
+`파일 > 내보내기 > 데이터`는 한 번에 하나입니다. 여러 번 반복해야 하고,
+매번 저장 경로와 옵션을 다시 지정해야 합니다.
 
-**스크립트 매개변수**
-
-| 이름 | 타입 | 값 |
-|------|------|-----|
-| `outDir` | String | 문서 속성 `ExportFolder` |
-
-```python
-# -*- coding: utf-8 -*-
-# 문서의 모든 데이터 테이블을, 현재 필터가 적용된 행만, 파일로 내보낸다.
-# (Analyst 데스크톱 전용)
-#
-# 매개변수:
-#   outDir (String) 저장 폴더 경로
-
-from Spotfire.Dxp.Data.Export import DataWriterTypeIdentifiers
-from System.IO import File, Path, Directory
-from System import DateTime
-
-# 형식 선택 (14.x 에서 실제 확인된 것들)
-#   ExcelXlsDataWriter             → .xls
-#   ExcelXlsxDataWriter            → .xlsx
-#   SpreadsheetDataCsvUtf8Writer   → .csv  (UTF-8, 한글 안전)
-#   SpreadsheetDataCsvWriter       → .csv  (시스템 인코딩)
-#   SbdfDataWriter / StdfDataWriter → Spotfire 이진 형식
-WRITER = DataWriterTypeIdentifiers.SpreadsheetDataCsvUtf8Writer
-EXTENSION = ".csv"
-
-stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss")
-folder = Path.Combine(outDir, "export_" + stamp)
-Directory.CreateDirectory(folder)
-
-exported = []
-
-for table in Document.Data.Tables:
-    # 현재 활성 필터링에서 살아남은 행만
-    filtered = Document.ActiveFilteringSelectionReference.GetSelection(table).AsIndexSet()
-
-    # 전체 행을 내보내려면 위 줄 대신:
-    # from Spotfire.Dxp.Data import IndexSet
-    # filtered = IndexSet(table.RowCount, True)
-
-    columnNames = [c.Name for c in table.Columns]
-
-    writer = Document.Data.CreateDataWriter(WRITER)
-    path = Path.Combine(folder, table.Name + EXTENSION)
-
-    stream = File.OpenWrite(path)
-    try:
-        writer.Write(stream, table, filtered, columnNames)
-    finally:
-        stream.Close()
-
-    exported.append(u"%s (%d행)" % (table.Name, filtered.Count))
-
-Document.Properties["ScriptLog"] = u"%s<br>저장 위치: %s" % (u"<br>".join(exported), folder)
-```
-
-### 변형: 특정 컬럼만 내보내기
-
-```python
-# 이름에 "_internal" 이 붙은 컬럼은 제외
-columnNames = [c.Name for c in table.Columns if "_internal" not in c.Name]
-```
-
-!!! danger "이 환경에서 동작하는 것은 `ExportText` 하나뿐입니다"
+!!! danger "이 예제만 유독 환경을 많이 탑니다"
     Spotfire 14.x에서 내보내기 경로를 전부 시험한 결과입니다.
 
     | 경로 | 결과 |
     |------|------|
-    | `Document.Data.CreateDataWriter(...)` | **`None` 반환** (예외 없음) |
+    | `Document.Data.CreateDataWriter(...)` | **`None` 반환** (예외조차 없음) |
     | `TablePlot.ExportData(식별자, 스트림)` | **실패** — `cannot write from reader` |
     | `TablePlot.ExportText(writer)` | **성공** (408,144 글자, 탭 구분) |
 
-    `ExportData` 는 시그니처가 맞는데도 writer 쪽에서 거부합니다.
+    널리 알려진 `CreateDataWriter` 방식이 **이 환경에서는 동작하지 않습니다.**
+    `DataWriterFactory` 에 `IsLicensed` 와 `requiredLicenses` 멤버가 있는 것으로 보아
+    **라이선스 제약**으로 보입니다. `ExportData` 는 시그니처가 맞는데도 writer 쪽에서
+    거부합니다.
 
     ```text
     The writer with typeidentifier Spreadsheet CSV UTF8 data writer cannot write from reader.
     ```
 
-    `DataWriter` 에 `CanWriteFromReader` 라는 멤버가 있는 것으로 보아, 해당 writer 들이
-    **reader 기반 쓰기를 지원하지 않는** 구조입니다. `CreateDataWriter` 가 `None` 인 것도
-    `DataWriterFactory` 의 `IsLicensed` / `requiredLicenses` 를 볼 때 **라이선스 제약**으로
-    보입니다.
-
-    결론: **`ExportText` 를 쓰세요.** 아래가 이 환경에서 검증된 코드입니다.
+    아래는 **실제로 동작을 확인한 코드**입니다. `CreateDataWriter` 방식은
+    맨 아래에 참고용으로 남겨 두었습니다.
 
 ### 검증된 방법 — `ExportText`
 
@@ -331,38 +266,60 @@ Document.Properties["ScriptLog"] = u"%d개 내보냄 / %d개 건너뜀<br>%s" % 
     이 방법은 **표(Table) 시각화를 경유**합니다. 데이터 테이블만 있다면
     숨긴 페이지에 표를 하나 만들어 두고 그것을 대상으로 삼는 방식이 실무적입니다.
 
----
+### 참고 — `CreateDataWriter` 방식 (라이선스가 있는 환경에서)
 
-### 원래 코드 (참고 — 이 환경에서는 동작하지 않습니다)
+커뮤니티에 널리 퍼진 방식입니다. 이 환경에서는 `None` 이 반환되어 실패했지만,
+내보내기 라이선스가 있는 환경에서는 동작합니다.
 
-아래는 널리 알려진 `CreateDataWriter` 방식입니다.
-라이선스가 있는 환경에서는 동작하므로 참고용으로 남겨 둡니다.
+```python
+# -*- coding: utf-8 -*-
+# 참고용 — 이 환경에서는 CreateDataWriter 가 None 을 반환해 실패합니다.
+from Spotfire.Dxp.Data.Export import DataWriterTypeIdentifiers
+from System.IO import File
 
+table = Document.ActiveDataTableReference
+filtered = Document.ActiveFilteringSelectionReference.GetSelection(table).AsIndexSet()
+columnNames = [c.Name for c in table.Columns]
+
+writer = Document.Data.CreateDataWriter(DataWriterTypeIdentifiers.SpreadsheetDataCsvUtf8Writer)
+if writer is None:
+    Document.Properties["ScriptLog"] = u"내보내기 권한이 없습니다. ExportText 방식을 쓰세요."
+else:
+    stream = File.Create("C:/temp/data.csv")
+    try:
+        writer.Write(stream, table, filtered, columnNames)
+    finally:
+        stream.Close()
+```
+
+**반환값이 `None` 인지 반드시 확인하세요.** 확인하지 않으면
+`'NoneType' object has no attribute 'Write'` 로 넘어갑니다.
+
+Spotfire 14.x에서 확인된 식별자 전체 목록입니다.
+
+```text
+ExcelXlsDataWriter                    SpreadsheetDataSemicolonWriter
+ExcelXlsxDataWriter                   SpreadsheetDataWriter
+SbdfDataWriter                        SpreadsheetUtf8DataWriter
+SpreadsheetDataCsvUtf8Writer          StdfDataWriter
+SpreadsheetDataCsvWriter              StdfOneDataWriter
+SpreadsheetDataSemicolonUtf8Writer
+```
 
 !!! note "검증 포인트"
-    - **Analyst 전용**입니다(로컬 파일 쓰기).
-    - `File.OpenWrite`는 기존 파일이 더 길면 뒷부분이 남을 수 있습니다.
-      매번 새 폴더에 쓰는 위 방식이 안전합니다. 같은 파일에 덮어쓰려면
-      `File.Create(path)`를 쓰세요.
-    - `writer.Write`가 요구하는 컬럼 이름은 **파이썬 리스트로 넘어갑니다.**
-      타입 오류가 나면 `Array[String](columnNames)`로 변환해 보세요 → [3.5 참조](05-dotnet-interop.html#55-net)
-    - **CSV로 내보내려면 확장자만 바꾸면 안 되고 writer 를 바꿔야 합니다.**
-      한글이 들어간다면 `SpreadsheetDataCsvUtf8Writer` 를 쓰세요.
-    - Spotfire 14.x에서 확인된 전체 목록입니다.
+    - 위 `ExportText` 방식은 **Analyst 전용**입니다(로컬 파일 쓰기).
+      Web Player에서 데이터를 내보내야 한다면 `DataTable.ExportDataToLibrary` 를 보세요.
 
       ```text
-      ExcelXlsDataWriter                    SpreadsheetDataSemicolonWriter
-      ExcelXlsxDataWriter                   SpreadsheetDataWriter
-      SbdfDataWriter                        SpreadsheetUtf8DataWriter
-      SpreadsheetDataCsvUtf8Writer          StdfDataWriter
-      SpreadsheetDataCsvWriter              StdfOneDataWriter
-      SpreadsheetDataSemicolonUtf8Writer
+      ExportDataToLibrary(self: DataTable, libraryItem: LibraryItem, title: str) -> LibraryItem
       ```
 
-      버전마다 다를 수 있으니 다음으로 확인하세요.
-      `for m in dir(DataWriterTypeIdentifiers): print m`
+    - `ExportText` 출력은 **탭 구분**입니다. 쉼표가 필요하면 위 변환 코드를 쓰세요.
+    - `StreamWriter` 에 `Encoding.UTF8` 을 명시하세요. 한글이 깨질 수 있습니다.
+    - `plot.ExportDataEnabled` 로 **내보내기 가능 여부를 코드에서 판별**할 수 있습니다.
 
 ---
+
 
 ## 예제 10. 마킹한 행을 새 데이터 테이블로 스냅샷
 
@@ -377,7 +334,6 @@ Document.Properties["ScriptLog"] = u"%d개 내보냄 / %d개 건너뜀<br>%s" % 
 **기본 기능으로 어려운 이유**  
 Spotfire UI에는 "마킹된 행을 새 데이터 테이블로 저장" 기능이 없습니다.
 마킹은 휘발성이라 필터를 건드리면 사라집니다.
-"마킹된 행에서 데이터 테이블 만들기"를 하려면 내보냈다가 다시 불러와야 합니다.
 
 **스크립트 매개변수**
 
@@ -388,135 +344,97 @@ Spotfire UI에는 "마킹된 행을 새 데이터 테이블로 저장" 기능이
 
 ```python
 # -*- coding: utf-8 -*-
-# 현재 마킹된 행을 새 데이터 테이블로 복사한다.
-# 메모리 스트림에 STDF로 쓴 뒤 다시 읽어 들이는 방식.
+# 현재 마킹된 행만 새 데이터 테이블로 복사한다.
 #
 # 매개변수:
 #   sourceTable  (DataTable) 원본 테이블
 #   snapshotName (String)    만들 테이블 이름
 
-from Spotfire.Dxp.Data.Export import DataWriterTypeIdentifiers
-from Spotfire.Dxp.Data.Import import StdfDataSource
-from System.IO import MemoryStream, SeekOrigin
+from Spotfire.Dxp.Data.Import import DataTableDataSource
 
-# 마킹 이름을 하드코딩하지 않는다.
-# 한국어 UI에서는 기본 마킹 이름이 "Marking" 이 아니라 "마킹" 이다.
-markedRows = Document.ActiveMarkingSelectionReference.GetSelection(sourceTable).AsIndexSet()
+# 마킹 이름은 하드코딩하지 않는다 (한국어 UI에서는 "마킹")
+marking = Document.ActiveMarkingSelectionReference
+markedRows = marking.GetSelection(sourceTable).AsIndexSet()
 
 if markedRows.Count == 0:
     Document.Properties["ScriptLog"] = u"마킹된 행이 없습니다. 먼저 차트에서 선택하세요."
 else:
-    columnNames = [c.Name for c in sourceTable.Columns]
+    # 마킹을 그대로 데이터 원본에 넘긴다.
+    # 마킹(DataMarkingSelection)이 곧 DataSelection 이므로 별도 변환이 필요 없다.
+    source = DataTableDataSource(sourceTable, marking)
 
-    # 1) 마킹된 행만 메모리에 STDF로 기록
-    stream = MemoryStream()
-    writer = Document.Data.CreateDataWriter(DataWriterTypeIdentifiers.StdfDataWriter)
-    writer.Write(stream, sourceTable, markedRows, columnNames)
-
-    # 2) 스트림을 처음으로 되감아 데이터 원본으로 사용
-    stream.Seek(0, SeekOrigin.Begin)
-    dataSource = StdfDataSource(stream)
-
-    # 3) 같은 이름이 있으면 내용만 교체, 없으면 새로 추가
     if Document.Data.Tables.Contains(snapshotName):
-        Document.Data.Tables[snapshotName].ReplaceData(dataSource)
+        Document.Data.Tables[snapshotName].ReplaceData(source)
         action = u"갱신"
     else:
-        Document.Data.Tables.Add(snapshotName, dataSource)
+        Document.Data.Tables.Add(snapshotName, source)
         action = u"생성"
 
     Document.Properties["ScriptLog"] = u"'%s' 테이블을 %s했습니다. (%d행)" % (
         snapshotName, action, markedRows.Count)
 ```
 
+### 변형: 현재 필터를 통과한 행만
+
+마킹 대신 **필터링**을 넘기면 그대로 필터 결과 스냅샷이 됩니다. 코드는 한 줄만 다릅니다.
+
+```python
+# -*- coding: utf-8 -*-
+from Spotfire.Dxp.Data.Import import DataTableDataSource
+
+filtering = Document.ActiveFilteringSelectionReference
+source = DataTableDataSource(sourceTable, filtering)
+Document.Data.Tables.Add(u"필터 결과", source)
+```
+
+필터링도 마킹과 마찬가지로 `DataSelection` 의 구체 클래스이기 때문입니다.
+
+| 넘기는 것 | 실제 타입 | 결과 |
+|-----------|-----------|------|
+| `Document.ActiveMarkingSelectionReference` | `DataMarkingSelection` | 마킹된 행만 |
+| `Document.ActiveFilteringSelectionReference` | `DataFilteringSelection` | 필터를 통과한 행만 |
+
 ### 활용
 
 - **What-if 비교**: 조건을 바꿔 가며 마킹 → 스냅샷을 여러 개 만들어 나란히 비교
 - **검토 목록 관리**: 이상치를 마킹해 스냅샷으로 저장 → 그 테이블로만 표를 만들어 검토
-- **원본 대비 고정**: 필터를 바꿔도 스냅샷은 그대로 남습니다
+- **원본 대비 고정**: 필터를 바꿔도, 마킹을 바꿔도 스냅샷은 그대로 남습니다
 
-!!! success "해법 확정 — 마킹을 그대로 넘기면 됩니다"
-    위 코드는 두 군데가 막혀 있습니다(`StdfDataSource` 부재, `CreateDataWriter` → `None`).
-    하지만 실측으로 **훨씬 단순한 방법**이 확인되었습니다.
-
+!!! success "실측으로 확인된 동작 (Spotfire 14.x)"
     ```text
-    마킹 타입   : DataMarkingSelection    isinstance(마킹, DataSelection)   -> True
-    필터링 타입 : DataFilteringSelection  isinstance(필터링, DataSelection) -> True
-
-    DataTableDataSource(table, 마킹)   -> 생성 성공
-    DataTableDataSource(table, 필터링) -> 생성 성공
+    10행 마킹 -> 새 테이블 생성   -> 새 테이블 10행   (부분집합 적용됨)
+    마킹을 20행으로 변경          -> 새 테이블 10행   (변하지 않음)
+    새 테이블의 IsRefreshable     -> False
     ```
 
-    `DataTableDataSource(dataTable, dataSelection)` 오버로드의 `dataSelection` 자리에
-    **마킹이나 필터링을 그대로 넣으면 됩니다.** 별도 객체를 만들 필요가 없습니다.
-
-    ```python
-    # -*- coding: utf-8 -*-
-    # 마킹된 행만 새 데이터 테이블로 만든다.
-    #
-    # 매개변수:
-    #   sourceTable  (DataTable) 원본 테이블
-    #   snapshotName (String)    만들 테이블 이름
-
-    from Spotfire.Dxp.Data.Import import DataTableDataSource
-
-    marking = Document.ActiveMarkingSelectionReference
-    markedRows = marking.GetSelection(sourceTable).AsIndexSet()
-
-    if markedRows.Count == 0:
-        Document.Properties["ScriptLog"] = u"마킹된 행이 없습니다. 먼저 차트에서 선택하세요."
-    else:
-        source = DataTableDataSource(sourceTable, marking)
-
-        if Document.Data.Tables.Contains(snapshotName):
-            Document.Data.Tables[snapshotName].ReplaceData(source)
-            action = u"갱신"
-        else:
-            Document.Data.Tables.Add(snapshotName, source)
-            action = u"생성"
-
-        Document.Properties["ScriptLog"] = u"'%s' 테이블을 %s했습니다. (%d행)" % (
-            snapshotName, action, markedRows.Count)
-    ```
-
-    **보너스**: 마킹 대신 `Document.ActiveFilteringSelectionReference` 를 넘기면
-    **현재 필터를 통과한 행만** 새 테이블로 만들 수 있습니다. 같은 코드로 두 가지가 됩니다.
-
-!!! warning "아직 확인 중인 것 — 스냅샷인가, 실시간 연동인가"
-    `DataTableDataSource(table, selection)` 로 만든 테이블이
-
-    - **마킹 시점에 고정**되는지(진짜 스냅샷), 아니면
-    - **마킹이 바뀌면 따라 바뀌는지**(실시간 뷰)
-
-    아직 확인하지 못했습니다. 마킹된 행이 0이라 왕복 검증이 건너뛰어졌습니다.
-
-    `DataTableDataSourceUpdateBehavior` 에는 `Automatic` 과 `Manual` 두 값이 있는데,
-    이는 `(dataTable, updateBehavior)` 오버로드에서만 지정할 수 있어
-    `dataSelection` 과 동시에 주는 것은 불가능합니다.
-
-    **어느 쪽이든 유용하지만 의미가 다릅니다.**
-    실시간 연동이라면 "마킹한 것만 보는 보조 테이블"이 되고,
-    고정이라면 원래 의도한 "스냅샷"이 됩니다.
-    확인용 스크립트는
-    [`checks/11_snapshot_semantics.py`](https://github.com/cozytk/spotfire-iron-python-scripts/blob/main/checks/11_snapshot_semantics.py)
-    에 있습니다.
-
----
-
-### 원래 코드 (참고 — 현재 동작하지 않습니다)
-### 원래 코드 (참고 — 현재 동작하지 않습니다)
-
-위 코드 블록이 그것입니다. `StdfDataSource` 와 `CreateDataWriter` 두 군데가 막혀 있습니다.
-
+    **생성 시점에 고정되는 진짜 스냅샷입니다.** 이후 마킹을 바꿔도 따라 변하지 않습니다.
 
 !!! note "검증 포인트"
     - 스냅샷 테이블은 **문서에 포함되어 저장**됩니다. 행이 많으면 파일 크기가 커집니다.
     - **마킹 이름을 하드코딩하지 마세요.** 한국어 UI에서는 기본 마킹 이름이
       `"Marking"` 이 아니라 `"마킹"` 입니다(실측 확인). 여러 개면 `"마킹 (2)"` 처럼 붙습니다.
       `Document.ActiveMarkingSelectionReference` 를 쓰면 이름과 무관하게 동작합니다.
-    - `ReplaceData`는 기존 테이블 내용을 지웁니다. 스냅샷 이름을 원본과 같게 두지 마세요.
+    - `ReplaceData` 는 기존 테이블 내용을 지웁니다. 스냅샷 이름을 원본과 같게 두지 마세요.
+    - `DataTableDataSourceUpdateBehavior` 에는 `Automatic` 과 `Manual` 이 있지만,
+      `(dataTable, updateBehavior)` 오버로드에서만 지정할 수 있어 선택과 동시에 줄 수 없습니다.
 
----
+!!! tip "예전에 널리 쓰이던 방법과의 차이"
+    커뮤니티에는 **writer로 메모리에 STDF를 쓴 뒤 다시 읽어들이는** 방식이 많이 돌아다닙니다.
+
+    ```python
+    # 흔히 보이는 옛 방식 — 이 환경에서는 동작하지 않습니다
+    writer = Document.Data.CreateDataWriter(DataWriterTypeIdentifiers.StdfDataWriter)
+    writer.Write(stream, table, markedRows, columnNames)
+    dataSource = StdfDataSource(stream)
+    ```
+
+    두 가지 이유로 권하지 않습니다.
+
+    - `StdfDataSource` 라는 이름은 **존재하지 않습니다**(14.x 확인). `StdfFileDataSource` 입니다
+    - `CreateDataWriter` 가 **`None` 을 반환**할 수 있습니다(예제 9 참조)
+
+    위의 `DataTableDataSource` 방식은 20줄이 3줄로 줄고, 라이선스 제약도 받지 않습니다.
+
 
 ## 예제 11. 마킹 결과를 문서 속성으로 넘기기
 

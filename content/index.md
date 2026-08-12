@@ -150,4 +150,15 @@ scripts/
 - API 기준: **Spotfire 14.x / 15.x**. 대부분의 예제는 7.x 이후에서도 동작하며,
   버전에 민감한 API는 각 예제의 "검증 포인트"에 표시했습니다
 
+!!! success "예제 21종은 실제 Spotfire에서 검증했습니다"
+    모든 예제가 사용하는 API를 **Spotfire 14.x / IronPython 2.7.12 환경에서 여덟 차례
+    실행해 확인**했습니다. 그 과정에서 교안 오류 8건을 잡아 고쳤습니다.
+
+    검증 과정과 결과는 저장소의
+    [`checks/README.md`](https://github.com/cozytk/spotfire-iron-python-scripts/blob/main/checks/README.md)
+    에 전부 기록해 두었습니다. 각 예제의 "검증 포인트"는 이 실측 결과를 근거로 합니다.
+
+    다만 **환경마다 다를 수 있습니다.** 특히 데이터 내보내기(예제 9)는
+    라이선스 설정에 따라 동작이 갈립니다.
+
 준비가 되었으면 [1장 · IronPython으로 할 수 있는 일](01-what-you-can-do.html)부터 시작하세요.
