@@ -88,6 +88,34 @@ Spotfire의 IronPython 2.7 스크립팅 한국어 교안과, 바로 실행할 �
 
 각 스크립트의 **문제 상황, 매개변수 설정법, 검증 포인트**는 교안 사이트의 해당 장에 있습니다.
 
+## AI로 스크립트 만들기
+
+Spotfire IronPython은 AI 학습 데이터가 적은 분야라, 그냥 물어보면 Python 3 문법을 쓰거나
+**존재하지 않는 API를 자신 있게 만들어 냅니다.** 그래서 두 가지를 준비해 두었습니다.
+
+### 프롬프트 파일 — 어떤 AI에서나
+
+[`prompts/`](prompts) 폴더의 파일을 대화창에 붙여 넣으면 됩니다.
+
+| 파일 | 언제 |
+|------|------|
+| [`00-context.md`](prompts/00-context.md) | **항상 먼저.** 환경 제약과 Spotfire 함정 |
+| [`01-request-template.md`](prompts/01-request-template.md) | 새 스크립트를 요청할 때 |
+| [`02-debug-template.md`](prompts/02-debug-template.md) | 오류가 났을 때 |
+| [`03-verify-checklist.md`](prompts/03-verify-checklist.md) | 받은 코드를 실행하기 전에 |
+
+### Claude Code 스킬 — 자동 적용
+
+[`.claude/skills/spotfire-ironpython/`](.claude/skills/spotfire-ironpython) 에 스킬이 있습니다.
+이 저장소에서 작업하면 자동으로 인식되고, 어디서나 쓰려면 개인 스킬 폴더로 복사하세요.
+
+```bash
+cp -r .claude/skills/spotfire-ironpython ~/.claude/skills/
+```
+
+스킬에는 실측으로 확인한 API 목록, 존재하지 않는 이름 목록, 예제 21종 색인이 들어 있어
+프롬프트를 따로 붙여 넣을 필요가 없습니다.
+
 ## 스크립트 사용법
 
 > [!IMPORTANT]
@@ -113,6 +141,8 @@ Spotfire의 IronPython 2.7 스크립팅 한국어 교안과, 바로 실행할 �
 
 ```text
 content/            교안 원본 (Markdown) — 내용은 여기서 수정
+prompts/            AI 요청용 프롬프트 템플릿
+.claude/skills/     Claude Code 스킬
 assets/             사이트 CSS / JS
 docs/               빌드 결과물 (GitHub Pages가 서빙)
 scripts/            예제 스크립트 (content/ 에서 자동 생성)
