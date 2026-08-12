@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>8. 예제 D · 심화 자동화 · Spotfire IronPython 2.7 교안</title>
+<meta name="description" content="앞 장까지는 "있는 것을 고치는" 스크립트였습니다.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#128220;</text></svg>">
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="topbar">
+  <button id="navToggle" class="icon-btn" aria-label="목차 열기">&#9776;</button>
+  <a class="brand" href="index.html">Spotfire IronPython 2.7 교안</a>
+  <div class="spacer"></div>
+  <input id="search" type="search" placeholder="이 교안에서 검색 (/)" aria-label="검색">
+  <button id="themeToggle" class="icon-btn" aria-label="라이트/다크 전환"><svg width="15" height="15" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 2a8 8 0 0 1 0 16z" fill="currentColor"/></svg></button>
+  <a class="icon-btn gh" href="https://github.com/cozytk/spotfire-iron-python-scripts" target="_blank" rel="noopener" aria-label="GitHub 저장소">&lt;/&gt;</a>
+</header>
+<div class="layout">
+  <nav id="sidebar" class="sidebar" aria-label="교안 목차">
+    <p class="nav-group">시작하기</p><ul class="nav-list">
+<li><a href="index.html">교안 소개</a></li>
+<li><a href="01-getting-started.html">1. 스크립트 실행 환경</a></li>
+</ul>
+<p class="nav-group">문법</p><ul class="nav-list">
+<li><a href="02-python-syntax.html">2. IronPython 2.7 문법</a></li>
+<li><a href="03-dotnet-interop.html">3. .NET 상호운용 문법</a></li>
+<li><a href="04-api-map.html">4. Spotfire API 객체 모델</a></li>
+</ul>
+<p class="nav-group">예제</p><ul class="nav-list">
+<li><a href="05-examples-bulk.html">5. 예제 A · 일괄 적용</a></li>
+<li><a href="06-examples-data.html">6. 예제 B · 데이터와 내보내기</a></li>
+<li><a href="07-examples-ui.html">7. 예제 C · 동적 UI 제어</a></li>
+<li><a href="08-examples-advanced.html" class="active">8. 예제 D · 심화 자동화</a></li>
+</ul>
+<p class="nav-group">레퍼런스</p><ul class="nav-list">
+<li><a href="09-tips.html">9. 실무 팁과 함정</a></li>
+<li><a href="10-cheatsheet.html">10. 치트시트 & FAQ</a></li>
+</ul>
+  </nav>
+  <main id="main" class="content">
+    <h1 id="8-d">8. 예제 D · 심화 자동화</h1>
+<p>앞 장까지는 "있는 것을 고치는" 스크립트였습니다.
+이 장은 <strong>문서에 없던 것을 만들어 내는</strong> 스크립트 두 편입니다.</p>
+<hr />
+<h2 id="17">예제 17. 마킹한 값별로 시각화 자동 생성</h2>
+<ul class="meta">
+<li class="badge hard">기본 기능으로 어려움</li>
+</ul>
+
+<p><strong>문제 상황</strong><br />
+지역 목록에서 관심 있는 5곳을 마킹하면, <strong>그 5개 지역 각각에 대한 차트</strong>가
+새 페이지에 자동으로 만들어졌으면 합니다. 다음에는 3곳만 고를 수도 있습니다.</p>
+<p><strong>기본 기능으로 어려운 이유</strong><br />
+트렐리스(Trellis)로 비슷한 효과를 낼 수 있지만, 트렐리스는 <strong>모든 값에 대해 같은 차트</strong>를
+같은 크기로 그립니다. 값마다 다른 축·다른 유형·다른 데이터 제한을 주거나,
+선택한 개수만큼만 그리도록 하는 것은 불가능합니다.
+"선택한 항목 수에 따라 시각화 개수가 달라지는 페이지"는 스크립트로만 만들 수 있습니다.</p>
+<p><strong>스크립트 매개변수</strong></p>
+<table>
+<thead>
+<tr>
+<th>이름</th>
+<th>타입</th>
+<th>값</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sourceTable</code></td>
+<td>DataTable</td>
+<td>데이터 테이블</td>
+</tr>
+<tr>
+<td><code>splitColumn</code></td>
+<td>String</td>
+<td>분할 기준 컬럼 (예: <code>Region</code>)</td>
+</tr>
+<tr>
+<td><code>measureExpr</code></td>
+<td>String</td>
+<td>Y축 표현식 (예: <code>Sum([Revenue])</code>)</td>
+</tr>
+<tr>
+<td><code>categoryExpr</code></td>
+<td>String</td>
+<td>X축 표현식 (예: <code>[Month]</code>)</td>
+</tr>
+</tbody>
+</table>
+<div class="codehilite"><pre><span></span><code><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="c1"># 마킹된 값마다 차트를 하나씩 만들어 새 페이지에 배치한다.</span>
+<span class="c1">#</span>
+<span class="c1"># 매개변수:</span>
+<span class="c1">#   sourceTable  (DataTable) 데이터 테이블</span>
+<span class="c1">#   splitColumn  (String)    분할 기준 컬럼명       예: &quot;Region&quot;</span>
+<span class="c1">#   measureExpr  (String)    Y축 표현식             예: &quot;Sum([Revenue])&quot;</span>
+<span class="c1">#   categoryExpr (String)    X축 표현식             예: &quot;[Month]&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Visuals</span><span class="w"> </span><span class="kn">import</span> <span class="n">BarChart</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Data</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataValueCursor</span>
+
+<span class="n">PAGE_TITLE</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;자동 생성 비교&quot;</span>
+<span class="n">MARKING_NAME</span> <span class="o">=</span> <span class="s2">&quot;Marking&quot;</span>
+<span class="n">MAX_CHARTS</span> <span class="o">=</span> <span class="mi">12</span>          <span class="c1"># 너무 많이 만들지 않도록 상한</span>
+
+<span class="c1"># 1) 마킹된 행에서 분할 기준 값의 고유 목록을 얻는다</span>
+<span class="n">marking</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Markings</span><span class="p">[</span><span class="n">MARKING_NAME</span><span class="p">]</span>
+<span class="n">markedRows</span> <span class="o">=</span> <span class="n">marking</span><span class="o">.</span><span class="n">GetSelection</span><span class="p">(</span><span class="n">sourceTable</span><span class="p">)</span><span class="o">.</span><span class="n">AsIndexSet</span><span class="p">()</span>
+<span class="n">cursor</span> <span class="o">=</span> <span class="n">DataValueCursor</span><span class="o">.</span><span class="n">CreateFormatted</span><span class="p">(</span><span class="n">sourceTable</span><span class="o">.</span><span class="n">Columns</span><span class="p">[</span><span class="n">splitColumn</span><span class="p">])</span>
+
+<span class="n">values</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+<span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">sourceTable</span><span class="o">.</span><span class="n">GetRows</span><span class="p">(</span><span class="n">markedRows</span><span class="p">,</span> <span class="n">cursor</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">cursor</span><span class="o">.</span><span class="n">CurrentValue</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">values</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">cursor</span><span class="o">.</span><span class="n">CurrentValue</span><span class="p">)</span>
+
+<span class="n">values</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">values</span><span class="p">)[:</span><span class="n">MAX_CHARTS</span><span class="p">]</span>
+
+<span class="k">if</span> <span class="ow">not</span> <span class="n">values</span><span class="p">:</span>
+    <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;마킹된 행이 없습니다. 먼저 값을 선택하세요.&quot;</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="c1"># 2) 기존 자동 생성 페이지가 있으면 지우고 새로 만든다 (재실행 대비)</span>
+    <span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">Pages</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="n">page</span><span class="o">.</span><span class="n">Title</span> <span class="o">==</span> <span class="n">PAGE_TITLE</span><span class="p">:</span>
+            <span class="n">Document</span><span class="o">.</span><span class="n">Pages</span><span class="o">.</span><span class="n">Remove</span><span class="p">(</span><span class="n">page</span><span class="p">)</span>
+
+    <span class="n">newPage</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">Pages</span><span class="o">.</span><span class="n">AddNew</span><span class="p">(</span><span class="n">PAGE_TITLE</span><span class="p">)</span>
+
+    <span class="c1"># 3) 값마다 차트 하나씩 생성</span>
+    <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">values</span><span class="p">:</span>
+        <span class="n">chart</span> <span class="o">=</span> <span class="n">newPage</span><span class="o">.</span><span class="n">Visuals</span><span class="o">.</span><span class="n">AddNew</span><span class="p">[</span><span class="n">BarChart</span><span class="p">]()</span>
+        <span class="n">chart</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">DataTableReference</span> <span class="o">=</span> <span class="n">sourceTable</span>
+        <span class="n">chart</span><span class="o">.</span><span class="n">XAxis</span><span class="o">.</span><span class="n">Expression</span> <span class="o">=</span> <span class="n">categoryExpr</span>
+        <span class="n">chart</span><span class="o">.</span><span class="n">YAxis</span><span class="o">.</span><span class="n">Expression</span> <span class="o">=</span> <span class="n">measureExpr</span>
+
+        <span class="c1"># 이 차트만 해당 값으로 한정한다</span>
+        <span class="n">escaped</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;&#39;&quot;</span><span class="p">,</span> <span class="s2">&quot;&#39;&#39;&quot;</span><span class="p">)</span>      <span class="c1"># 작은따옴표 이스케이프</span>
+        <span class="n">chart</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">WhereClauseExpression</span> <span class="o">=</span> <span class="s2">&quot;[</span><span class="si">%s</span><span class="s2">] = &#39;</span><span class="si">%s</span><span class="s2">&#39;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">splitColumn</span><span class="p">,</span> <span class="n">escaped</span><span class="p">)</span>
+
+        <span class="n">chart</span><span class="o">.</span><span class="n">Title</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">value</span>
+        <span class="n">chart</span><span class="o">.</span><span class="n">Legend</span><span class="o">.</span><span class="n">Visible</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="n">Document</span><span class="o">.</span><span class="n">ActivePageReference</span> <span class="o">=</span> <span class="n">newPage</span>
+    <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;</span><span class="si">%d</span><span class="s2">개 차트를 &#39;</span><span class="si">%s</span><span class="s2">&#39; 페이지에 생성했습니다.&quot;</span> <span class="o">%</span> <span class="p">(</span>
+        <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">),</span> <span class="n">PAGE_TITLE</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="_1">변형: 값마다 다른 유형 섞기</h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Visuals</span><span class="w"> </span><span class="kn">import</span> <span class="n">BarChart</span><span class="p">,</span> <span class="n">LineChart</span>
+
+<span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">values</span><span class="p">):</span>
+    <span class="c1"># 짝수는 막대, 홀수는 선</span>
+    <span class="n">chart</span> <span class="o">=</span> <span class="p">(</span><span class="n">newPage</span><span class="o">.</span><span class="n">Visuals</span><span class="o">.</span><span class="n">AddNew</span><span class="p">[</span><span class="n">BarChart</span><span class="p">]()</span> <span class="k">if</span> <span class="n">index</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span>
+             <span class="k">else</span> <span class="n">newPage</span><span class="o">.</span><span class="n">Visuals</span><span class="o">.</span><span class="n">AddNew</span><span class="p">[</span><span class="n">LineChart</span><span class="p">]())</span>
+    <span class="o">...</span>
+</code></pre></div>
+
+<div class="admonition note">
+<p class="admonition-title">검증 포인트</p>
+<ul>
+<li><strong>재실행 시 같은 페이지를 지우고 다시 만듭니다.</strong> 사용자가 그 페이지를 손으로
+  편집했다면 사라지므로, 페이지 제목을 명확히(<code>자동 생성</code>) 두었습니다.</li>
+<li>시각화 배치는 Spotfire가 자동으로 격자에 채웁니다. 정밀한 레이아웃이 필요하면
+  <code>newPage.Visuals</code> 대신 레이아웃 API를 알아봐야 하는데, 버전 의존성이 큽니다.
+  개수가 12개 이하면 자동 배치로 충분합니다.</li>
+<li>문자열 값에 작은따옴표가 들어 있으면 표현식이 깨지므로 이스케이프했습니다.
+  <strong>숫자 컬럼이라면 따옴표를 빼야 합니다.</strong>
+  <code>python
+  chart.Data.WhereClauseExpression = "[%s] = %s" % (splitColumn, value)</code></li>
+<li>페이지 삭제는 되돌리기가 안 될 수 있습니다. 사본에서 먼저 시험하세요.</li>
+</ul>
+</div>
+<hr />
+<h2 id="18">예제 18. 표현식 전수 검사 (문서 감사 리포트)</h2>
+<ul class="meta">
+<li class="badge hard">기본 기능으로 어려움</li>
+<li class="badge bulk">일괄 적용</li>
+</ul>
+
+<p><strong>문제 상황</strong><br />
+컬럼 이름을 <code>Amount</code>에서 <code>Revenue</code>로 바꿔야 합니다.
+이 컬럼을 참조하는 곳이 <strong>축 표현식, 데이터 제한, 트렐리스, 색 기준</strong> 등 어디에 몇 개나
+있는지 알아야 하는데, 전부 열어 볼 수는 없습니다.</p>
+<p><strong>기본 기능으로 어려운 이유</strong><br />
+Spotfire에는 <strong>표현식 전체 검색</strong> 기능이 없습니다.
+문서 전체에서 특정 컬럼을 쓰는 곳을 찾는 UI가 아예 없습니다.</p>
+<p>이 스크립트는 결과를 <strong>새 데이터 테이블로 만들어</strong> Spotfire 안에서 필터·검색할 수 있게 합니다.</p>
+<p><strong>스크립트 매개변수</strong></p>
+<table>
+<thead>
+<tr>
+<th>이름</th>
+<th>타입</th>
+<th>값</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>searchTerm</code></td>
+<td>String</td>
+<td>문서 속성 <code>AuditSearch</code> (비우면 전체 목록)</td>
+</tr>
+</tbody>
+</table>
+<div class="codehilite"><pre><span></span><code><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="c1"># 문서 내 모든 시각화의 표현식을 수집해 &quot;표현식 감사&quot; 데이터 테이블로 만든다.</span>
+<span class="c1"># searchTerm 이 주어지면 그 문자열을 포함한 표현식만 남긴다.</span>
+<span class="c1">#</span>
+<span class="c1"># 매개변수:</span>
+<span class="c1">#   searchTerm (String) 찾을 문자열. 예: &quot;Amount&quot;. 빈 문자열이면 전체</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Visuals</span><span class="w"> </span><span class="kn">import</span> <span class="n">VisualContent</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Data</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataType</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Data.Import</span><span class="w"> </span><span class="kn">import</span> <span class="n">TextFileDataSource</span><span class="p">,</span> <span class="n">TextDataReaderSettings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">System.IO</span><span class="w"> </span><span class="kn">import</span> <span class="n">MemoryStream</span><span class="p">,</span> <span class="n">StreamWriter</span><span class="p">,</span> <span class="n">SeekOrigin</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">System.Text</span><span class="w"> </span><span class="kn">import</span> <span class="n">Encoding</span>
+
+<span class="n">TABLE_NAME</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;표현식 감사&quot;</span>
+
+<span class="c1"># 조사할 축 이름들 — 시각화 유형에 따라 없는 것도 있으므로 전부 시도한다</span>
+<span class="n">AXIS_NAMES</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;XAxis&quot;</span><span class="p">,</span> <span class="s2">&quot;YAxis&quot;</span><span class="p">,</span> <span class="s2">&quot;ColorAxis&quot;</span><span class="p">,</span> <span class="s2">&quot;SizeAxis&quot;</span><span class="p">,</span> <span class="s2">&quot;ShapeAxis&quot;</span><span class="p">,</span> <span class="s2">&quot;LabelAxis&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;MeasureAxis&quot;</span><span class="p">,</span> <span class="s2">&quot;HorizontalAxis&quot;</span><span class="p">,</span> <span class="s2">&quot;VerticalAxis&quot;</span><span class="p">,</span> <span class="s2">&quot;SectorSizeAxis&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;CellValueAxis&quot;</span><span class="p">,</span> <span class="s2">&quot;ValueAxis&quot;</span><span class="p">]</span>
+
+<span class="n">term</span> <span class="o">=</span> <span class="p">(</span><span class="n">searchTerm</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+<span class="n">records</span> <span class="o">=</span> <span class="p">[]</span>      <span class="c1"># (페이지, 시각화, 유형, 위치, 표현식)</span>
+
+<span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">Pages</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">visual</span> <span class="ow">in</span> <span class="n">page</span><span class="o">.</span><span class="n">Visuals</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">vc</span> <span class="o">=</span> <span class="n">visual</span><span class="o">.</span><span class="n">As</span><span class="p">[</span><span class="n">VisualContent</span><span class="p">]()</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+        <span class="n">typeName</span> <span class="o">=</span> <span class="n">visual</span><span class="o">.</span><span class="n">TypeId</span><span class="o">.</span><span class="n">Name</span>
+
+        <span class="c1"># 1) 각 축의 표현식</span>
+        <span class="k">for</span> <span class="n">axisName</span> <span class="ow">in</span> <span class="n">AXIS_NAMES</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">expression</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">vc</span><span class="p">,</span> <span class="n">axisName</span><span class="p">)</span><span class="o">.</span><span class="n">Expression</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">expression</span><span class="p">:</span>
+                <span class="n">records</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">page</span><span class="o">.</span><span class="n">Title</span><span class="p">,</span> <span class="n">visual</span><span class="o">.</span><span class="n">Title</span><span class="p">,</span> <span class="n">typeName</span><span class="p">,</span> <span class="n">axisName</span><span class="p">,</span> <span class="n">expression</span><span class="p">))</span>
+
+        <span class="c1"># 2) 데이터 제한 표현식</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">where</span> <span class="o">=</span> <span class="n">vc</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">WhereClauseExpression</span>
+            <span class="k">if</span> <span class="n">where</span><span class="p">:</span>
+                <span class="n">records</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">page</span><span class="o">.</span><span class="n">Title</span><span class="p">,</span> <span class="n">visual</span><span class="o">.</span><span class="n">Title</span><span class="p">,</span> <span class="n">typeName</span><span class="p">,</span>
+                                <span class="s2">&quot;WhereClause&quot;</span><span class="p">,</span> <span class="n">where</span><span class="p">))</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+        <span class="c1"># 3) 트렐리스 분할 표현식</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">panel</span> <span class="o">=</span> <span class="n">vc</span><span class="o">.</span><span class="n">Trellis</span><span class="o">.</span><span class="n">PanelAxis</span><span class="o">.</span><span class="n">Expression</span>
+            <span class="k">if</span> <span class="n">panel</span><span class="p">:</span>
+                <span class="n">records</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">page</span><span class="o">.</span><span class="n">Title</span><span class="p">,</span> <span class="n">visual</span><span class="o">.</span><span class="n">Title</span><span class="p">,</span> <span class="n">typeName</span><span class="p">,</span>
+                                <span class="s2">&quot;Trellis&quot;</span><span class="p">,</span> <span class="n">panel</span><span class="p">))</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+<span class="c1"># 검색어 필터</span>
+<span class="k">if</span> <span class="n">term</span><span class="p">:</span>
+    <span class="n">records</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">records</span> <span class="k">if</span> <span class="n">term</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">r</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()]</span>
+
+<span class="k">if</span> <span class="ow">not</span> <span class="n">records</span><span class="p">:</span>
+    <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;&#39;</span><span class="si">%s</span><span class="s2">&#39; 를 포함한 표현식을 찾지 못했습니다.&quot;</span> <span class="o">%</span> <span class="n">term</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="c1"># 탭 구분 텍스트로 만들어 데이터 테이블로 읽어들인다</span>
+    <span class="n">HEADERS</span> <span class="o">=</span> <span class="p">[</span><span class="sa">u</span><span class="s2">&quot;페이지&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;시각화&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;유형&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;위치&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;표현식&quot;</span><span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">clean</span><span class="p">(</span><span class="n">text</span><span class="p">):</span>
+        <span class="c1"># 탭·줄바꿈은 구분자를 깨뜨리므로 공백으로 치환</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">text</span> <span class="ow">or</span> <span class="sa">u</span><span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot; &quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;</span><span class="se">\r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot; &quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot; &quot;</span><span class="p">)</span>
+
+    <span class="n">stream</span> <span class="o">=</span> <span class="n">MemoryStream</span><span class="p">()</span>
+    <span class="n">writer</span> <span class="o">=</span> <span class="n">StreamWriter</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="n">Encoding</span><span class="o">.</span><span class="n">UTF8</span><span class="p">)</span>
+    <span class="n">writer</span><span class="o">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">HEADERS</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">records</span><span class="p">:</span>
+        <span class="n">writer</span><span class="o">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">clean</span><span class="p">(</span><span class="n">field</span><span class="p">)</span> <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">record</span><span class="p">))</span>
+    <span class="n">writer</span><span class="o">.</span><span class="n">Flush</span><span class="p">()</span>
+    <span class="n">stream</span><span class="o">.</span><span class="n">Seek</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">SeekOrigin</span><span class="o">.</span><span class="n">Begin</span><span class="p">)</span>
+
+    <span class="n">settings</span> <span class="o">=</span> <span class="n">TextDataReaderSettings</span><span class="p">()</span>
+    <span class="n">settings</span><span class="o">.</span><span class="n">Separator</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span>
+    <span class="n">settings</span><span class="o">.</span><span class="n">AddColumnNameRow</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">HEADERS</span><span class="p">)):</span>
+        <span class="n">settings</span><span class="o">.</span><span class="n">SetDataType</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">DataType</span><span class="o">.</span><span class="n">String</span><span class="p">)</span>
+
+    <span class="n">dataSource</span> <span class="o">=</span> <span class="n">TextFileDataSource</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="n">settings</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Tables</span><span class="o">.</span><span class="n">Contains</span><span class="p">(</span><span class="n">TABLE_NAME</span><span class="p">):</span>
+        <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Tables</span><span class="p">[</span><span class="n">TABLE_NAME</span><span class="p">]</span><span class="o">.</span><span class="n">ReplaceData</span><span class="p">(</span><span class="n">dataSource</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Tables</span><span class="o">.</span><span class="n">Add</span><span class="p">(</span><span class="n">TABLE_NAME</span><span class="p">,</span> <span class="n">dataSource</span><span class="p">)</span>
+
+    <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;표현식 </span><span class="si">%d</span><span class="s2">건을 &#39;</span><span class="si">%s</span><span class="s2">&#39; 테이블로 정리했습니다.&quot;</span> <span class="o">%</span> <span class="p">(</span>
+        <span class="nb">len</span><span class="p">(</span><span class="n">records</span><span class="p">),</span> <span class="n">TABLE_NAME</span><span class="p">)</span>
+</code></pre></div>
+
+<p><strong>사용법</strong>  </p>
+<ol>
+<li>스크립트 실행 → <code>표현식 감사</code> 데이터 테이블 생성</li>
+<li>그 테이블로 <strong>표(Table) 시각화</strong>를 하나 만들면 문서 전체 표현식이 한눈에 보입니다</li>
+<li>문서 속성 <code>AuditSearch</code>에 <code>Amount</code>를 넣고 다시 실행하면 해당 컬럼 사용처만 남습니다</li>
+</ol>
+<div class="admonition note">
+<p class="admonition-title">검증 포인트</p>
+<ul>
+<li><code>TextDataReaderSettings</code>의 메서드 이름(<code>AddColumnNameRow</code>, <code>SetDataType</code>, <code>Separator</code>)은
+  오래 유지된 API지만, 실패하면 <code>dir(settings)</code>로 확인하세요.</li>
+<li>인코딩을 <code>Encoding.UTF8</code>로 지정했습니다. 한글 페이지 제목이 깨지면 이 부분을 의심하세요.</li>
+<li>표현식 안의 탭·줄바꿈을 공백으로 바꿉니다. 그러지 않으면 컬럼이 밀립니다.</li>
+<li>만들어진 테이블은 문서에 <strong>저장</strong>됩니다. 배포 전에 지우고 싶다면
+  <code>Document.Data.Tables.Remove(Document.Data.Tables[TABLE_NAME])</code>.</li>
+<li>계산된 컬럼(Calculated Column)의 표현식은 이 스크립트에 포함되지 않습니다.
+  필요하면 다음을 추가하세요.</li>
+</ul>
+<p><code>python
+  from Spotfire.Dxp.Data import CalculatedColumn
+  for table in Document.Data.Tables:
+      for column in table.Columns:
+          try:
+              expression = column.As[CalculatedColumn]().Expression
+              records.append((table.Name, column.Name, u"CalculatedColumn",
+                              u"Column", expression))
+          except:
+              pass</code></p>
+</div>
+<hr />
+<h2 id="_2">두 예제를 조합하기</h2>
+<p>예제 18로 <strong>어디를 고쳐야 하는지 찾고</strong>, 예제 5로 <strong>일괄 교체</strong>하고, 다시 예제 18로
+<strong>남은 곳이 없는지 확인</strong>하는 것이 실무에서 컬럼명 변경을 처리하는 순서입니다.</p>
+<div class="codehilite"><pre><span></span><code>① 예제 18 (검색어: &quot;Amount&quot;)   → 사용처 목록 확보
+② 예제 5  또는 개별 수정        → 일괄 교체
+③ 예제 18 (검색어: &quot;Amount&quot;)   → 0건이면 완료
+</code></pre></div>
+
+<hr />
+<p>예제는 여기까지입니다. 다음 장에서 <strong>실무에서 걸리는 함정들</strong>을 정리합니다.</p>
+    <nav class="pager"><a class="pg prev" href="07-examples-ui.html"><span>이전</span>7. 예제 C · 동적 UI 제어</a><a class="pg next" href="09-tips.html"><span>다음</span>9. 실무 팁과 함정</a></nav>
+    <footer class="foot">
+      <p>이 교안의 모든 예제 스크립트는 <a href="https://github.com/cozytk/spotfire-iron-python-scripts/tree/main/scripts">scripts/ 폴더</a>에 실행 가능한 <code>.py</code> 파일로도 들어 있습니다.</p>
+      <p>Spotfire는 Cloud Software Group, Inc.의 상표입니다. 본 교안은 비공식 학습 자료입니다.</p>
+    </footer>
+  </main>
+  <aside class="toc-side" aria-label="현재 문서 목차"><div class="toc">
+<ul>
+<li><a href="#17">예제 17. 마킹한 값별로 시각화 자동 생성</a><ul>
+<li><a href="#_1">변형: 값마다 다른 유형 섞기</a></li>
+</ul>
+</li>
+<li><a href="#18">예제 18. 표현식 전수 검사 (문서 감사 리포트)</a></li>
+<li><a href="#_2">두 예제를 조합하기</a></li>
+</ul>
+</div>
+</aside>
+</div>
+<div id="searchResults" class="search-results" hidden></div>
+<script src="assets/app.js"></script>
+</body>
+</html>

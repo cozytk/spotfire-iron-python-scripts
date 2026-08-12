@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spotfire IronPython 2.7 교안</title>
+<meta name="description" content="Spotfire의 IronPython 2.7 스크립팅을 문법부터 실전 예제까지 순서대로 익히는 교안입니다.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#128220;</text></svg>">
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="topbar">
+  <button id="navToggle" class="icon-btn" aria-label="목차 열기">&#9776;</button>
+  <a class="brand" href="index.html">Spotfire IronPython 2.7 교안</a>
+  <div class="spacer"></div>
+  <input id="search" type="search" placeholder="이 교안에서 검색 (/)" aria-label="검색">
+  <button id="themeToggle" class="icon-btn" aria-label="라이트/다크 전환"><svg width="15" height="15" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 2a8 8 0 0 1 0 16z" fill="currentColor"/></svg></button>
+  <a class="icon-btn gh" href="https://github.com/cozytk/spotfire-iron-python-scripts" target="_blank" rel="noopener" aria-label="GitHub 저장소">&lt;/&gt;</a>
+</header>
+<div class="layout">
+  <nav id="sidebar" class="sidebar" aria-label="교안 목차">
+    <p class="nav-group">시작하기</p><ul class="nav-list">
+<li><a href="index.html" class="active">교안 소개</a></li>
+<li><a href="01-getting-started.html">1. 스크립트 실행 환경</a></li>
+</ul>
+<p class="nav-group">문법</p><ul class="nav-list">
+<li><a href="02-python-syntax.html">2. IronPython 2.7 문법</a></li>
+<li><a href="03-dotnet-interop.html">3. .NET 상호운용 문법</a></li>
+<li><a href="04-api-map.html">4. Spotfire API 객체 모델</a></li>
+</ul>
+<p class="nav-group">예제</p><ul class="nav-list">
+<li><a href="05-examples-bulk.html">5. 예제 A · 일괄 적용</a></li>
+<li><a href="06-examples-data.html">6. 예제 B · 데이터와 내보내기</a></li>
+<li><a href="07-examples-ui.html">7. 예제 C · 동적 UI 제어</a></li>
+<li><a href="08-examples-advanced.html">8. 예제 D · 심화 자동화</a></li>
+</ul>
+<p class="nav-group">레퍼런스</p><ul class="nav-list">
+<li><a href="09-tips.html">9. 실무 팁과 함정</a></li>
+<li><a href="10-cheatsheet.html">10. 치트시트 & FAQ</a></li>
+</ul>
+  </nav>
+  <main id="main" class="content">
+    <h1 id="spotfire-ironpython-27">Spotfire IronPython 2.7 교안</h1>
+<p>Spotfire의 IronPython 2.7 스크립팅을 <strong>문법부터 실전 예제까지</strong> 순서대로 익히는 교안입니다.
+읽는 순서대로 따라가면 되고, 필요한 부분만 골라 봐도 됩니다.</p>
+<hr />
+<h2 id="_1">이 교안의 구성</h2>
+<p>교안은 크게 두 덩어리입니다. <strong>앞부분(1~4장)에서 문법과 API 구조를 먼저 훑고</strong>, <strong>뒷부분(5~8장)에서 예제를 봅니다.</strong></p>
+<div class="cards">
+<div class="card">
+<h3>1장 · 스크립트 실행 환경</h3>
+<p>어디에 스크립트를 넣고, 어떻게 실행하고, 어떻게 디버깅하는지. 스크립트 매개변수 개념까지.</p>
+</div>
+<div class="card">
+<h3>2장 · IronPython 2.7 문법</h3>
+<p>Python 2.7 문법 전반. 특히 Python 3에 익숙한 사람이 반드시 걸리는 차이점들.</p>
+</div>
+<div class="card">
+<h3>3장 · .NET 상호운용 문법</h3>
+<p><code>clr</code>, 제네릭 <code>As[T]()</code>, .NET 타입/배열/열거형 등 IronPython만의 문법.</p>
+</div>
+<div class="card">
+<h3>4장 · Spotfire API 객체 모델</h3>
+<p><code>Document</code>에서 시작해 페이지·시각화·데이터·마킹·필터로 내려가는 지도.</p>
+</div>
+<div class="card">
+<h3>5~8장 · 예제 18선</h3>
+<p>실제로 유용한 스크립트만. 각 예제마다 문제 상황, 코드, 매개변수 설정, 검증 포인트를 함께 제공합니다.</p>
+</div>
+<div class="card">
+<h3>9~10장 · 실무 팁과 치트시트</h3>
+<p>성능·오류처리·Web Player 호환성, 그리고 자주 쓰는 API 한 장 요약과 FAQ.</p>
+</div>
+</div>
+
+<hr />
+<h2 id="_2">예제 선정 기준</h2>
+<p>이 교안의 예제는 "스크립트로 굳이 짤 필요가 없는 것"은 넣지 않았습니다. 다음 두 가지 중
+<strong>하나 이상</strong>에 해당하는 것만 골랐습니다.</p>
+<ol>
+<li><strong>기본 기능만으로는 하기 어렵거나 불가능한 것</strong>
+   예) 모든 필터링 스킴을 한 번에 초기화, 마킹한 행을 새 데이터 테이블로 스냅샷, 문서 속성 값에 따라 페이지 자체를 숨기기</li>
+<li><strong>여러 시각화·여러 페이지에 한 번에 적용할 수 있어서 유용한 것</strong>
+   예) 대시보드 전체 시각화의 데이터 제한 표현식 일괄 적용, 모든 차트의 축 표현식 동시 전환, 모든 페이지의 시각화를 한 번에 이미지로 내보내기</li>
+</ol>
+<p>각 예제 제목 옆에 다음 배지로 성격을 표시했습니다.</p>
+<ul class="meta">
+<li class="badge hard">기본 기능으로 어려움</li>
+<li class="badge bulk">일괄 적용</li>
+<li class="badge">자주 묻는 질문</li>
+</ul>
+
+<p><span class="badge">자주 묻는 질문</span> 배지는 Spotfire 커뮤니티와 각종 Q&amp;A에서 반복적으로
+올라오는 주제를 뜻합니다. 필터 초기화, 마킹 제어, 이미지/데이터 내보내기, 문서 속성 조작,
+시각화 순회가 특히 자주 나옵니다.</p>
+<hr />
+<h2 id="_3">예제 목록 한눈에 보기</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>예제</th>
+<th>장</th>
+<th>성격</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>문서 전체 시각화 인벤토리 만들기</td>
+<td><a href="05-examples-bulk.html">5장</a></td>
+<td>기본 기능으로 어려움</td>
+</tr>
+<tr>
+<td>2</td>
+<td>모든 시각화에 데이터 제한 표현식 일괄 적용</td>
+<td><a href="05-examples-bulk.html">5장</a></td>
+<td>일괄 적용</td>
+</tr>
+<tr>
+<td>3</td>
+<td>축 표현식 동시 전환(측정지표 스위처)</td>
+<td><a href="05-examples-bulk.html">5장</a></td>
+<td>일괄 적용</td>
+</tr>
+<tr>
+<td>4</td>
+<td>범례·제목·서식 일괄 통일</td>
+<td><a href="05-examples-bulk.html">5장</a></td>
+<td>일괄 적용</td>
+</tr>
+<tr>
+<td>5</td>
+<td>모든 시각화의 데이터 테이블 일괄 교체</td>
+<td><a href="05-examples-bulk.html">5장</a></td>
+<td>일괄 적용</td>
+</tr>
+<tr>
+<td>6</td>
+<td>모든 차트 줌/축 범위 초기화</td>
+<td><a href="05-examples-bulk.html">5장</a></td>
+<td>일괄 적용</td>
+</tr>
+<tr>
+<td>7</td>
+<td>모든 페이지의 시각화를 PNG로 일괄 내보내기</td>
+<td><a href="06-examples-data.html">6장</a></td>
+<td>기본 기능으로 어려움</td>
+</tr>
+<tr>
+<td>8</td>
+<td>여러 데이터 테이블 한 번에 파일로 내보내기</td>
+<td><a href="06-examples-data.html">6장</a></td>
+<td>일괄 적용</td>
+</tr>
+<tr>
+<td>9</td>
+<td>마킹한 행을 새 데이터 테이블로 스냅샷</td>
+<td><a href="06-examples-data.html">6장</a></td>
+<td>기본 기능으로 어려움</td>
+</tr>
+<tr>
+<td>10</td>
+<td>마킹 결과를 문서 속성으로 넘기기</td>
+<td><a href="06-examples-data.html">6장</a></td>
+<td>자주 묻는 질문</td>
+</tr>
+<tr>
+<td>11</td>
+<td>키 컬럼으로 다른 테이블에 마킹 전파</td>
+<td><a href="06-examples-data.html">6장</a></td>
+<td>기본 기능으로 어려움</td>
+</tr>
+<tr>
+<td>12</td>
+<td>모든 데이터 테이블 일괄 새로고침</td>
+<td><a href="06-examples-data.html">6장</a></td>
+<td>일괄 적용</td>
+</tr>
+<tr>
+<td>13</td>
+<td>대시보드 전체 상태 초기화</td>
+<td><a href="07-examples-ui.html">7장</a></td>
+<td>기본 기능으로 어려움</td>
+</tr>
+<tr>
+<td>14</td>
+<td>문서 속성 값으로 페이지 표시/숨김</td>
+<td><a href="07-examples-ui.html">7장</a></td>
+<td>기본 기능으로 어려움</td>
+</tr>
+<tr>
+<td>15</td>
+<td>역할별 필터 패널 구성</td>
+<td><a href="07-examples-ui.html">7장</a></td>
+<td>일괄 적용</td>
+</tr>
+<tr>
+<td>16</td>
+<td>시각화 유형 일괄 토글</td>
+<td><a href="07-examples-ui.html">7장</a></td>
+<td>일괄 적용</td>
+</tr>
+<tr>
+<td>17</td>
+<td>마킹한 값별로 시각화 자동 생성</td>
+<td><a href="08-examples-advanced.html">8장</a></td>
+<td>기본 기능으로 어려움</td>
+</tr>
+<tr>
+<td>18</td>
+<td>표현식 전수 검사(문서 감사 리포트)</td>
+<td><a href="08-examples-advanced.html">8장</a></td>
+<td>기본 기능으로 어려움</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_4">예제 코드는 저장소에도 있습니다</h2>
+<p>모든 예제는 <code>scripts/</code> 폴더에 그대로 실행 가능한 <code>.py</code> 파일로도 들어 있습니다.
+파일 상단 주석에 <strong>필요한 스크립트 매개변수</strong>와 <strong>수정해야 할 지점</strong>을 적어 두었습니다.</p>
+<div class="codehilite"><pre><span></span><code>scripts/
+├── 01-bulk/       5장 예제 (일괄 적용)
+├── 02-data/       6장 예제 (데이터·내보내기)
+├── 03-ui/         7장 예제 (동적 UI 제어)
+└── 04-advanced/   8장 예제 (심화 자동화)
+</code></pre></div>
+
+<div class="admonition warning">
+<p class="admonition-title">실행 전에 확인하세요</p>
+<p>스크립트는 <strong>되돌리기(Undo)가 되지 않는 변경</strong>을 만들 수 있습니다.
+특히 데이터 테이블 교체·삭제, 시각화 일괄 변경 계열은 반드시 <strong>분석 파일 사본</strong>에서 먼저
+시험하세요. 각 예제의 "검증 포인트"에 위험 요소를 적어 두었습니다.</p>
+</div>
+<hr />
+<h2 id="_5">버전 정보</h2>
+<ul>
+<li>대상 스크립트 엔진: <strong>IronPython 2.7</strong> (Spotfire Analyst에 내장)</li>
+<li>문법 기준: <strong>Python 2.7</strong> — Python 3 문법은 동작하지 않습니다</li>
+<li>API 기준: <strong>Spotfire 14.x / 15.x</strong> 기준으로 작성했으며, 대부분의 예제는 7.x 이후 버전에서도 동작합니다.
+  버전에 민감한 API는 각 예제의 "검증 포인트"에 따로 표시했습니다.</li>
+</ul>
+<p>준비가 되었으면 <a href="01-getting-started.html">1장 · 스크립트 실행 환경</a>부터 시작하세요.</p>
+    <nav class="pager"><a class="pg next" href="01-getting-started.html"><span>다음</span>1. 스크립트 실행 환경</a></nav>
+    <footer class="foot">
+      <p>이 교안의 모든 예제 스크립트는 <a href="https://github.com/cozytk/spotfire-iron-python-scripts/tree/main/scripts">scripts/ 폴더</a>에 실행 가능한 <code>.py</code> 파일로도 들어 있습니다.</p>
+      <p>Spotfire는 Cloud Software Group, Inc.의 상표입니다. 본 교안은 비공식 학습 자료입니다.</p>
+    </footer>
+  </main>
+  <aside class="toc-side" aria-label="현재 문서 목차"><div class="toc">
+<ul>
+<li><a href="#_1">이 교안의 구성</a></li>
+<li><a href="#_2">예제 선정 기준</a></li>
+<li><a href="#_3">예제 목록 한눈에 보기</a></li>
+<li><a href="#_4">예제 코드는 저장소에도 있습니다</a></li>
+<li><a href="#_5">버전 정보</a></li>
+</ul>
+</div>
+</aside>
+</div>
+<div id="searchResults" class="search-results" hidden></div>
+<script src="assets/app.js"></script>
+</body>
+</html>
