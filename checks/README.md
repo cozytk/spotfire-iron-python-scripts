@@ -37,63 +37,31 @@
 
 ---
 
-## 지금 확인할 것 (5차)
+## 지금 확인할 것 (6차 · 마지막)
 
-### [`08_data_export_api.py`](08_data_export_api.py)
+### [`09_export_alternatives.py`](09_export_alternatives.py)
 
-4차에서 **`Document.Data.CreateDataWriter(...)` 가 `None` 을 반환**하는 것이 드러났습니다.
-예제 9(데이터 내보내기)와 예제 10(마킹 스냅샷)이 둘 다 이 API에 의존하므로,
-올바른 사용법을 찾아야 합니다.
+5차에서 **예제 10의 정답**을 찾았습니다. `DataTableDataSource` 의 세 번째 오버로드입니다.
 
-전부 **조회만** 합니다. 파일도 쓰지 않고 문서도 바꾸지 않습니다.
+```text
+DataTableDataSource(dataTable, dataSelection)
+```
 
-| 단계 | 내용 |
-|------|------|
-| 1 | `Document.Data` 의 실제 타입과 Create/Writer/Export 관련 멤버 |
-| 2 | `CreateDataWriter` 반환값 정밀 확인 (오버로드 정보 포함) |
-| 3 | `DataManager` 서비스로 얻은 객체에서도 같은지 |
-| 4 | `Spotfire.Dxp.Data.Export` 전체 멤버 |
-| 5 | `DataWriter` 를 직접 만들 수 있는지 |
-| 6 | **표 시각화의 `ExportText` / `ExportData`** (대안 경로) |
-| 7 | `DataTableDataSource` 로 부분집합을 만들 수 있는지 (예제 10 대안) |
-| 8 | 데이터 테이블 자체의 export/save 계열 메서드 |
-
-**6단계 때문에 표(Table) 시각화가 있는 페이지**에서 실행해 주세요.
-없으면 그 항목만 건너뜁니다.
-
----
-
-## 이전 차수 (참고)
-
-### [`07_snapshot_datasource.py`](07_snapshot_datasource.py)
-
-3차에서 드러난 두 문제를 확정하기 위한 확인입니다.
+행 부분집합을 그대로 받으므로 writer 도, 메모리 스트림도 필요 없습니다.
+`DataSelection` 의 정확한 생성자 형태만 확인하면 예제 10을 교체할 수 있습니다.
 
 | 단계 | 내용 | 문서 변경 |
 |------|------|:---------:|
-| 1 | 컬렉션별 숫자 인덱싱 가능 여부 (`Tables[0]` 이 왜 실패했는지 특정) | 없음 |
-| 1-2 | **`IndexSet` 의 올바른 사용법** — `Add()` 가 없으므로 인덱서가 맞는지 | 없음 |
-| 2 | `SbdfDataWriter` / `StdfDataWriter` 로 메모리에 기록 | 없음 |
-| 3 | `SbdfFileDataSource` 등이 **메모리 스트림을 받는지** | 없음 |
-| 4 | 실제 왕복 — 임시 테이블 생성 후 삭제 | **있음** |
+| 1 | `DataSelection` / `RowSelection` / `ColumnSelection` 생성자 시그니처 | 없음 |
+| 2 | `DataSelection` 을 실제로 만들어 보기 (3가지 형태 시도) | 없음 |
+| 3 | `DataTableDataSource(table, selection)` 생성 | 없음 |
+| 4 | `DataWriterFactory`, `TablePlot.ExportText/ExportData`, `ExportDataToLibrary` 시그니처 | 없음 |
+| 5 | **실제 왕복** — 마킹 행만 새 테이블로 만들고 행 수 대조 후 삭제 | **있음** |
 
-4단계는 `__SNAPSHOT_TEST__` 테이블을 만들었다 지웁니다.
-부담스러우면 파일 맨 위의 `RUN_ROUNDTRIP = True` 를 `False` 로 바꾸면 1~3단계만 돕니다.
-**사본에서 실행**하시길 권합니다.
+5단계가 핵심입니다. **행 수가 일치하면 예제 10이 완성**됩니다.
+부담스러우면 `RUN_ROUNDTRIP = False` 로 두고 1~4단계만 돌려 주세요.
 
-마지막 "요약" 절에 예제 10 에 쓸 조합이 나옵니다.
-**1단계·1-2단계 출력과 요약**만 주셔도 충분합니다.
-
-### [`00_verify_all_examples.py`](00_verify_all_examples.py) 재실행 (선택)
-
-3차 실행에서 제 하네스 버그 두 개를 고쳤습니다.
-
-- `dir()` 결과에서 `.NET` 기본 메서드(`Equals`, `GetType` 등)를 제외
-  — 예제 9의 `[NO] CreateDataWriter(Equals)` 6건은 하네스 버그였습니다
-- 예제 18 검사가 `Tables[0]` 을 쓰던 것을 순회 방식으로 교체
-
-**차트가 있는 페이지**에서 다시 돌리면 예제 3·6·7의 `[SKIP]` 이 실제 검증으로 바뀝니다.
-3차는 활성 페이지에 표와 텍스트 영역만 있어서 축 관련 항목이 전부 건너뛰어졌습니다.
+4단계를 위해 **표(Table) 시각화가 있는 페이지**에서 실행하면 좋습니다.
 
 ---
 
@@ -333,3 +301,55 @@ writer.Write(stream, table, rows, columnNames)
 | `DataTableDataSource(table)` | **생성 성공.** 단 테이블 전체를 복사함 |
 | `TablePlot.ExportText(writer)` | 5차에서 확인 예정 |
 | `TablePlot.ExportData(...)` | 5차에서 확인 예정 |
+
+
+---
+
+### 5차 — 내보내기 API 정밀 조사 (2026-08-12)
+
+#### `CreateDataWriter` 는 코드 문제가 아니다
+
+```text
+CreateDataWriter(self: DataManager, typeId: TypeIdentifier) -> DataWriter
+```
+
+시그니처는 정상인데 **모든 식별자에 대해 `None` 을 반환**합니다
+(Sbdf / Stdf / Excel / CSV 전부). 예외도 나지 않습니다.
+`Application.GetService[DataManager]()` 로 얻은 객체는 `Document.Data` 와
+**같은 객체**이고 결과도 동일했습니다.
+
+→ 호출 방식 문제가 아니라 **환경 제약**(라이선스 또는 배포 설정으로 데이터 내보내기
+비활성화)으로 보입니다. 표 시각화에 `ExportDataEnabled` 속성이 따로 있는 것이 방증입니다.
+예제 9에 이 내용을 명시하고, 오류가 났을 때 코드가 아니라 권한을 확인하도록 안내했습니다.
+
+#### 예제 10의 정답 — `DataSelection`
+
+```text
+DataTableDataSource(dataTable: DataTable)
+DataTableDataSource(dataTable: DataTable, updateBehavior: DataTableDataSourceUpdateBehavior)
+DataTableDataSource(dataTable: DataTable, dataSelection: DataSelection)
+```
+
+세 번째 오버로드가 **행 부분집합을 직접 받습니다.**
+writer · 메모리 스트림 · STDF/SBDF 변환이 전부 불필요해집니다.
+게다가 내보내기 권한 제약의 영향도 받지 않습니다.
+
+원래 예제보다 훨씬 단순하고 견고한 코드가 됩니다.
+
+#### 확인된 대안 경로
+
+| 경로 | 상태 |
+|------|------|
+| `TablePlot.ExportText(writer)` | **존재 확인** |
+| `TablePlot.ExportData(...)` | 존재 확인 |
+| `TablePlot.ExportDataEnabled` | 존재 확인 — 내보내기 가능 여부를 코드에서 판별 가능 |
+| `DataTable.ExportDataToLibrary(...)` | 존재 확인 — 라이브러리 저장이라 Web Player 안전 |
+| `Spotfire.Dxp.Data.Export.DataWriterFactory` | 존재. 시그니처 확인 중 |
+
+#### `Spotfire.Dxp.Data.Export` 전체
+
+```text
+DataWriter    DataWriterFactory    DataWriterTypeIdentifiers    OutputFileTypes
+```
+
+`DataWriter` 는 추상 클래스입니다 (`CanWriteFromReader`, `Write`, `WriteCore`).

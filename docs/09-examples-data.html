@@ -243,54 +243,47 @@ Spotfire의 이미지 내보내기는 <strong>한 번에 하나씩</strong>입�
 
 <div class="admonition danger">
 <p class="admonition-title">이 예제는 확인 중입니다 — <code>CreateDataWriter</code> 가 <code>None</code> 을 반환합니다</p>
-<p>Spotfire 14.x 실측에서 다음이 나왔습니다.</p>
-<p>```python
-writer = Document.Data.CreateDataWriter(DataWriterTypeIdentifiers.SbdfDataWriter)
-writer.Write(...)</p>
-<h1 id="-nonetype-object-has-no-attribute-write">-&gt; 'NoneType' object has no attribute 'Write'</h1>
-<p>```</p>
-<p><strong>호출은 예외 없이 지나가는데 반환값이 <code>None</code></strong> 입니다.
-그래서 이 예제는 현재 상태로는 동작하지 않습니다.</p>
-<p>확인된 것과 확인 중인 것을 정리하면:</p>
-<table>
-<thead>
-<tr>
-<th>항목</th>
-<th>상태</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>DataWriterTypeIdentifiers</code> 의 식별자 목록</td>
-<td>확인됨 (아래 표)</td>
-</tr>
-<tr>
-<td><code>Document.Data.CreateDataWriter(...)</code> 호출</td>
-<td>예외는 없으나 <strong><code>None</code> 반환</strong></td>
-</tr>
-<tr>
-<td>올바른 writer 획득 방법</td>
-<td><strong>확인 중</strong></td>
-</tr>
-<tr>
-<td>표 시각화의 <code>ExportText</code> / <code>ExportData</code> (대안 경로)</td>
-<td>확인 중</td>
-</tr>
-</tbody>
-</table>
-<p>확인용 스크립트는 <a href="https://github.com/cozytk/spotfire-iron-python-scripts/blob/main/checks/08_data_export_api.py"><code>checks/08_data_export_api.py</code></a>
-에 있습니다. 결과가 나오는 대로 이 예제를 정확한 코드로 교체하겠습니다.</p>
-<p>그때까지 데이터를 파일로 내보내야 한다면 <strong>표 시각화의 <code>ExportText</code></strong> 를 쓰는
-아래 방식을 시도해 보세요.</p>
-<p>```python
-from System.IO import StreamWriter
-from Spotfire.Dxp.Application.Visuals import TablePlot</p>
-<h1 id="vtable-visualization">매개변수: vTable (Visualization) = 표 시각화</h1>
-<p>writer = StreamWriter("C:/temp/out.txt")
-vTable.As<a href="">TablePlot</a>.ExportText(writer)
-writer.Close()
-```</p>
+<p>Spotfire 14.x 실측 결과, 메서드 시그니처 자체는 정상입니다.</p>
+<p><code>text
+CreateDataWriter(self: DataManager, typeId: TypeIdentifier) -&gt; DataWriter</code></p>
+<p>그런데 <strong>어떤 식별자를 넣어도 <code>None</code> 이 돌아옵니다</strong>(Sbdf / Stdf / Excel / CSV 전부).
+예외도 나지 않습니다. <code>Application.GetService[DataManager]()</code> 로 얻은 객체도
+<code>Document.Data</code> 와 같은 객체이고 결과도 같습니다.</p>
+<p>호출 방식 문제가 아니라 <strong>환경 쪽 제약</strong>일 가능성이 높습니다. 라이선스나 배포 설정으로
+데이터 내보내기가 비활성화된 상태로 보입니다. 표 시각화에 <code>ExportDataEnabled</code> 라는
+속성이 따로 있는 것이 그 방증입니다.</p>
+<p>아래 코드는 <strong>API 사용법으로는 맞지만 환경에 따라 동작하지 않을 수 있습니다.</strong>
+<code>'NoneType' object has no attribute 'Write'</code> 가 나온다면 코드를 고칠 것이 아니라
+<strong>관리자에게 데이터 내보내기 권한을 확인</strong>하세요.</p>
 </div>
+<h3 id="exporttext">대안 — 표 시각화의 <code>ExportText</code></h3>
+<p>표(Table) 시각화가 있다면 이 경로가 있습니다.
+<code>ExportText</code> · <code>ExportData</code> · <code>ExportDataEnabled</code> 가 <strong>존재하는 것을 확인</strong>했습니다.</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="c1"># 표 시각화의 내용을 텍스트 파일로 내보낸다. (Analyst 전용)</span>
+<span class="c1">#</span>
+<span class="c1"># 매개변수:</span>
+<span class="c1">#   vTable (Visualization) 표(Table) 시각화</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Visuals</span><span class="w"> </span><span class="kn">import</span> <span class="n">TablePlot</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">System.IO</span><span class="w"> </span><span class="kn">import</span> <span class="n">StreamWriter</span>
+
+<span class="n">plot</span> <span class="o">=</span> <span class="n">vTable</span><span class="o">.</span><span class="n">As</span><span class="p">[</span><span class="n">TablePlot</span><span class="p">]()</span>
+
+<span class="k">if</span> <span class="ow">not</span> <span class="n">plot</span><span class="o">.</span><span class="n">ExportDataEnabled</span><span class="p">:</span>
+    <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;이 시각화는 데이터 내보내기가 비활성화되어 있습니다.&quot;</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">writer</span> <span class="o">=</span> <span class="n">StreamWriter</span><span class="p">(</span><span class="s2">&quot;C:/temp/export.txt&quot;</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">plot</span><span class="o">.</span><span class="n">ExportText</span><span class="p">(</span><span class="n">writer</span><span class="p">)</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">writer</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
+    <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;내보내기 완료: C:/temp/export.txt&quot;</span>
+</code></pre></div>
+
+<p>데이터 테이블 자체에는 <code>ExportDataToLibrary</code> 메서드도 있습니다.
+로컬 파일이 아니라 Spotfire 라이브러리에 저장하므로 <strong>Web Player에서도 쓸 수 있는</strong>
+경로입니다. 정확한 시그니처는 확인 중입니다.</p>
 <div class="admonition note">
 <p class="admonition-title">검증 포인트</p>
 <ul>
@@ -397,32 +390,37 @@ Spotfire UI에는 "마킹된 행을 새 데이터 테이블로 저장" 기능이
 <li><strong>검토 목록 관리</strong>: 이상치를 마킹해 스냅샷으로 저장 → 그 테이블로만 표를 만들어 검토</li>
 <li><strong>원본 대비 고정</strong>: 필터를 바꿔도 스냅샷은 그대로 남습니다</li>
 </ul>
-<div class="admonition note">
-<p class="admonition-title">검증 포인트</p>
-</div>
 <div class="admonition danger">
-<p class="admonition-title">이 예제는 확인 중입니다 — 두 가지가 막혀 있습니다</p>
-<p><strong>첫째, <code>StdfDataSource</code> 라는 이름이 존재하지 않습니다.</strong>
-Spotfire 14.x의 <code>Spotfire.Dxp.Data.Import</code> 에 실제로 있는 것은 다음입니다.</p>
+<p class="admonition-title">이 예제는 곧 교체됩니다 — 훨씬 나은 방법을 찾았습니다</p>
+<p>위 코드에는 문제가 두 개 있습니다.</p>
+<ol>
+<li><strong><code>StdfDataSource</code> 라는 이름이 존재하지 않습니다</strong> (실측 확인)</li>
+<li><strong><code>CreateDataWriter</code> 가 <code>None</code> 을 반환합니다</strong> (예제 9 참조)</li>
+</ol>
+<p>그런데 5차 확인에서 <strong>writer 가 아예 필요 없는 방법</strong>을 찾았습니다.
+<code>DataTableDataSource</code> 의 생성자 오버로드가 이렇습니다.</p>
 <p><code>text
-StdfFileDataSource    SbdfFileDataSource    SbdfLibraryDataSource
-TextFileDataSource    DataTableDataSource   DatabaseDataSource
-FileDataSource        InformationLinkDataSource
-DataSourceFactory     FileDataSourceFactory</code></p>
-<p>이 중 무엇이 <strong>메모리 스트림</strong>을 받는지 확인한 뒤 이 예제를 정확한 코드로
-교체할 예정입니다. 확인용 스크립트는 저장소의
-<a href="https://github.com/cozytk/spotfire-iron-python-scripts/blob/main/checks/07_snapshot_datasource.py"><code>checks/07_snapshot_datasource.py</code></a>
+DataTableDataSource(dataTable)
+DataTableDataSource(dataTable, updateBehavior)
+DataTableDataSource(dataTable, dataSelection)     &lt;- 이것</code></p>
+<p>세 번째가 <strong>행 부분집합을 그대로 받습니다.</strong> 메모리 스트림도, writer 도,
+STDF/SBDF 변환도 필요 없습니다. 예상되는 최종 형태는 이렇습니다.</p>
+<p>```python
+from Spotfire.Dxp.Data import DataSelection, RowSelection
+from Spotfire.Dxp.Data.Import import DataTableDataSource</p>
+<p>markedRows = Document.ActiveMarkingSelectionReference.GetSelection(sourceTable).AsIndexSet()
+selection = DataSelection(RowSelection(markedRows))
+source = DataTableDataSource(sourceTable, selection)</p>
+<p>if Document.Data.Tables.Contains(snapshotName):
+    Document.Data.Tables[snapshotName].ReplaceData(source)
+else:
+    Document.Data.Tables.Add(snapshotName, source)
+```</p>
+<p><code>DataSelection</code> 의 정확한 생성자 형태만 확인되면 이 예제를 위 코드로 교체합니다.
+이 방식은 <strong>환경 제약(내보내기 권한)의 영향도 받지 않습니다.</strong>
+확인용 스크립트는
+<a href="https://github.com/cozytk/spotfire-iron-python-scripts/blob/main/checks/09_export_alternatives.py"><code>checks/09_export_alternatives.py</code></a>
 에 있습니다.</p>
-<p><strong>둘째, 기록에 쓰는 <code>CreateDataWriter</code> 가 <code>None</code> 을 반환합니다</strong>(예제 9 참조).
-그래서 메모리에 기록하는 단계부터 막힙니다.</p>
-<p>확인된 대안 하나는 <code>DataTableDataSource</code> 입니다. 생성은 성공했습니다.</p>
-<p><code>python
-import Spotfire.Dxp.Data.Import as imp
-source = imp.DataTableDataSource(table)      # 생성 성공 확인
-Document.Data.Tables.Add(u"복사본", source)</code></p>
-<p>다만 이 방식은 <strong>테이블 전체를 복사</strong>하므로, 마킹된 행만 남기려면
-새 테이블에 데이터 제한을 따로 걸어야 합니다.
-행 부분집합을 직접 지정할 수 있는지는 확인 중입니다.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">검증 포인트</p>
@@ -726,6 +724,7 @@ Spotfire에서 테이블 간 마킹 연동은 <strong>데이터 테이블 관계
 <li><a href="#8-png">예제 8. 모든 페이지의 시각화를 PNG로 일괄 내보내기</a></li>
 <li><a href="#9">예제 9. 여러 데이터 테이블을 한 번에 파일로 내보내기</a><ul>
 <li><a href="#_1">변형: 특정 컬럼만 내보내기</a></li>
+<li><a href="#exporttext">대안 — 표 시각화의 ExportText</a></li>
 </ul>
 </li>
 <li><a href="#10">예제 10. 마킹한 행을 새 데이터 테이블로 스냅샷</a><ul>
