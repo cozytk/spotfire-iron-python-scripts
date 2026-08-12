@@ -323,8 +323,16 @@ for m in Document.Data.Markings:
 
 ### Q. Python 3 문법을 쓰면 안 되나요?
 
-안 됩니다. `print(...)`는 우연히 동작하는 경우가 있지만, f-string·타입 힌트·`async` 등은
-문법 오류가 납니다. **Python 2.7 문법**으로 쓰세요 → [4장](04-python-syntax.html)
+대부분 안 됩니다. f-string·타입 힌트·`async` 등은 문법 오류가 납니다.
+
+다만 두 가지는 예외입니다.
+
+- `print("hello")` 는 **정상 동작합니다.** `print` 가 문이고 괄호는 값을 감싼 것뿐이기 때문입니다.
+  단 `print("a", "b")` 는 오류 없이 튜플 `('a', 'b')` 를 출력하므로 주의하세요.
+- `from __future__ import print_function` / `division` 을 첫 줄에 넣으면
+  해당 기능만 Python 3 방식으로 바뀝니다. (2.7.12에서 `print_function` 동작 확인)
+
+자세한 내용은 [4.1 참조](04-python-syntax.html)
 
 ### Q. 스크립트끼리 변수를 공유할 수 있나요?
 

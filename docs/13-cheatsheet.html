@@ -337,8 +337,15 @@
 <p><strong>아니요.</strong> IronPython은 C 확장 모듈을 로드하지 못합니다.
 데이터 계산이 필요하면 <strong>Python 데이터 함수(CPython)</strong> 를 쓰세요. IronPython은 UI 제어용입니다.</p>
 <h3 id="q-python-3">Q. Python 3 문법을 쓰면 안 되나요?</h3>
-<p>안 됩니다. <code>print(...)</code>는 우연히 동작하는 경우가 있지만, f-string·타입 힌트·<code>async</code> 등은
-문법 오류가 납니다. <strong>Python 2.7 문법</strong>으로 쓰세요 → <a href="04-python-syntax.html">4장</a></p>
+<p>대부분 안 됩니다. f-string·타입 힌트·<code>async</code> 등은 문법 오류가 납니다.</p>
+<p>다만 두 가지는 예외입니다.</p>
+<ul>
+<li><code>print("hello")</code> 는 <strong>정상 동작합니다.</strong> <code>print</code> 가 문이고 괄호는 값을 감싼 것뿐이기 때문입니다.
+  단 <code>print("a", "b")</code> 는 오류 없이 튜플 <code>('a', 'b')</code> 를 출력하므로 주의하세요.</li>
+<li><code>from __future__ import print_function</code> / <code>division</code> 을 첫 줄에 넣으면
+  해당 기능만 Python 3 방식으로 바뀝니다. (2.7.12에서 <code>print_function</code> 동작 확인)</li>
+</ul>
+<p>자세한 내용은 <a href="04-python-syntax.html">4.1 참조</a></p>
 <h3 id="q">Q. 스크립트끼리 변수를 공유할 수 있나요?</h3>
 <p>직접은 안 됩니다. <strong>문서 속성</strong>(<code>Document.Properties[...]</code>)을 전역 저장소로 쓰세요.</p>
 <h3 id="q_1">Q. 마킹이 바뀔 때 스크립트를 자동 실행할 수 있나요?</h3>

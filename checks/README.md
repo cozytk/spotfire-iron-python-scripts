@@ -45,3 +45,52 @@
 - **7.5 AI 검증 체크리스트** — "괄호가 있으면 Python 3 신호" 를
   "인자가 2개 이상인 `print(a, b)` 가 있는지" 로 정정
 - **C가 성공하면** — `from __future__ import print_function` 사용법 안내 추가
+
+---
+
+## 확인 결과 (2026-08-12)
+
+**환경: IronPython 2.7.12 (2.7.12.1000), .NET Framework 4.8.9332.0 (64-bit)**
+
+| 테스트 | 결과 | 결론 |
+|--------|------|------|
+| `print("hello")` | `hello` | 정상 동작. 괄호는 값을 감싼 것일 뿐 |
+| `print("a", "b")` | `('a', 'b')` | **튜플 출력.** `print` 는 문(statement)이 맞음 |
+| `3 / 4` | `0` | 정수 나눗셈 확인 |
+| `__builtin__` 에 `print` | `True` | 함수 객체 자체는 존재 |
+| `print("a", end="")` | `SyntaxError: unexpected token '='` | 예상대로 실패 |
+| `from __future__ import print_function` + `sep="-"` | `a-b` | **지원됨** |
+
+### 결정적 증거
+
+`print("a", end="")` 의 오류 스택에 다음이 찍혔습니다.
+
+```text
+IronPython.Compiler.Parser.ParsePrintStmt()
+```
+
+파서가 이 줄을 **print 문**으로 처리하다가 `=` 에서 실패했다는 뜻입니다.
+`print` 가 함수라면 `ParseCallExpression` 계열이 찍혔을 것입니다.
+
+### 교안 반영 완료
+
+- **4.1** — `print("hello")` 가 동작하는 이유와 `print(a, b)` 함정, `__future__` 사용법 추가
+- **7.5** — AI 검증 체크리스트 1번을 "인자 2개 이상인 `print(a, b)`" 로 정정
+- **13 FAQ** — "Python 3 문법을 쓰면 안 되나요?" 답변에 예외 두 가지 추가
+- **버전 정보** — 확인 환경(2.7.12 / .NET 4.8) 명시
+
+### 남은 확인 사항
+
+테스트 A의 5)·6) 항목(`type(u"한글")`, `type("한글")`)이 **빈 값으로 보였습니다.**
+출력이 `<type 'unicode'>` 처럼 꺾쇠로 시작해서, 어딘가에서 HTML 태그로 인식되어
+사라진 것으로 보입니다. 다음 한 줄로 다시 확인할 수 있습니다.
+
+```python
+print "5) 유니코드:", str(type(u"한글")).replace("<", "[").replace(">", "]")
+print "6) 일반문자:", str(type("한글")).replace("<", "[").replace(">", "]")
+```
+
+기대: `[type 'unicode']` 와 `[type 'str']`
+
+`from __future__ import division` 도 `print_function` 과 같은 방식이라
+동작할 가능성이 높지만, 아직 직접 확인하지는 않았습니다.

@@ -144,7 +144,9 @@ scripts/
 ## 버전 정보
 
 - 대상 스크립트 엔진: **IronPython 2.7** (Spotfire Analyst에 내장)
-- 문법 기준: **Python 2.7** — Python 3 문법은 동작하지 않습니다
+  — 동작 확인 환경: **IronPython 2.7.12 / .NET Framework 4.8 (64-bit)**
+- 문법 기준: **Python 2.7** — f-string 등 Python 3 전용 문법은 동작하지 않습니다
+  (단 `print("a")` 는 동작하고, `from __future__ import print_function` 도 사용 가능 → [4.1](04-python-syntax.html))
 - API 기준: **Spotfire 14.x / 15.x**. 대부분의 예제는 7.x 이후에서도 동작하며,
   버전에 민감한 API는 각 예제의 "검증 포인트"에 표시했습니다
 

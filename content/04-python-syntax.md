@@ -1,4 +1,4 @@
-# 4. IronPython 4.7 문법
+# 4. IronPython 2.7 문법
 
 Spotfire의 스크립트 엔진은 **IronPython 2.7**이고, 문법은 **Python 2.7**입니다.
 Python 3만 써 본 사람은 여기서 반드시 한 번 걸립니다. 이 장은 문법 전체를 훑되,
@@ -6,9 +6,9 @@ Python 3만 써 본 사람은 여기서 반드시 한 번 걸립니다. 이 장�
 
 ## 4.1 Python 3와 다른 점 (먼저 읽을 것)
 
-| 항목 | Python 4.7 (IronPython) | Python 3 |
+| 항목 | Python 2.7 (IronPython) | Python 3 |
 |------|------------------------|----------|
-| print | `print "hello"` (문) | `print("hello")` (함수) |
+| print | `print "hello"` (문) — 괄호를 써도 **동작함** | `print("hello")` (함수) |
 | 정수 나눗셈 | `1 / 2` → `0` | `1 / 2` → `0.5` |
 | 문자열 | `str`(바이트) / `unicode` 분리 | 모두 `str`(유니코드) |
 | 유니코드 리터럴 | `u"한글"` 필요 | 기본이 유니코드 |
@@ -16,6 +16,58 @@ Python 3만 써 본 사람은 여기서 반드시 한 번 걸립니다. 이 장�
 | 딕셔너리 순회 | `d.iteritems()` 사용 가능 | `d.items()` |
 | range | `range()`는 리스트, `xrange()`는 반복자 | `range()`가 반복자 |
 | 나머지 | `<>` 부등호 사용 가능 | 삭제됨 |
+
+### print — 괄호를 써도 동작하는 이유
+
+`print("hello")` 는 IronPython 2.7에서 **정상 동작합니다.** Python 3 문법이라서가 아니라,
+`print` 가 문(statement)이고 `("hello")` 는 **함수 호출 괄호가 아니라 그냥 값을 감싼 괄호**이기 때문입니다.
+수학에서 `(3) + 2` 의 괄호가 아무 일도 하지 않는 것과 같습니다.
+
+```python
+print "hello"      # 문 + 값
+print ("hello")    # 문 + (값)   ← 괄호는 무시된다. 결과 동일
+```
+
+문제는 **괄호 안이 "함수 호출다워질 때"** 생깁니다.
+
+```python
+print("a", "b")      # ('a', 'b')  ← 튜플이 출력된다! 오류가 안 나서 위험
+print "a", "b"       # a b         ← Python 2 방식
+
+print("a", end="")   # SyntaxError: unexpected token '='
+print(*mylist)       # SyntaxError
+map(print, items)    # SyntaxError — print는 값이 아니라 넘길 수 없다
+```
+
+!!! danger "`print(a, b)` 가 진짜 함정입니다"
+    인자가 2개 이상이면 **오류 없이 조용히 튜플을 출력**합니다.
+    로그를 찍었는데 `('처리 완료', 12)` 같은 게 나온다면 이 경우입니다.
+
+    ```python
+    print("처리 완료", count)      # ('처리 완료', 12)   ← 틀림
+    print "처리 완료", count       # 처리 완료 12        ← 맞음
+    ```
+
+### Python 3 스타일 print를 쓰고 싶다면
+
+`__future__` 를 쓰면 **진짜 함수로 바뀝니다.** Spotfire의 IronPython 2.7.12에서 동작을 확인했습니다.
+
+```python
+from __future__ import print_function
+
+print("a", "b", sep="-")     # a-b
+print("진행 중...", end="")    # 줄바꿈 없이 출력
+```
+
+- 이 줄은 **반드시 파일의 맨 처음**(주석과 인코딩 선언 제외)에 와야 합니다
+- 넣는 순간 그 스크립트에서는 `print "hello"` (괄호 없는 형태)가 **오류**가 됩니다. 섞어 쓸 수 없습니다
+- 여러 인자를 자주 출력한다면 오히려 이쪽이 안전합니다
+
+!!! note "확인된 환경"
+    이 절의 내용은 Spotfire의 **IronPython 2.7.12 (.NET Framework 4.8, 64-bit)** 에서
+    실제로 실행해 확인했습니다. `print("a", end="")` 의 오류 스택에
+    `IronPython.Compiler.Parser.ParsePrintStmt()` 가 찍히는 것이,
+    파서가 `print` 를 문으로 처리한다는 직접적인 증거입니다.
 
 특히 **정수 나눗셈**은 조용히 잘못된 결과를 만들어서 위험합니다.
 
@@ -346,9 +398,10 @@ import json               # 버전에 따라 가능
 ## 4.11 자주 하는 실수 정리
 
 ```python
-# 1) print를 함수처럼 쓰기 — 동작은 하지만 인자가 2개면 튜플이 출력된다
-print ("a", "b")        # ('a', 'b')  ← 의도와 다름
-print "a", "b"          # a b        ← Python 2 방식
+# 1) print 인자가 2개 이상 — 오류 없이 튜플이 출력된다 (4.1 참조)
+print("a", "b")         # ('a', 'b')  ← 의도와 다름
+print "a", "b"          # a b         ← Python 2 방식
+#    인자 1개면 print("a") 도 정상 동작한다. 괄호 자체는 문제가 아니다
 
 # 2) True/False 대소문자
 flag = true             # NameError! → True

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>4. IronPython 4.7 문법 · Spotfire IronPython 2.7 교안</title>
+<title>4. IronPython 2.7 문법 · Spotfire IronPython 2.7 교안</title>
 <meta name="description" content="Spotfire의 스크립트 엔진은 IronPython 2.7이고, 문법은 Python 2.7입니다.">
 <link rel="stylesheet" href="assets/style.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#128220;</text></svg>">
@@ -46,7 +46,7 @@
 </ul>
   </nav>
   <main id="main" class="content">
-    <h1 id="4-ironpython-47">4. IronPython 4.7 문법</h1>
+    <h1 id="4-ironpython-27">4. IronPython 2.7 문법</h1>
 <p>Spotfire의 스크립트 엔진은 <strong>IronPython 2.7</strong>이고, 문법은 <strong>Python 2.7</strong>입니다.
 Python 3만 써 본 사람은 여기서 반드시 한 번 걸립니다. 이 장은 문법 전체를 훑되,
 <strong>Spotfire 스크립트에서 실제로 쓰이는 것 위주</strong>로 정리했습니다.</p>
@@ -55,14 +55,14 @@ Python 3만 써 본 사람은 여기서 반드시 한 번 걸립니다. 이 장�
 <thead>
 <tr>
 <th>항목</th>
-<th>Python 4.7 (IronPython)</th>
+<th>Python 2.7 (IronPython)</th>
 <th>Python 3</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>print</td>
-<td><code>print "hello"</code> (문)</td>
+<td><code>print "hello"</code> (문) — 괄호를 써도 <strong>동작함</strong></td>
 <td><code>print("hello")</code> (함수)</td>
 </tr>
 <tr>
@@ -102,6 +102,51 @@ Python 3만 써 본 사람은 여기서 반드시 한 번 걸립니다. 이 장�
 </tr>
 </tbody>
 </table>
+<h3 id="print">print — 괄호를 써도 동작하는 이유</h3>
+<p><code>print("hello")</code> 는 IronPython 2.7에서 <strong>정상 동작합니다.</strong> Python 3 문법이라서가 아니라,
+<code>print</code> 가 문(statement)이고 <code>("hello")</code> 는 <strong>함수 호출 괄호가 아니라 그냥 값을 감싼 괄호</strong>이기 때문입니다.
+수학에서 <code>(3) + 2</code> 의 괄호가 아무 일도 하지 않는 것과 같습니다.</p>
+<div class="codehilite"><pre><span></span><code><span class="nb">print</span> <span class="s2">&quot;hello&quot;</span>      <span class="c1"># 문 + 값</span>
+<span class="nb">print</span> <span class="p">(</span><span class="s2">&quot;hello&quot;</span><span class="p">)</span>    <span class="c1"># 문 + (값)   ← 괄호는 무시된다. 결과 동일</span>
+</code></pre></div>
+
+<p>문제는 <strong>괄호 안이 "함수 호출다워질 때"</strong> 생깁니다.</p>
+<div class="codehilite"><pre><span></span><code><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span><span class="p">)</span>      <span class="c1"># (&#39;a&#39;, &#39;b&#39;)  ← 튜플이 출력된다! 오류가 안 나서 위험</span>
+<span class="nb">print</span> <span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span>       <span class="c1"># a b         ← Python 2 방식</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>   <span class="c1"># SyntaxError: unexpected token &#39;=&#39;</span>
+<span class="nb">print</span><span class="p">(</span><span class="o">*</span><span class="n">mylist</span><span class="p">)</span>       <span class="c1"># SyntaxError</span>
+<span class="nb">map</span><span class="p">(</span><span class="nb">print</span><span class="p">,</span> <span class="n">items</span><span class="p">)</span>    <span class="c1"># SyntaxError — print는 값이 아니라 넘길 수 없다</span>
+</code></pre></div>
+
+<div class="admonition danger">
+<p class="admonition-title"><code>print(a, b)</code> 가 진짜 함정입니다</p>
+<p>인자가 2개 이상이면 <strong>오류 없이 조용히 튜플을 출력</strong>합니다.
+로그를 찍었는데 <code>('처리 완료', 12)</code> 같은 게 나온다면 이 경우입니다.</p>
+<p><code>python
+print("처리 완료", count)      # ('처리 완료', 12)   ← 틀림
+print "처리 완료", count       # 처리 완료 12        ← 맞음</code></p>
+</div>
+<h3 id="python-3-print">Python 3 스타일 print를 쓰고 싶다면</h3>
+<p><code>__future__</code> 를 쓰면 <strong>진짜 함수로 바뀝니다.</strong> Spotfire의 IronPython 2.7.12에서 동작을 확인했습니다.</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">print_function</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;-&quot;</span><span class="p">)</span>     <span class="c1"># a-b</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;진행 중...&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>    <span class="c1"># 줄바꿈 없이 출력</span>
+</code></pre></div>
+
+<ul>
+<li>이 줄은 <strong>반드시 파일의 맨 처음</strong>(주석과 인코딩 선언 제외)에 와야 합니다</li>
+<li>넣는 순간 그 스크립트에서는 <code>print "hello"</code> (괄호 없는 형태)가 <strong>오류</strong>가 됩니다. 섞어 쓸 수 없습니다</li>
+<li>여러 인자를 자주 출력한다면 오히려 이쪽이 안전합니다</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">확인된 환경</p>
+<p>이 절의 내용은 Spotfire의 <strong>IronPython 2.7.12 (.NET Framework 4.8, 64-bit)</strong> 에서
+실제로 실행해 확인했습니다. <code>print("a", end="")</code> 의 오류 스택에
+<code>IronPython.Compiler.Parser.ParsePrintStmt()</code> 가 찍히는 것이,
+파서가 <code>print</code> 를 문으로 처리한다는 직접적인 증거입니다.</p>
+</div>
 <p>특히 <strong>정수 나눗셈</strong>은 조용히 잘못된 결과를 만들어서 위험합니다.</p>
 <div class="codehilite"><pre><span></span><code><span class="c1"># 함정: 둘 다 정수면 결과도 정수로 잘림</span>
 <span class="n">progress</span> <span class="o">=</span> <span class="mi">3</span> <span class="o">/</span> <span class="mi">4</span>          <span class="c1"># 0  (0.75가 아니다!)</span>
@@ -389,9 +434,10 @@ CPython용 네이티브 라이브러리는 <strong>IronPython 스크립트에서
 <p>대신 .NET 클래스 라이브러리 전체를 쓸 수 있습니다 → <a href="05-dotnet-interop.html">5장</a>.</p>
 </div>
 <h2 id="411">4.11 자주 하는 실수 정리</h2>
-<div class="codehilite"><pre><span></span><code><span class="c1"># 1) print를 함수처럼 쓰기 — 동작은 하지만 인자가 2개면 튜플이 출력된다</span>
-<span class="nb">print</span> <span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span><span class="p">)</span>        <span class="c1"># (&#39;a&#39;, &#39;b&#39;)  ← 의도와 다름</span>
-<span class="nb">print</span> <span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span>          <span class="c1"># a b        ← Python 2 방식</span>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 1) print 인자가 2개 이상 — 오류 없이 튜플이 출력된다 (4.1 참조)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span><span class="p">)</span>         <span class="c1"># (&#39;a&#39;, &#39;b&#39;)  ← 의도와 다름</span>
+<span class="nb">print</span> <span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span>          <span class="c1"># a b         ← Python 2 방식</span>
+<span class="c1">#    인자 1개면 print(&quot;a&quot;) 도 정상 동작한다. 괄호 자체는 문제가 아니다</span>
 
 <span class="c1"># 2) True/False 대소문자</span>
 <span class="n">flag</span> <span class="o">=</span> <span class="n">true</span>             <span class="c1"># NameError! → True</span>
@@ -420,7 +466,11 @@ CPython용 네이티브 라이브러리는 <strong>IronPython 스크립트에서
   </main>
   <aside class="toc-side" aria-label="현재 문서 목차"><div class="toc">
 <ul>
-<li><a href="#41-python-3">4.1 Python 3와 다른 점 (먼저 읽을 것)</a></li>
+<li><a href="#41-python-3">4.1 Python 3와 다른 점 (먼저 읽을 것)</a><ul>
+<li><a href="#print">print — 괄호를 써도 동작하는 이유</a></li>
+<li><a href="#python-3-print">Python 3 스타일 print를 쓰고 싶다면</a></li>
+</ul>
+</li>
 <li><a href="#42">4.2 변수와 기본 자료형</a></li>
 <li><a href="#43">4.3 연산자</a></li>
 <li><a href="#44">4.4 문자열</a><ul>

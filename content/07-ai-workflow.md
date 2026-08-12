@@ -63,7 +63,8 @@
 ```text
 [환경]
 - Spotfire IronPython 2.7 스크립트 (Python 2.7 문법)
-- print는 문(statement)이다. print("a") 대신 print "a"
+- print는 문(statement)이다. print("a", b) 처럼 인자를 2개 이상 넘기면 튜플이 출력된다
+  (Python 3 스타일이 필요하면 첫 줄에 from __future__ import print_function)
 - f-string, 타입 힌트, Python 3 전용 문법 사용 금지
 - pandas, numpy 등 C 확장 라이브러리 사용 불가
 - 한글 문자열에는 u"..." 접두사 사용
@@ -158,7 +159,7 @@ Spotfire IronPython 2.7 스크립트를 작성해 줘.
 
 | # | 확인 | 왜 |
 |---|------|-----|
-| 1 | `print(...)` 괄호 형태가 있나? | Python 3 문법이 섞인 신호 |
+| 1 | `print(a, b)` 처럼 인자가 **2개 이상**인가? | 오류 없이 튜플이 출력됨. 인자 1개면 괄호를 써도 정상 |
 | 2 | `f"..."` 문자열이 있나? | Python 3 전용. 반드시 오류 |
 | 3 | `import pandas` 등이 있나? | IronPython에서 불가 |
 | 4 | 쓰는 타입마다 `import` 줄이 있나? | 가장 흔한 실패 원인 |
@@ -231,7 +232,8 @@ for m in dir(vc):
 |------|------|--------------|
 | `NameError: name 'X' is not defined` | import 누락 | "X에 필요한 import 문을 추가해 줘" |
 | `AttributeError: ... has no attribute` | 없는 API를 지어냄 | `dir()` 결과를 주고 "이 목록에서 골라 다시 써 줘" |
-| `SyntaxError` (print, f-string) | Python 3 문법 | "Python 2.7 문법으로 전부 바꿔 줘. print는 문으로" |
+| `SyntaxError: unexpected token '='` | `print(..., end="")` 등 | 첫 줄에 `from __future__ import print_function` 추가 또는 Python 2 방식으로 |
+| `SyntaxError` (f-string 등) | Python 3 전용 문법 | "Python 2.7 문법으로 전부 바꿔 줘" |
 | `unexpected indent` | 탭/공백 혼용 | 편집기에서 직접 수정 (AI로는 잘 안 고쳐짐) |
 | 실행은 되는데 아무 변화 없음 | 조건이 아무것도 매칭 안 함 | 7.5의 1단계 출력으로 대상 확인 |
 | 일부 시각화에서만 실패 | 유형별 속성 차이 | "try/except로 감싸고 실패한 것을 목록으로 보고해 줘" |
