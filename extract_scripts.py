@@ -20,34 +20,34 @@ DOC_BASE = "https://cozytk.github.io/spotfire-iron-python-scripts"
 
 # 교안 파일 -> (출력 폴더, 교안 페이지 파일명)
 CHAPTERS = [
-    ("08-examples-bulk.md", "01-bulk", "08-examples-bulk.html"),
-    ("09-examples-data.md", "02-data", "09-examples-data.html"),
-    ("10-examples-ui.md", "03-ui", "10-examples-ui.html"),
-    ("11-examples-advanced.md", "04-advanced", "11-examples-advanced.html"),
+    ("09-examples-visuals.md", "01-visuals", "09-examples-visuals.html"),
+    ("10-examples-state.md", "02-state", "10-examples-state.html"),
+    ("11-examples-data.md", "03-data", "11-examples-data.html"),
+    ("12-examples-create.md", "04-create", "12-examples-create.html"),
 ]
 
 # 예제 번호 -> 파일명 (한글 제목 대신 영문 슬러그 사용)
 FILENAMES = {
-    1: "visual_inventory",
-    2: "bulk_limit_expression",
-    3: "switch_measure_axis",
-    4: "unify_legend_and_title",
-    5: "swap_data_table",
-    6: "reset_zoom_all_charts",
-    7: "fix_axis_range",
-    8: "export_all_visuals_to_png",
-    9: "export_all_tables_to_file",
-    10: "snapshot_marked_rows",
-    11: "marking_to_document_property",
-    12: "propagate_marking_by_key",
-    13: "refresh_all_data_tables",
-    14: "reset_dashboard_state",
-    15: "toggle_pages_by_role",
-    16: "configure_filter_panel",
-    17: "bulk_switch_visual_type",
-    18: "reset_selected_column_filters",
-    19: "generate_visuals_from_marking",
-    20: "audit_expressions",
+    1: "bulk_limit_expression",
+    2: "switch_measure_axis",
+    3: "unify_legend_and_title",
+    4: "fix_axis_range",
+    5: "reset_zoom_all_charts",
+    6: "bulk_switch_visual_type",
+    7: "swap_data_table",
+    8: "marking_to_document_property",
+    9: "propagate_marking_by_key",
+    10: "reset_dashboard_state",
+    11: "reset_selected_column_filters",
+    12: "configure_filter_panel",
+    13: "toggle_pages_by_role",
+    14: "export_all_visuals_to_png",
+    15: "export_tables_to_file",
+    16: "snapshot_marked_rows",
+    17: "refresh_all_data_tables",
+    18: "visual_inventory",
+    19: "audit_expressions",
+    20: "generate_visuals_from_marking",
     21: "scatter_plot_matrix",
 }
 
@@ -56,9 +56,9 @@ CODE = re.compile(r"```python\n(.*?)```", re.S)
 
 # 예제 번호를 갖지 않는 별도 스크립트 (교안 파일, 섹션 제목, 출력 경로)
 EXTRAS = [
-    ("08-examples-bulk.md", u"## 사전 준비 · 문서 속성 만들기",
+    ("09-examples-visuals.md", u"## 사전 준비 · 문서 속성 만들기",
      "00_setup_document_properties.py", u"사전 준비 · 문서 속성 만들기",
-     "08-examples-bulk.html"),
+     "09-examples-visuals.html"),
 ]
 
 

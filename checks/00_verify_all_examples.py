@@ -18,6 +18,9 @@
 #   여러 종류의 시각화(막대/선/산점도/표/교차표/텍스트영역)가 섞인 페이지를
 #   활성 페이지로 두고 실행하면 확인 범위가 넓어집니다.
 #   출력 전체를 복사해 주시면 됩니다.
+#
+# 예제 번호는 교안 9~12장과 같습니다.
+#   https://cozytk.github.io/spotfire-iron-python-scripts/
 
 OK, NO, SKIP = "[OK]", "[NO]", "[SKIP]"
 
@@ -140,7 +143,7 @@ def start(number, title):
 # 예제별 검증
 # ===============================================================
 
-start(1, u"문서 전체 시각화 인벤토리")
+start(18, u"문서 전체 시각화 인벤토리")
 note(OK, "VisualContent 캐스팅 성공 %d / 전체 시각화 %d" % (len(contents), len(allVisuals)))
 if contents:
     attempt("TypeId.Name", lambda: contents[0][0].TypeId.Name)
@@ -152,11 +155,11 @@ try:
 except Exception, e:
     note(NO, "Document.Properties['ScriptLog'] -> %s (문서 속성을 만들어야 함)" % clean(str(e)))
 
-start(2, u"데이터 제한 표현식 일괄 적용")
+start(1, u"데이터 제한 표현식 일괄 적용")
 vc = first_with("Data")
 writable("Data.WhereClauseExpression", (vc.Data if vc else None), "WhereClauseExpression")
 
-start(3, u"축 표현식 동시 전환")
+start(2, u"축 표현식 동시 전환")
 for axisName in ["YAxis", "MeasureAxis", "SectorSizeAxis", "SizeAxis"]:
     target = first_with(axisName)
     if target is None:
@@ -164,7 +167,7 @@ for axisName in ["YAxis", "MeasureAxis", "SectorSizeAxis", "SizeAxis"]:
     else:
         writable("%s.Expression" % axisName, getattr(target, axisName), "Expression")
 
-start(4, u"범례·제목·서식 일괄 통일")
+start(3, u"범례·제목·서식 일괄 통일")
 legendVc = first_with("Legend")
 writable("Legend.Visible", (legendVc.Legend if legendVc else None), "Visible")
 if allVisuals:
@@ -175,14 +178,14 @@ if markerVc is None:
 else:
     writable("MarkerSize", markerVc, "MarkerSize")
 
-start(5, u"데이터 테이블 일괄 교체")
+start(7, u"데이터 테이블 일괄 교체")
 if vc is None:
     note(SKIP, "대상 시각화 없음")
 else:
     writable("Data.DataTableReference", vc.Data, "DataTableReference")
 note(SKIP, "실제 교체는 파괴적이라 수행하지 않음")
 
-start(6, u"줌·축 범위 초기화")
+start(5, u"줌·축 범위 초기화")
 try:
     from Spotfire.Dxp.Application.Visuals import AxisRange
     imported("AxisRange", True)
@@ -195,7 +198,7 @@ if zoomVc is None:
 else:
     writable("XAxis.ZoomRange", zoomVc.XAxis, "ZoomRange")
 
-start(7, u"축 범위 동시 고정")
+start(4, u"축 범위 동시 고정")
 rangeVc = first_with("YAxis")
 if rangeVc is None:
     note(SKIP, "YAxis 를 가진 시각화 없음")
@@ -209,7 +212,7 @@ except Exception, e:
 if allVisuals:
     attempt("str(TypeId) 문자열 비교용", lambda: str(allVisuals[0].TypeId))
 
-start(8, u"시각화 PNG 일괄 내보내기")
+start(14, u"시각화 PNG 일괄 내보내기")
 drawing = False
 try:
     import clr
@@ -239,7 +242,7 @@ if drawing:
             hasattr(allVisuals[0], "RenderSync"), hasattr(allVisuals[0], "RenderAsync")))
 note(SKIP, "실제 파일 저장은 수행하지 않음")
 
-start(9, u"데이터 테이블 파일 내보내기")
+start(15, u"데이터 테이블 파일 내보내기")
 try:
     from Spotfire.Dxp.Data.Export import DataWriterTypeIdentifiers
     names = real_members(DataWriterTypeIdentifiers)
@@ -263,7 +266,7 @@ if table is not None:
             Document.ActiveFilteringSelectionReference.GetSelection(table).AsIndexSet().Count)
 note(SKIP, "실제 파일 쓰기는 수행하지 않음")
 
-start(10, u"마킹 행 스냅샷 (StdfDataSource)")
+start(16, u"마킹 행 스냅샷 (StdfDataSource)")
 try:
     from Spotfire.Dxp.Data.Export import DataWriterTypeIdentifiers
     note(OK, "StdfDataWriter 존재: %s" % hasattr(DataWriterTypeIdentifiers, "StdfDataWriter"))
@@ -288,7 +291,7 @@ if table is not None:
     has("DataTable", table, "ReplaceData")
 note(SKIP, "실제 테이블 생성은 수행하지 않음")
 
-start(11, u"마킹 결과를 문서 속성으로")
+start(8, u"마킹 결과를 문서 속성으로")
 attempt("ActiveMarkingSelectionReference.Name",
         lambda: Document.ActiveMarkingSelectionReference.Name)
 if table is not None:
@@ -308,7 +311,7 @@ try:
 except Exception, e:
     note(NO, "List[str] -> %s" % clean(str(e)))
 
-start(12, u"키 컬럼으로 마킹 전파")
+start(9, u"키 컬럼으로 마킹 전파")
 try:
     from Spotfire.Dxp.Data import IndexSet, RowSelection
     if table is not None:
@@ -329,7 +332,7 @@ try:
 except Exception, e:
     note(NO, clean(str(e)))
 
-start(13, u"데이터 테이블 일괄 새로고침")
+start(17, u"데이터 테이블 일괄 새로고침")
 for dataTable in Document.Data.Tables:
     try:
         note(OK, "%s | IsRefreshable=%s NeedsRefresh=%s Refresh존재=%s" % (
@@ -346,7 +349,7 @@ except Exception, e:
     note(NO, "NotificationService -> %s" % clean(str(e)))
 note(SKIP, "실제 Refresh 는 수행하지 않음")
 
-start(14, u"대시보드 전체 상태 초기화")
+start(10, u"대시보드 전체 상태 초기화")
 count = 0
 for scheme in Document.FilteringSchemes:
     count += 1
@@ -359,7 +362,7 @@ for marking in Document.Data.Markings:
 note(OK, "마킹 개수: %d" % markingCount)
 note(SKIP, "실제 초기화는 수행하지 않음")
 
-start(15, u"문서 속성으로 페이지 표시/숨김")
+start(13, u"문서 속성으로 페이지 표시/숨김")
 writable("Page.Visible", Document.Pages[0], "Visible")
 try:
     from System.Threading import Thread
@@ -367,7 +370,7 @@ try:
 except Exception, e:
     note(NO, "Thread.CurrentPrincipal -> %s" % clean(str(e)))
 
-start(16, u"역할별 필터 패널 구성")
+start(12, u"역할별 필터 패널 구성")
 try:
     panel = page.FilterPanel
     note(OK, "FilterPanel.Visible = %s" % panel.Visible)
@@ -394,7 +397,7 @@ try:
 except Exception, e:
     note(NO, clean(str(e)))
 
-start(17, u"시각화 유형 일괄 토글")
+start(6, u"시각화 유형 일괄 토글")
 if allVisuals:
     writable("visual.TypeId (같은 값 재지정)", allVisuals[0], "TypeId")
     typeNames = real_members(VisualTypeIdentifiers)
@@ -402,7 +405,7 @@ if allVisuals:
 else:
     note(SKIP, "시각화 없음")
 
-start(18, u"원하는 컬럼 필터만 초기화")
+start(11, u"원하는 컬럼 필터만 초기화")
 try:
     scheme = None
     for s in Document.FilteringSchemes:
@@ -420,7 +423,7 @@ try:
 except Exception, e:
     note(NO, "scheme[table][column] -> %s" % clean(str(e)))
 
-start(19, u"마킹 값별 시각화 자동 생성")
+start(20, u"마킹 값별 시각화 자동 생성")
 has("Document.Pages", Document.Pages, "AddNew")
 has("Document.Pages", Document.Pages, "Remove")
 has("page.Visuals", page.Visuals, "AddNew")
@@ -430,9 +433,9 @@ try:
     imported("BarChart / LineChart", True)
 except Exception, e:
     imported("BarChart", False, e)
-note(SKIP, "실제 페이지/시각화 생성은 06_page_and_layout.py 에서 확인")
+note(SKIP, "실제 페이지/시각화 생성은 수행하지 않음")
 
-start(20, u"표현식 전수 검사")
+start(19, u"표현식 전수 검사")
 try:
     from Spotfire.Dxp.Data.Import import TextFileDataSource, TextDataReaderSettings
     settings = TextDataReaderSettings()
@@ -501,6 +504,8 @@ print "활성 페이지:", clean(page.Title)
 print "시각화:", len(allVisuals), "개 (VisualContent 캐스팅 가능", len(contents), "개)"
 print "데이터 테이블:", Document.Data.Tables.Count, "개"
 print ""
+
+results.sort(key=lambda r: r[0])       # 예제 번호순으로 정렬해 출력
 
 summary = []
 for number, title, items in results:

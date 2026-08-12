@@ -1,7 +1,7 @@
 # 6. Spotfire API 객체 모델
 
 문법을 알아도 **"이 기능이 어느 객체에 매달려 있는지"** 를 모르면 코드를 못 씁니다.
-이 장은 `Document`에서 출발해 아래로 내려가는 지도입니다. 8장 이후 예제는 전부 이 지도 위에서 움직입니다.
+이 장은 `Document`에서 출발해 아래로 내려가는 지도입니다. 9장 이후 예제는 전부 이 지도 위에서 움직입니다.
 
 ## 6.1 전체 구조
 
@@ -68,7 +68,7 @@ Document.Pages.Remove(newPage)
 
 ## 6.3 시각화
 
-`Visual`(껍데기)과 `VisualContent`(알맹이)의 구분이 핵심입니다 → [3.2 참조](05-dotnet-interop.html#52-ast)
+`Visual`(껍데기)과 `VisualContent`(알맹이)의 구분이 핵심입니다 → [5.2 참조](05-dotnet-interop.html#52-ast)
 
 ```python
 from Spotfire.Dxp.Application.Visuals import VisualContent, VisualTypeIdentifiers
@@ -291,7 +291,7 @@ activeMarking = Document.ActiveMarkingSelectionReference
 ## 6.6 필터와 필터링 스킴
 
 **필터링 스킴(FilteringScheme)** 은 필터 설정 묶음입니다. 페이지마다 다른 스킴을 쓸 수 있고,
-"모든 필터 초기화" 버튼은 **현재 스킴 하나만** 초기화합니다. 이것이 [예제 14](10-examples-ui.html)의 출발점입니다.
+"모든 필터 초기화" 버튼은 **현재 스킴 하나만** 초기화합니다. 이것이 [예제 14](11-examples-data.html)의 출발점입니다.
 
 ```python
 # 모든 필터링 스킴 초기화
@@ -376,5 +376,5 @@ Document.Properties[name] = "초기값"
 
 ---
 
-지도는 여기까지입니다. 다음 [7장](07-ai-workflow.html)에서 이 지도를 생성형 AI에게 넘겨
-원하는 스크립트를 얻어내는 방법을 익힙니다.
+지도는 여기까지입니다. 다음 [7장](07-pitfalls.html)에서는 이 API들이 **실제로는 어떻게
+말썽을 부리는지** 봅니다. 문서대로 되지 않는 경우가 생각보다 많습니다.

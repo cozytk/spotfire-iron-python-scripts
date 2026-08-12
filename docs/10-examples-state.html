@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>10. 예제 B · 필터·마킹·페이지 상태 · Spotfire IronPython 2.7 교안</title>
+<meta name="description" content="대시보드의 상태를 다루는 예제입니다.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#128220;</text></svg>">
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="topbar">
+  <button id="navToggle" class="icon-btn" aria-label="목차 열기">&#9776;</button>
+  <a class="brand" href="index.html">Spotfire IronPython 2.7 교안</a>
+  <div class="spacer"></div>
+  <input id="search" type="search" placeholder="이 교안에서 검색 (/)" aria-label="검색">
+  <button id="themeToggle" class="icon-btn" aria-label="라이트/다크 전환"><svg width="15" height="15" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 2a8 8 0 0 1 0 16z" fill="currentColor"/></svg></button>
+  <a class="icon-btn gh" href="https://github.com/cozytk/spotfire-iron-python-scripts" target="_blank" rel="noopener" aria-label="GitHub 저장소">&lt;/&gt;</a>
+</header>
+<div class="layout">
+  <nav id="sidebar" class="sidebar" aria-label="교안 목차">
+    <p class="nav-group">시작하기</p><ul class="nav-list">
+<li><a href="index.html">교안 소개</a></li>
+<li><a href="01-what-you-can-do.html">1. 무엇을 할 수 있나</a></li>
+<li><a href="02-getting-started.html">2. 스크립트 실행 환경</a></li>
+</ul>
+<p class="nav-group">언어</p><ul class="nav-list">
+<li><a href="03-programming-basics.html">3. 프로그래밍 기초 개념</a></li>
+<li><a href="04-python-syntax.html">4. IronPython 2.7 문법</a></li>
+<li><a href="05-dotnet-interop.html">5. .NET 상호운용 문법</a></li>
+</ul>
+<p class="nav-group">Spotfire</p><ul class="nav-list">
+<li><a href="06-api-map.html">6. Spotfire API 객체 모델</a></li>
+<li><a href="07-pitfalls.html">7. 스크립팅의 현실</a></li>
+<li><a href="08-ai-workflow.html">8. 생성형 AI로 만들기</a></li>
+</ul>
+<p class="nav-group">예제</p><ul class="nav-list">
+<li><a href="09-examples-visuals.html">9. 예제 A · 시각화 일괄 제어</a></li>
+<li><a href="10-examples-state.html" class="active">10. 예제 B · 필터·마킹·상태</a></li>
+<li><a href="11-examples-data.html">11. 예제 C · 데이터와 내보내기</a></li>
+<li><a href="12-examples-create.html">12. 예제 D · 생성과 진단</a></li>
+</ul>
+<p class="nav-group">레퍼런스</p><ul class="nav-list">
+<li><a href="13-tips.html">13. 실무 팁과 성능</a></li>
+<li><a href="14-cheatsheet.html">14. 치트시트 & FAQ</a></li>
+</ul>
+  </nav>
+  <main id="main" class="content">
+    <h1 id="10-b">10. 예제 B · 필터·마킹·페이지 상태</h1>
+<p>대시보드의 <strong>상태</strong>를 다루는 예제입니다.
+필터, 마킹, 페이지 표시 여부처럼 "사용자가 만지는 것"을 코드로 제어합니다.</p>
+<p>이 장의 예제는 <strong>문서 구조를 바꾸지 않아</strong> 대체로 안전하고,
+그대로 사용자용 버튼으로 배포할 수 있는 것이 많습니다.</p>
+<hr />
+<h2 id="8">예제 8. 마킹 결과를 문서 속성으로 넘기기</h2>
+<ul class="meta">
+<li class="badge risk-low">위험도 낮음</li>
+<li class="badge">자주 묻는 질문</li>
+</ul>
+
+<p><strong>문제 상황</strong><br />
+차트에서 지역 몇 개를 마킹하면, <strong>다른 차트의 제목이나 텍스트 영역에</strong>
+"선택: East, West (2개)" 처럼 표시하고 싶습니다.
+또는 마킹한 값들을 표현식에 넣어 다른 시각화를 제어하고 싶습니다.</p>
+<p><strong>기본 기능으로 어려운 이유</strong><br />
+마킹 값은 표현식에서 직접 참조할 수 없습니다.
+문서 속성으로 옮겨 놓아야 제목·표현식·데이터 제한에서 쓸 수 있습니다.</p>
+<p><strong>스크립트 매개변수</strong></p>
+<table>
+<thead>
+<tr>
+<th>이름</th>
+<th>타입</th>
+<th>값</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sourceTable</code></td>
+<td>DataTable</td>
+<td>마킹을 읽을 테이블</td>
+</tr>
+<tr>
+<td><code>keyColumn</code></td>
+<td>String</td>
+<td>문서 속성 또는 고정값 (예: <code>Region</code>)</td>
+</tr>
+</tbody>
+</table>
+<div class="codehilite"><pre><span></span><code><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="c1"># 마킹된 행에서 특정 컬럼의 고유값을 모아 문서 속성에 저장한다.</span>
+<span class="c1">#</span>
+<span class="c1"># 매개변수:</span>
+<span class="c1">#   sourceTable (DataTable) 대상 테이블</span>
+<span class="c1">#   keyColumn   (String)    값을 모을 컬럼 이름</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Data</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataValueCursor</span>
+
+<span class="c1"># 마킹 이름을 하드코딩하지 않고 &quot;현재 활성 마킹&quot;을 쓴다.</span>
+<span class="c1"># 마킹 이름이 &quot;Marking&quot;이 아니어도, 나중에 바뀌어도 동작한다.</span>
+<span class="n">markedRows</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">ActiveMarkingSelectionReference</span><span class="o">.</span><span class="n">GetSelection</span><span class="p">(</span><span class="n">sourceTable</span><span class="p">)</span><span class="o">.</span><span class="n">AsIndexSet</span><span class="p">()</span>
+
+<span class="n">cursor</span> <span class="o">=</span> <span class="n">DataValueCursor</span><span class="o">.</span><span class="n">CreateFormatted</span><span class="p">(</span><span class="n">sourceTable</span><span class="o">.</span><span class="n">Columns</span><span class="p">[</span><span class="n">keyColumn</span><span class="p">])</span>
+
+<span class="c1"># set을 쓰면 중복 제거가 빠르다 (행이 많을 때 특히)</span>
+<span class="n">seen</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+<span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">sourceTable</span><span class="o">.</span><span class="n">GetRows</span><span class="p">(</span><span class="n">markedRows</span><span class="p">,</span> <span class="n">cursor</span><span class="p">):</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">cursor</span><span class="o">.</span><span class="n">CurrentValue</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">value</span> <span class="o">!=</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
+        <span class="n">seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+<span class="n">values</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">seen</span><span class="p">)</span>
+
+<span class="c1"># 1) 사람이 읽는 문자열</span>
+<span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;MarkedLabel&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="sa">u</span><span class="s2">&quot;선택: </span><span class="si">%s</span><span class="s2"> (</span><span class="si">%d</span><span class="s2">개)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="sa">u</span><span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">values</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">))</span> <span class="k">if</span> <span class="n">values</span>
+    <span class="k">else</span> <span class="sa">u</span><span class="s2">&quot;선택 없음&quot;</span><span class="p">)</span>
+
+<span class="c1"># 2) 표현식에 넣을 형태 — &quot;&#39;East&#39;,&#39;West&#39;&quot;</span>
+<span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;MarkedInList&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;&#39;</span><span class="si">%s</span><span class="s2">&#39;&quot;</span> <span class="o">%</span> <span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">values</span><span class="p">)</span>
+
+<span class="c1"># 3) 개수만</span>
+<span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;MarkedCount&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+</code></pre></div>
+
+<p><strong>활용 — 표현식에서 쓰기</strong></p>
+<p>다른 시각화의 데이터 제한 표현식에 다음처럼 넣으면, 마킹이 다른 차트를 필터링합니다.</p>
+<div class="codehilite"><pre><span></span><code>${MarkedInList} = &quot;&quot; or [Region] in (${MarkedInList})
+</code></pre></div>
+
+<p>시각화 제목에는 이렇게 넣습니다.</p>
+<div class="codehilite"><pre><span></span><code>매출 추이 — ${MarkedLabel}
+</code></pre></div>
+
+<div class="admonition note">
+<p class="admonition-title">검증 포인트</p>
+<ul>
+<li>마킹이 바뀔 때마다 자동 실행되게 하려면, 이 스크립트를 <strong>문서 속성 변경 트리거</strong>에
+  직접 걸 수는 없습니다. 실무에서는 <strong>텍스트 영역의 버튼</strong>으로 실행하거나,
+  마킹에 연동된 계산된 값을 문서 속성에 넣는 우회 방법을 씁니다.</li>
+<li><code>MarkedCount</code>에 정수를 넣으려면 문서 속성 타입이 <strong>Integer</strong>여야 합니다.
+  문자열 속성이면 <code>str(len(values))</code>로 넣으세요.</li>
+<li><code>Document.ActiveMarkingSelectionReference</code>는 <strong>현재 활성 마킹</strong>을 가리킵니다.
+  특정 마킹을 고정하고 싶다면 <code>Document.Data.Markings["마킹이름"]</code>을 쓰세요.
+  단, 마킹 이름이 바뀌면 깨집니다.</li>
+<li>결과를 .NET 문자열 목록으로 다뤄야 한다면 다음 형태도 자주 쓰입니다.
+  동작은 같으니 익숙한 쪽을 쓰세요.</li>
+</ul>
+<p><code>python
+  from System.Collections.Generic import List
+  collected = List[str]()
+  for row in sourceTable.GetRows(markedRows, cursor):
+      if cursor.CurrentValue &lt;&gt; str.Empty:
+          collected.Add(cursor.CurrentValue)
+  values = List[str](set(collected))       # 중복 제거
+  Document.Properties["token"] = ", ".join(values)</code></p>
+</div>
+<hr />
+<hr />
+<h2 id="9">예제 9. 키 컬럼으로 다른 테이블에 마킹 전파</h2>
+<ul class="meta">
+<li class="badge risk-low">위험도 낮음</li>
+<li class="badge hard">기본 기능으로 어려움</li>
+</ul>
+
+<p><strong>문제 상황</strong><br />
+<code>주문</code> 테이블에서 고객 5명을 마킹했습니다.
+같은 고객의 행을 <code>클레임</code> 테이블에서도 자동으로 마킹하고 싶습니다.</p>
+<p><strong>기본 기능으로 어려운 이유</strong><br />
+Spotfire에서 테이블 간 마킹 연동은 <strong>데이터 테이블 관계(relation)</strong> 를 설정해야 하고,
+관계는 조인 조건이 명확한 경우에만 만들 수 있습니다.
+키가 여러 개거나 가공이 필요하면(대소문자 무시, 접두사 제거 등) 관계로는 처리하지 못합니다.</p>
+<p><strong>스크립트 매개변수</strong></p>
+<table>
+<thead>
+<tr>
+<th>이름</th>
+<th>타입</th>
+<th>값</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sourceTable</code></td>
+<td>DataTable</td>
+<td>마킹을 읽을 테이블</td>
+</tr>
+<tr>
+<td><code>targetTable</code></td>
+<td>DataTable</td>
+<td>마킹을 적용할 테이블</td>
+</tr>
+<tr>
+<td><code>sourceKey</code></td>
+<td>String</td>
+<td>원본 키 컬럼명</td>
+</tr>
+<tr>
+<td><code>targetKey</code></td>
+<td>String</td>
+<td>대상 키 컬럼명</td>
+</tr>
+</tbody>
+</table>
+<div class="codehilite"><pre><span></span><code><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="c1"># 원본 테이블의 마킹된 키 값을 읽어, 같은 키를 가진 대상 테이블 행을 마킹한다.</span>
+<span class="c1">#</span>
+<span class="c1"># 매개변수:</span>
+<span class="c1">#   sourceTable (DataTable) 마킹을 읽을 테이블</span>
+<span class="c1">#   targetTable (DataTable) 마킹을 적용할 테이블</span>
+<span class="c1">#   sourceKey   (String)    원본 키 컬럼명</span>
+<span class="c1">#   targetKey   (String)    대상 키 컬럼명</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Data</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataValueCursor</span><span class="p">,</span> <span class="n">IndexSet</span><span class="p">,</span> <span class="n">RowSelection</span>
+
+<span class="c1"># 마킹 이름은 하드코딩하지 않는다 (한국어 UI에서는 &quot;마킹&quot;)</span>
+<span class="n">marking</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">ActiveMarkingSelectionReference</span>
+
+<span class="c1"># 1) 원본에서 마킹된 키 값을 집합으로 수집</span>
+<span class="n">markedRows</span> <span class="o">=</span> <span class="n">marking</span><span class="o">.</span><span class="n">GetSelection</span><span class="p">(</span><span class="n">sourceTable</span><span class="p">)</span><span class="o">.</span><span class="n">AsIndexSet</span><span class="p">()</span>
+<span class="n">sourceCursor</span> <span class="o">=</span> <span class="n">DataValueCursor</span><span class="o">.</span><span class="n">CreateFormatted</span><span class="p">(</span><span class="n">sourceTable</span><span class="o">.</span><span class="n">Columns</span><span class="p">[</span><span class="n">sourceKey</span><span class="p">])</span>
+
+<span class="n">keys</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+<span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">sourceTable</span><span class="o">.</span><span class="n">GetRows</span><span class="p">(</span><span class="n">markedRows</span><span class="p">,</span> <span class="n">sourceCursor</span><span class="p">):</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">sourceCursor</span><span class="o">.</span><span class="n">CurrentValue</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">keys</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">upper</span><span class="p">())</span>      <span class="c1"># 대소문자·공백 차이 무시</span>
+
+<span class="c1"># 2) 대상 테이블 전체를 훑으며 일치하는 행 인덱스를 모은다</span>
+<span class="n">targetCursor</span> <span class="o">=</span> <span class="n">DataValueCursor</span><span class="o">.</span><span class="n">CreateFormatted</span><span class="p">(</span><span class="n">targetTable</span><span class="o">.</span><span class="n">Columns</span><span class="p">[</span><span class="n">targetKey</span><span class="p">])</span>
+<span class="n">allTargetRows</span> <span class="o">=</span> <span class="n">IndexSet</span><span class="p">(</span><span class="n">targetTable</span><span class="o">.</span><span class="n">RowCount</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+
+<span class="n">hits</span> <span class="o">=</span> <span class="n">IndexSet</span><span class="p">(</span><span class="n">targetTable</span><span class="o">.</span><span class="n">RowCount</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+<span class="n">matched</span> <span class="o">=</span> <span class="mi">0</span>
+
+<span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">targetTable</span><span class="o">.</span><span class="n">GetRows</span><span class="p">(</span><span class="n">allTargetRows</span><span class="p">,</span> <span class="n">targetCursor</span><span class="p">):</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">targetCursor</span><span class="o">.</span><span class="n">CurrentValue</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+        <span class="n">hits</span><span class="o">.</span><span class="n">AddIndex</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">Index</span><span class="p">)</span>      <span class="c1"># IndexSet 은 Add() 가 아니라 AddIndex() 를 쓴다</span>
+        <span class="n">matched</span> <span class="o">+=</span> <span class="mi">1</span>
+
+<span class="c1"># 3) 대상 테이블에 마킹 적용</span>
+<span class="n">marking</span><span class="o">.</span><span class="n">SetSelection</span><span class="p">(</span><span class="n">RowSelection</span><span class="p">(</span><span class="n">hits</span><span class="p">),</span> <span class="n">targetTable</span><span class="p">)</span>
+
+<span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;키 </span><span class="si">%d</span><span class="s2">개 → &#39;</span><span class="si">%s</span><span class="s2">&#39; 테이블 </span><span class="si">%d</span><span class="s2">행 마킹&quot;</span> <span class="o">%</span> <span class="p">(</span>
+    <span class="nb">len</span><span class="p">(</span><span class="n">keys</span><span class="p">),</span> <span class="n">targetTable</span><span class="o">.</span><span class="n">Name</span><span class="p">,</span> <span class="n">matched</span><span class="p">)</span>
+</code></pre></div>
+
+<div class="admonition note">
+<p class="admonition-title">검증 포인트</p>
+<ul>
+<li>키 값을 <code>.strip().upper()</code> 로 정규화했습니다. <strong>숫자 키라면 이 부분을 빼야 합니다</strong>
+  (<code>CreateFormatted</code>가 반환한 문자열의 서식이 두 테이블에서 다를 수 있으므로,
+  숫자 키는 <code>DataValueCursor.Create[float](...)</code> 로 읽고 비교하세요).</li>
+<li>대상 테이블 전체를 순회하므로 행이 수백만 건이면 느립니다.
+  그 경우 표현식 방식(<code>targetTable.Select("[Key] in (...)")</code>)이 빠르지만,
+  키 개수가 많으면 표현식 길이 제한에 걸립니다. 상황에 맞게 고르세요.</li>
+<li>같은 마킹 이름을 두 테이블에 쓰므로, <strong>원본 마킹이 갱신되면 이 스크립트를 다시 실행</strong>해야 합니다.</li>
+<li>복합 키라면 두 컬럼 값을 이어 붙여 비교하세요.
+  <code>python
+  key = u"%s|%s" % (c1.CurrentValue, c2.CurrentValue)</code></li>
+</ul>
+</div>
+<hr />
+<hr />
+<h2 id="10">예제 10. 대시보드 전체 상태 초기화</h2>
+<ul class="meta">
+<li class="badge risk-low">위험도 낮음</li>
+<li class="badge hard">기본 기능으로 어려움</li>
+<li class="badge">자주 묻는 질문</li>
+</ul>
+
+<p><strong>문제 상황</strong><br />
+사용자가 필터를 이것저것 만지고 마킹도 해 놓은 뒤 "처음 상태로 돌려 줘"라고 합니다.
+파일을 다시 여는 것 말고 버튼 하나로 하고 싶습니다.</p>
+<p><strong>기본 기능으로 어려운 이유</strong><br />
+액션 컨트롤의 <strong>"모든 필터 재설정"은 현재 필터링 스킴 하나만</strong> 초기화합니다.
+페이지마다 다른 스킴을 쓰는 대시보드라면 다른 페이지의 필터는 그대로 남습니다.
+게다가 마킹·문서 속성·줌 상태는 어떤 기본 기능으로도 함께 초기화되지 않습니다.</p>
+<p>이 예제는 <strong>가장 자주 요청되는 스크립트</strong>입니다.</p>
+<p><strong>스크립트 매개변수</strong>
+없음.</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="c1"># 대시보드를 초기 상태로 되돌린다.</span>
+<span class="c1">#   1) 모든 필터링 스킴의 필터 초기화</span>
+<span class="c1">#   2) 모든 마킹 해제</span>
+<span class="c1">#   3) 문서 속성을 기본값으로</span>
+<span class="c1">#   4) 모든 차트 줌 초기화</span>
+<span class="c1">#   5) 첫 페이지로 이동</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Data</span><span class="w"> </span><span class="kn">import</span> <span class="n">IndexSet</span><span class="p">,</span> <span class="n">RowSelection</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Visuals</span><span class="w"> </span><span class="kn">import</span> <span class="n">VisualContent</span><span class="p">,</span> <span class="n">AxisRange</span>
+
+<span class="n">log</span> <span class="o">=</span> <span class="p">[]</span>
+
+<span class="c1"># 1) 모든 필터링 스킴 초기화 — 기본 버튼은 현재 스킴 하나만 처리한다</span>
+<span class="n">schemeCount</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="k">for</span> <span class="n">scheme</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">FilteringSchemes</span><span class="p">:</span>
+    <span class="n">scheme</span><span class="o">.</span><span class="n">ResetAllFilters</span><span class="p">()</span>
+    <span class="n">schemeCount</span> <span class="o">+=</span> <span class="mi">1</span>
+<span class="n">log</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;필터링 스킴 </span><span class="si">%d</span><span class="s2">개 초기화&quot;</span> <span class="o">%</span> <span class="n">schemeCount</span><span class="p">)</span>
+
+<span class="c1"># 2) 모든 마킹 해제 (모든 테이블에 대해)</span>
+<span class="n">markingCount</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="k">for</span> <span class="n">marking</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Markings</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">table</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Tables</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">empty</span> <span class="o">=</span> <span class="n">RowSelection</span><span class="p">(</span><span class="n">IndexSet</span><span class="p">(</span><span class="n">table</span><span class="o">.</span><span class="n">RowCount</span><span class="p">,</span> <span class="kc">False</span><span class="p">))</span>
+            <span class="n">marking</span><span class="o">.</span><span class="n">SetSelection</span><span class="p">(</span><span class="n">empty</span><span class="p">,</span> <span class="n">table</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">pass</span>
+    <span class="n">markingCount</span> <span class="o">+=</span> <span class="mi">1</span>
+<span class="n">log</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;마킹 </span><span class="si">%d</span><span class="s2">개 해제&quot;</span> <span class="o">%</span> <span class="n">markingCount</span><span class="p">)</span>
+
+<span class="c1"># 3) 문서 속성 기본값 — 대시보드에 맞게 수정하세요</span>
+<span class="n">DEFAULTS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;SelectedRegion&quot;</span><span class="p">:</span> <span class="s2">&quot;All&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;SelectedMeasure&quot;</span><span class="p">:</span> <span class="s2">&quot;Revenue&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;LimitExpression&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ScriptLog&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="p">}</span>
+<span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">DEFAULTS</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span>       <span class="c1"># 없는 속성은 건너뛴다</span>
+<span class="n">log</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;문서 속성 </span><span class="si">%d</span><span class="s2">개 복원&quot;</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">DEFAULTS</span><span class="p">))</span>
+
+<span class="c1"># 4) 모든 차트 줌 초기화</span>
+<span class="n">zoomReset</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">Pages</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">visual</span> <span class="ow">in</span> <span class="n">page</span><span class="o">.</span><span class="n">Visuals</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">vc</span> <span class="o">=</span> <span class="n">visual</span><span class="o">.</span><span class="n">As</span><span class="p">[</span><span class="n">VisualContent</span><span class="p">]()</span>
+            <span class="k">for</span> <span class="n">axisName</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;XAxis&quot;</span><span class="p">,</span> <span class="s2">&quot;YAxis&quot;</span><span class="p">]:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="nb">getattr</span><span class="p">(</span><span class="n">vc</span><span class="p">,</span> <span class="n">axisName</span><span class="p">)</span><span class="o">.</span><span class="n">ZoomRange</span> <span class="o">=</span> <span class="n">AxisRange</span><span class="o">.</span><span class="n">DefaultRange</span>
+                    <span class="n">zoomReset</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="k">pass</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">pass</span>
+<span class="n">log</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;축 </span><span class="si">%d</span><span class="s2">개 줌 초기화&quot;</span> <span class="o">%</span> <span class="n">zoomReset</span><span class="p">)</span>
+
+<span class="c1"># 5) 첫 페이지로</span>
+<span class="k">if</span> <span class="n">Document</span><span class="o">.</span><span class="n">Pages</span><span class="o">.</span><span class="n">Count</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="n">Document</span><span class="o">.</span><span class="n">ActivePageReference</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">Pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot; / &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">log</span><span class="p">)</span>
+</code></pre></div>
+
+<div class="admonition note">
+<p class="admonition-title">검증 포인트</p>
+<ul>
+<li><strong><code>DEFAULTS</code> 딕셔너리는 반드시 자기 대시보드에 맞게 고치세요.</strong> 그대로 두면
+  존재하지 않는 속성에 대해 조용히 건너뜁니다.</li>
+<li><code>Document.FilteringSchemes</code> 순회 + <code>ResetAllFilters()</code> 가 이 예제의 핵심입니다.
+  이 두 줄만으로 "모든 페이지의 모든 필터 초기화"가 됩니다.</li>
+<li>마킹 해제는 모든 마킹 × 모든 테이블 조합을 돌므로, 테이블이 아주 많으면 잠깐 걸립니다.</li>
+<li>이 스크립트는 <strong>사용자에게 그대로 배포해도 안전</strong>합니다. 문서 구조를 바꾸지 않습니다.</li>
+</ul>
+</div>
+<hr />
+<hr />
+<h2 id="11">예제 11. 원하는 컬럼의 필터만 선택적으로 초기화</h2>
+<ul class="meta">
+<li class="badge risk-low">위험도 낮음</li>
+<li class="badge hard">기본 기능으로 어려움</li>
+<li class="badge">자주 묻는 질문</li>
+</ul>
+
+<p><strong>문제 상황</strong><br />
+"기간 필터는 그대로 두고, 제품·지역 필터만 초기화" 하고 싶습니다.
+전체 초기화(<a href="11-examples-data.html">예제 10</a>)는 애써 맞춰 놓은 기간 설정까지 날려 버립니다.</p>
+<p><strong>기본 기능으로 어려운 이유</strong><br />
+Spotfire의 필터 초기화는 <strong>전체 아니면 개별 수동</strong>입니다.
+"이 3개만 초기화"를 한 번에 하는 기능이 없습니다.
+필터가 여러 필터링 스킴에 걸쳐 있으면 더 번거롭습니다.</p>
+<p><strong>스크립트 매개변수</strong></p>
+<table>
+<thead>
+<tr>
+<th>이름</th>
+<th>타입</th>
+<th>값</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>columnList</code></td>
+<td>String</td>
+<td>문서 속성 <code>ResetTargets</code> (쉼표 구분)</td>
+</tr>
+</tbody>
+</table>
+<div class="codehilite"><pre><span></span><code><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="c1"># 지정한 컬럼의 필터만 모든 필터링 스킴에서 초기화한다.</span>
+<span class="c1">#</span>
+<span class="c1"># 매개변수:</span>
+<span class="c1">#   columnList (String) 초기화할 컬럼 이름을 쉼표로 구분. 예: &quot;Category,Region,Product&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Data</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Filters</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+
+<span class="n">targets</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">(</span><span class="n">columnList</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">strip</span><span class="p">()]</span>
+
+<span class="n">reset</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">missing</span> <span class="o">=</span> <span class="p">[]</span>
+
+<span class="c1"># 모든 필터링 스킴 × 모든 데이터 테이블 × 대상 컬럼</span>
+<span class="k">for</span> <span class="n">filteringScheme</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">FilteringSchemes</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">dataTable</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Tables</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">dataTable</span><span class="o">.</span><span class="n">Columns</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">column</span><span class="o">.</span><span class="n">Name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">targets</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># 스킴에서 [테이블][컬럼] 으로 필터를 직접 꺼낸다</span>
+                <span class="n">columnFilter</span> <span class="o">=</span> <span class="n">filteringScheme</span><span class="p">[</span><span class="n">dataTable</span><span class="p">][</span><span class="n">column</span><span class="p">]</span>
+                <span class="n">columnFilter</span><span class="o">.</span><span class="n">Reset</span><span class="p">()</span>
+                <span class="n">reset</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">.</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">dataTable</span><span class="o">.</span><span class="n">Name</span><span class="p">,</span> <span class="n">column</span><span class="o">.</span><span class="n">Name</span><span class="p">))</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span>
+                <span class="c1"># 그 스킴/테이블에 해당 필터가 없는 경우</span>
+                <span class="n">missing</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">.</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">dataTable</span><span class="o">.</span><span class="n">Name</span><span class="p">,</span> <span class="n">column</span><span class="o">.</span><span class="n">Name</span><span class="p">))</span>
+
+<span class="n">message</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;필터 초기화 </span><span class="si">%d</span><span class="s2">건&quot;</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">reset</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">reset</span><span class="p">:</span>
+    <span class="n">message</span> <span class="o">+=</span> <span class="sa">u</span><span class="s2">&quot; — &quot;</span> <span class="o">+</span> <span class="sa">u</span><span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">reset</span><span class="p">)))</span>
+<span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
+    <span class="n">message</span> <span class="o">+=</span> <span class="sa">u</span><span class="s2">&quot; / 해당 없음 </span><span class="si">%d</span><span class="s2">건&quot;</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">missing</span><span class="p">))</span>
+
+<span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">message</span>
+</code></pre></div>
+
+<h3 id="_1">변형: 특정 컬럼만 빼고 전부 초기화</h3>
+<p>"기간만 유지하고 나머지 전부"가 실무에서 더 흔합니다.</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="c1"># KEEP 목록에 있는 컬럼만 남기고 나머지 필터를 전부 초기화한다.</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Data</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Filters</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+
+<span class="n">KEEP</span> <span class="o">=</span> <span class="p">[</span><span class="sa">u</span><span class="s2">&quot;기간&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;Date&quot;</span><span class="p">]</span>      <span class="c1"># 이 컬럼들의 필터는 건드리지 않는다</span>
+
+<span class="n">reset</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="k">for</span> <span class="n">filteringScheme</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">FilteringSchemes</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">dataTable</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Tables</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">dataTable</span><span class="o">.</span><span class="n">Columns</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">column</span><span class="o">.</span><span class="n">Name</span> <span class="ow">in</span> <span class="n">KEEP</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">filteringScheme</span><span class="p">[</span><span class="n">dataTable</span><span class="p">][</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">Reset</span><span class="p">()</span>
+                <span class="n">reset</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+<span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;</span><span class="si">%d</span><span class="s2">개 필터를 초기화했습니다. (유지: </span><span class="si">%s</span><span class="s2">)&quot;</span> <span class="o">%</span> <span class="p">(</span>
+    <span class="n">reset</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">KEEP</span><span class="p">))</span>
+</code></pre></div>
+
+<div class="admonition note">
+<p class="admonition-title">검증 포인트</p>
+<ul>
+<li><code>filteringScheme[dataTable][column]</code> 이 <strong>핵심 문법</strong>입니다.
+  필터링 스킴에서 테이블 → 컬럼 순으로 인덱싱하면 해당 컬럼의 필터가 나옵니다.
+  반환값은 필터 객체이고 <code>Reset()</code> 을 가지고 있습니다.</li>
+</ul>
+<p><code>text
+  scheme[table][column]  -&gt;  Step: (KB073100, KB268900, KB425000)</code>
+- 모든 스킴 × 모든 테이블 × 모든 컬럼을 순회하므로, 컬럼이 아주 많으면 잠깐 걸립니다.
+  대상 테이블이 정해져 있다면 <code>Document.Data.Tables</code> 대신 특정 테이블만 도세요.
+- 해당 스킴에 필터가 없으면 예외가 납니다. 정상이므로 위 코드처럼 건너뛰면 됩니다.
+- <strong>컬럼 이름은 대소문자를 구분합니다.</strong> 초기화가 안 되면 이름부터 확인하세요.
+- 필터 하나만 초기화하려면 스킴 하나만 지정해도 됩니다.</p>
+<p><code>python
+  Document.FilteringSchemes[0].ResetAllFilters()   # 첫 번째 스킴 전체 초기화</code></p>
+</div>
+<hr />
+<p>다음 장은 <strong>심화 자동화</strong>입니다.</p>
+<hr />
+<h2 id="12">예제 12. 역할별 필터 패널 구성</h2>
+<ul class="meta">
+<li class="badge risk-low">위험도 낮음</li>
+<li class="badge bulk">일괄 적용</li>
+</ul>
+
+<p><strong>문제 상황</strong><br />
+필터 패널에 컬럼이 40개 나와서 사용자가 헤맵니다.
+"이번 분석에 필요한 6개만" 보여 주고 싶고, 그 목록은 상황마다 다릅니다.</p>
+<p><strong>기본 기능으로 어려운 이유</strong><br />
+<code>필터 구성(Organize Filters)</code>으로 숨길 수는 있지만 <strong>수동 작업이고 고정</strong>입니다.
+페이지가 여러 개면 페이지마다 반복해야 합니다.</p>
+<p><strong>스크립트 매개변수</strong></p>
+<table>
+<thead>
+<tr>
+<th>이름</th>
+<th>타입</th>
+<th>값</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>filterList</code></td>
+<td>String</td>
+<td>문서 속성 <code>VisibleFilters</code> (쉼표 구분)</td>
+</tr>
+</tbody>
+</table>
+<div class="codehilite"><pre><span></span><code><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="c1"># 지정한 필터만 남기고 모든 페이지의 필터 패널을 정리한다.</span>
+<span class="c1">#</span>
+<span class="c1"># 매개변수:</span>
+<span class="c1">#   filterList (String) 보여 줄 컬럼 이름을 쉼표로 구분. 예: &quot;Region,Year,Category&quot;</span>
+<span class="c1">#                       빈 문자열이면 전부 표시</span>
+
+<span class="n">wanted</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">(</span><span class="n">filterList</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">strip</span><span class="p">()]</span>
+<span class="n">showAll</span> <span class="o">=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">wanted</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+
+<span class="n">shown</span><span class="p">,</span> <span class="n">hidden</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>
+
+<span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">Pages</span><span class="p">:</span>
+    <span class="n">filterPanel</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">FilterPanel</span>
+
+    <span class="k">for</span> <span class="n">tableGroup</span> <span class="ow">in</span> <span class="n">filterPanel</span><span class="o">.</span><span class="n">TableGroups</span><span class="p">:</span>
+        <span class="n">tableGroup</span><span class="o">.</span><span class="n">Expanded</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="c1"># 최상위 필터</span>
+        <span class="k">for</span> <span class="n">handle</span> <span class="ow">in</span> <span class="n">tableGroup</span><span class="o">.</span><span class="n">FilterHandles</span><span class="p">:</span>
+            <span class="n">visible</span> <span class="o">=</span> <span class="n">showAll</span> <span class="ow">or</span> <span class="p">(</span><span class="n">handle</span><span class="o">.</span><span class="n">FilterReference</span><span class="o">.</span><span class="n">Name</span> <span class="ow">in</span> <span class="n">wanted</span><span class="p">)</span>
+            <span class="n">handle</span><span class="o">.</span><span class="n">Visible</span> <span class="o">=</span> <span class="n">visible</span>
+            <span class="k">if</span> <span class="n">visible</span><span class="p">:</span>
+                <span class="n">shown</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">hidden</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># 하위 그룹 안의 필터</span>
+        <span class="k">for</span> <span class="n">subGroup</span> <span class="ow">in</span> <span class="n">tableGroup</span><span class="o">.</span><span class="n">SubGroups</span><span class="p">:</span>
+            <span class="n">groupHasVisible</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">for</span> <span class="n">handle</span> <span class="ow">in</span> <span class="n">subGroup</span><span class="o">.</span><span class="n">FilterHandles</span><span class="p">:</span>
+                <span class="n">visible</span> <span class="o">=</span> <span class="n">showAll</span> <span class="ow">or</span> <span class="p">(</span><span class="n">handle</span><span class="o">.</span><span class="n">FilterReference</span><span class="o">.</span><span class="n">Name</span> <span class="ow">in</span> <span class="n">wanted</span><span class="p">)</span>
+                <span class="n">handle</span><span class="o">.</span><span class="n">Visible</span> <span class="o">=</span> <span class="n">visible</span>
+                <span class="k">if</span> <span class="n">visible</span><span class="p">:</span>
+                    <span class="n">shown</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="n">groupHasVisible</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">hidden</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">subGroup</span><span class="o">.</span><span class="n">Visible</span> <span class="o">=</span> <span class="n">groupHasVisible</span> <span class="ow">or</span> <span class="n">showAll</span>
+
+<span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;필터 표시 </span><span class="si">%d</span><span class="s2">개 / 숨김 </span><span class="si">%d</span><span class="s2">개&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">shown</span><span class="p">,</span> <span class="n">hidden</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="_2">변형: 수정된 필터만 찾아 보여 주기</h3>
+<p>"지금 어떤 필터가 걸려 있지?"를 알려 주는 스크립트입니다.</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="c1"># 현재 값이 변경된(modified) 필터 목록을 문서 속성에 기록한다.</span>
+
+<span class="n">page</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">ActivePageReference</span>
+<span class="n">filterPanel</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">FilterPanel</span>
+
+<span class="n">modified</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">tableGroup</span> <span class="ow">in</span> <span class="n">filterPanel</span><span class="o">.</span><span class="n">TableGroups</span><span class="p">:</span>
+    <span class="n">tableName</span> <span class="o">=</span> <span class="n">tableGroup</span><span class="o">.</span><span class="n">FilterCollectionReference</span><span class="o">.</span><span class="n">DataTableReference</span><span class="o">.</span><span class="n">Name</span>
+    <span class="k">for</span> <span class="n">handle</span> <span class="ow">in</span> <span class="n">tableGroup</span><span class="o">.</span><span class="n">FilterHandles</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">handle</span><span class="o">.</span><span class="n">FilterReference</span><span class="o">.</span><span class="n">Modified</span><span class="p">:</span>
+            <span class="n">modified</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">tableName</span><span class="p">,</span> <span class="n">handle</span><span class="o">.</span><span class="n">FilterReference</span><span class="o">.</span><span class="n">ToString</span><span class="p">()))</span>
+    <span class="k">for</span> <span class="n">subGroup</span> <span class="ow">in</span> <span class="n">tableGroup</span><span class="o">.</span><span class="n">SubGroups</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">handle</span> <span class="ow">in</span> <span class="n">subGroup</span><span class="o">.</span><span class="n">FilterHandles</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">handle</span><span class="o">.</span><span class="n">FilterReference</span><span class="o">.</span><span class="n">Modified</span><span class="p">:</span>
+                <span class="n">modified</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">tableName</span><span class="p">,</span> <span class="n">handle</span><span class="o">.</span><span class="n">FilterReference</span><span class="o">.</span><span class="n">ToString</span><span class="p">()))</span>
+
+<span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ActiveFilters&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="sa">u</span><span class="s2">&quot;&lt;br&gt;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">modified</span><span class="p">)</span> <span class="k">if</span> <span class="n">modified</span> <span class="k">else</span> <span class="sa">u</span><span class="s2">&quot;적용된 필터 없음&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<div class="admonition note">
+<p class="admonition-title">검증 포인트</p>
+<ul>
+<li><code>FilterHandle.Visible</code>을 <code>False</code>로 두면 <strong>필터가 해제되는 것이 아니라 안 보이기만</strong> 합니다.
+  값이 걸린 채 숨기면 사용자가 원인을 못 찾으므로, 숨기기 전에 예제 10으로 초기화하세요.</li>
+<li><code>filterPanel.TableGroups</code>는 <strong>페이지별로 존재</strong>합니다. 위 코드처럼 모든 페이지를 돌아야
+  전체가 정리됩니다.</li>
+<li><code>FilterReference.Name</code>은 대개 컬럼 이름과 같습니다. 다르면 먼저 출력해 확인하세요.</li>
+<li><code>InteractiveSearchPattern</code>으로 필터 패널 검색창을 제어할 수도 있습니다.
+  <code>filterPanel.InteractiveSearchPattern = "status:modified"</code> 로 수정된 필터만 보이게 할 수 있습니다.</li>
+</ul>
+</div>
+<hr />
+<hr />
+<h2 id="13">예제 13. 문서 속성 값으로 페이지 표시/숨김</h2>
+<ul class="meta">
+<li class="badge risk-low">위험도 낮음</li>
+<li class="badge hard">기본 기능으로 어려움</li>
+</ul>
+
+<p><strong>문제 상황</strong><br />
+하나의 분석 파일을 <strong>영업팀과 재무팀이 같이</strong> 씁니다.
+영업팀에게는 재무 페이지 3개를 아예 안 보이게 하고 싶습니다.</p>
+<p><strong>기본 기능으로 어려운 이유</strong><br />
+Spotfire에서 페이지 숨김은 <strong>작성 시점에 고정</strong>되는 설정입니다.
+"사용자나 선택값에 따라 동적으로" 페이지를 보였다 숨겼다 하는 기능은 없습니다.
+파일을 두 벌로 나누면 관리가 두 배가 됩니다.</p>
+<p><strong>스크립트 매개변수</strong></p>
+<table>
+<thead>
+<tr>
+<th>이름</th>
+<th>타입</th>
+<th>값</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>role</code></td>
+<td>String</td>
+<td>문서 속성 <code>UserRole</code></td>
+</tr>
+</tbody>
+</table>
+<div class="codehilite"><pre><span></span><code><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="c1"># 역할에 따라 페이지를 보이거나 숨긴다.</span>
+<span class="c1">#</span>
+<span class="c1"># 매개변수:</span>
+<span class="c1">#   role (String) 문서 속성 &quot;UserRole&quot; 의 값</span>
+
+<span class="c1"># 역할별로 보여 줄 페이지 제목 목록</span>
+<span class="n">VISIBLE_PAGES</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="sa">u</span><span class="s2">&quot;영업&quot;</span><span class="p">:</span>   <span class="p">[</span><span class="sa">u</span><span class="s2">&quot;요약&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;매출 상세&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;지역 분석&quot;</span><span class="p">],</span>
+    <span class="sa">u</span><span class="s2">&quot;재무&quot;</span><span class="p">:</span>   <span class="p">[</span><span class="sa">u</span><span class="s2">&quot;요약&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;손익&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;원가 분석&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;예산 대비&quot;</span><span class="p">],</span>
+    <span class="sa">u</span><span class="s2">&quot;관리자&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>      <span class="c1"># None 이면 전부 표시</span>
+<span class="p">}</span>
+
+<span class="n">allowed</span> <span class="o">=</span> <span class="n">VISIBLE_PAGES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">role</span><span class="p">,</span> <span class="p">[</span><span class="sa">u</span><span class="s2">&quot;요약&quot;</span><span class="p">])</span>     <span class="c1"># 모르는 역할은 요약만</span>
+
+<span class="n">shown</span><span class="p">,</span> <span class="n">hidden</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+
+<span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">Pages</span><span class="p">:</span>
+    <span class="n">visible</span> <span class="o">=</span> <span class="p">(</span><span class="n">allowed</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">page</span><span class="o">.</span><span class="n">Title</span> <span class="ow">in</span> <span class="n">allowed</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">page</span><span class="o">.</span><span class="n">Visible</span> <span class="o">=</span> <span class="n">visible</span>
+        <span class="p">(</span><span class="n">shown</span> <span class="k">if</span> <span class="n">visible</span> <span class="k">else</span> <span class="n">hidden</span><span class="p">)</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">page</span><span class="o">.</span><span class="n">Title</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+<span class="c1"># 현재 페이지가 숨겨졌다면 보이는 첫 페이지로 이동</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">Document</span><span class="o">.</span><span class="n">ActivePageReference</span><span class="o">.</span><span class="n">Visible</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">Pages</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">page</span><span class="o">.</span><span class="n">Visible</span><span class="p">:</span>
+            <span class="n">Document</span><span class="o">.</span><span class="n">ActivePageReference</span> <span class="o">=</span> <span class="n">page</span>
+            <span class="k">break</span>
+
+<span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;[</span><span class="si">%s</span><span class="s2">] 표시 </span><span class="si">%d</span><span class="s2">개 / 숨김 </span><span class="si">%d</span><span class="s2">개&quot;</span> <span class="o">%</span> <span class="p">(</span>
+    <span class="n">role</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">shown</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">hidden</span><span class="p">))</span>
+</code></pre></div>
+
+<h3 id="_3">변형: 로그인 사용자로 자동 판별</h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">System.Threading</span><span class="w"> </span><span class="kn">import</span> <span class="n">Thread</span>
+
+<span class="n">userName</span> <span class="o">=</span> <span class="n">Thread</span><span class="o">.</span><span class="n">CurrentPrincipal</span><span class="o">.</span><span class="n">Identity</span><span class="o">.</span><span class="n">Name</span>    <span class="c1"># &quot;DOMAIN\\user&quot; 형태</span>
+<span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;CurrentUser&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">userName</span>
+
+<span class="n">FINANCE_USERS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;DOMAIN</span><span class="se">\\</span><span class="s2">kim&quot;</span><span class="p">,</span> <span class="s2">&quot;DOMAIN</span><span class="se">\\</span><span class="s2">lee&quot;</span><span class="p">]</span>
+<span class="n">role</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;재무&quot;</span> <span class="k">if</span> <span class="n">userName</span> <span class="ow">in</span> <span class="n">FINANCE_USERS</span> <span class="k">else</span> <span class="sa">u</span><span class="s2">&quot;영업&quot;</span>
+</code></pre></div>
+
+<div class="admonition danger">
+<p class="admonition-title">검증 포인트 — 보안 장치가 아닙니다</p>
+<ul>
+<li><strong>페이지 숨김은 보안이 아닙니다.</strong> 데이터는 파일 안에 그대로 있고,
+  스크립트를 실행할 수 있는 사람은 다시 보이게 만들 수 있습니다.
+  진짜 접근 제어가 필요하면 <strong>라이브러리 권한이나 정보 링크 수준에서</strong> 처리하세요.</li>
+<li><code>Page.Visible</code> 은 읽기·쓰기 모두 동작합니다.</li>
+<li>페이지 숨김은 <strong>보안 장치가 아닙니다</strong> → <a href="07-pitfalls.html">7.6 참조</a></li>
+<li>페이지를 숨긴 채로 저장하면 <strong>다음에 열 때도 숨겨진 상태</strong>입니다.
+  문서를 열 때 자동 실행되는 초기화 스크립트에 이 로직을 넣어 두세요.</li>
+<li>사용자 이름 형식은 인증 방식에 따라 다릅니다. 먼저 출력해 보고 목록을 만드세요.</li>
+</ul>
+</div>
+<hr />
+<hr />
+<p>다음 장은 <strong>데이터를 읽고 내보내는</strong> 예제입니다.</p>
+    <nav class="pager"><a class="pg prev" href="09-examples-visuals.html"><span>이전</span>9. 예제 A · 시각화 일괄 제어</a><a class="pg next" href="11-examples-data.html"><span>다음</span>11. 예제 C · 데이터와 내보내기</a></nav>
+    <footer class="foot">
+      <p>이 교안의 모든 예제 스크립트는 <a href="https://github.com/cozytk/spotfire-iron-python-scripts/tree/HEAD/scripts">scripts/ 폴더</a>에 실행 가능한 <code>.py</code> 파일로도 들어 있습니다.</p>
+      <p>Spotfire는 Cloud Software Group, Inc.의 상표입니다. 본 교안은 비공식 학습 자료입니다.</p>
+    </footer>
+  </main>
+  <aside class="toc-side" aria-label="현재 문서 목차"><div class="toc">
+<ul>
+<li><a href="#8">예제 8. 마킹 결과를 문서 속성으로 넘기기</a></li>
+<li><a href="#9">예제 9. 키 컬럼으로 다른 테이블에 마킹 전파</a></li>
+<li><a href="#10">예제 10. 대시보드 전체 상태 초기화</a></li>
+<li><a href="#11">예제 11. 원하는 컬럼의 필터만 선택적으로 초기화</a><ul>
+<li><a href="#_1">변형: 특정 컬럼만 빼고 전부 초기화</a></li>
+</ul>
+</li>
+<li><a href="#12">예제 12. 역할별 필터 패널 구성</a><ul>
+<li><a href="#_2">변형: 수정된 필터만 찾아 보여 주기</a></li>
+</ul>
+</li>
+<li><a href="#13">예제 13. 문서 속성 값으로 페이지 표시/숨김</a><ul>
+<li><a href="#_3">변형: 로그인 사용자로 자동 판별</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</aside>
+</div>
+<div id="searchResults" class="search-results" hidden></div>
+<script src="assets/app.js"></script>
+</body>
+</html>
