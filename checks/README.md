@@ -1,54 +1,54 @@
-# 동작 확인용 임시 스크립트
+# 동작 확인용 스크립트
 
-교안 내용 중 **실제 Spotfire에서 확인이 필요한 항목**을 검증하기 위한 스크립트입니다.
+교안 내용 중 **실제 Spotfire에서 확인이 필요한 항목**을 검증하는 스크립트입니다.
 교안 예제가 아니므로 `scripts/` 와 분리해 두었습니다.
 
-## 지금 확인 중인 것
-
-`print("hello")` 가 IronPython 2.7에서 잘 동작하는 이유와, 그 한계가 어디까지인지.
-
-- Python 2에서 `print` 는 **문(statement)** 이고, `("hello")` 는 함수 호출 괄호가 아니라
-  단순히 값을 감싼 괄호입니다. 그래서 인자가 1개일 때는 Python 3처럼 보이지만
-  실제로는 Python 2 문법입니다.
-- 문제는 인자가 2개 이상일 때입니다. `print("a", "b")` 는 **오류 없이**
-  `('a', 'b')` 라는 튜플을 출력합니다. 조용히 틀리는 경우라 위험합니다.
-
-## 실행 방법
-
-**세 파일을 반드시 따로 실행하세요.** B와 C는 문법 오류를 유발할 수 있고,
-문법 오류는 스크립트 전체를 실행 불가로 만듭니다.
-
-| 파일 | 목적 | 기대 결과 |
-|------|------|-----------|
-| [`A_runtime_behavior.py`](A_runtime_behavior.py) | 엔진 버전, print 동작, 정수 나눗셈 | 정상 출력 |
-| [`B_print_keyword_arg.py`](B_print_keyword_arg.py) | `print("a", end="")` | **SyntaxError 예상** |
-| [`C_future_print_function.py`](C_future_print_function.py) | `from __future__ import print_function` | `a-b` 또는 오류 |
-
-1. Spotfire 스크립트 편집 창을 엽니다 (액션 컨트롤 → 스크립트, 또는 도구 → 개발 도구)
-2. 파일 하나를 붙여 넣고 **실행(Execute)**
-3. 하단 출력 영역의 내용 또는 오류 메시지를 기록
-4. 다음 파일로 반복
-
-`print` 출력은 **스크립트 편집 창에서 실행했을 때만** 보입니다.
-액션 컨트롤 버튼으로 실행하면 어디에도 표시되지 않습니다.
-
-## 문서를 변경하나요?
-
-**A는 출력만 하므로 완전히 안전합니다.** B와 C는 문법 오류로 실행 자체가 안 되거나
-문자열 하나를 출력할 뿐이라 역시 문서를 변경하지 않습니다.
-
-## 결과 반영
-
-확인 결과에 따라 교안의 다음 부분을 고칠 예정입니다.
-
-- **4.1 Python 3와 다른 점** — `print("hello")` 도 동작한다는 사실을 명시
-- **7.5 AI 검증 체크리스트** — "괄호가 있으면 Python 3 신호" 를
-  "인자가 2개 이상인 `print(a, b)` 가 있는지" 로 정정
-- **C가 성공하면** — `from __future__ import print_function` 사용법 안내 추가
+확인이 끝난 스크립트는 저장소에서 내리고, 결과만 아래 "확인 완료" 절에 남깁니다.
 
 ---
 
-## 확인 결과 (2026-08-12)
+## 지금 확인할 것 (2차)
+
+교안에서 **"검증 포인트"에 버전 의존적이라고 표시해 둔 API들**입니다.
+확인되면 그 표시를 지우거나, 정확한 대안으로 바꿀 수 있습니다.
+
+| 파일 | 확인 대상 | 문서 변경 | 관련 교안 |
+|------|-----------|:---------:|-----------|
+| [`01_environment.py`](01_environment.py) | `__future__ division`, 표준 라이브러리, .NET 접근, 문자열 타입 | 없음 | 4장 |
+| [`02_visual_api.py`](02_visual_api.py) | 시각화 유형별로 어떤 속성이 실제 존재하는지, `AxisRange`, 유형 식별자 전체 목록 | 없음 | 6장, 예제 3·4·6·7 |
+| [`03_services_and_types.py`](03_services_and_types.py) | `NotificationService`·`ProgressService` 메서드명, `DataWriterTypeIdentifiers`, `StdfDataSource` 존재, `TextDataReaderSettings` | 없음 | 예제 9·10·13·20 |
+| [`04_data_and_filters.py`](04_data_and_filters.py) | 커서·`GetDistinctRows`·마킹·필터링 스킴, `scheme[table][column]` 인덱싱 | 없음 | 6장, 예제 11·12·18 |
+| [`05_render_and_export.py`](05_render_and_export.py) | `VisualContent.Render`, `RenderSync` 존재, writer 생성 | 없음 | 예제 8·9 |
+| [`06_page_and_layout.py`](06_page_and_layout.py) | `Page.Visible`, `AddNew` 반환형, `LayoutDefinition` 인자 형태 | **있음** | 예제 15·19·21 |
+
+### 실행 순서
+
+**01 → 05 는 전부 읽기 전용**이라 원본에서 실행해도 안전합니다.
+결과를 이슈에 붙여 주시면 됩니다. 한 번에 다 하실 필요 없고, 편한 것부터 주셔도 됩니다.
+
+**06 은 문서를 변경합니다.** 반드시 **분석 파일 사본**에서 실행하세요.
+
+- `__API_TEST__` 라는 임시 페이지를 만들어 시험하고 마지막에 삭제합니다
+- 중간에 오류가 나면 그 페이지가 남을 수 있습니다. 직접 지우시면 됩니다
+- 06이 부담스러우면 건너뛰셔도 됩니다. 해당 API는 교안에 "확인 필요"로 남겨 두겠습니다
+
+### 준비하면 결과가 풍부해지는 것
+
+- **02, 05**: 막대·선·산점도·표·교차표·텍스트 영역이 **여러 종류 섞인 페이지**를 활성 페이지로 두고 실행
+- **04**: 데이터 테이블과 필터가 있는 분석 파일
+
+### 출력 규칙
+
+- 각 줄이 `[OK]` / `[NO]` / `[??]` 로 시작합니다
+- 꺾쇠(`<` `>`)는 대괄호(`[` `]`)로 바꿔서 출력합니다
+  — 1차 때 `<type 'unicode'>` 가 HTML 태그로 인식되어 사라졌기 때문입니다
+- 출력 전체를 그대로 복사해 붙여 주시면 됩니다
+
+---
+
+## 확인 완료
+
+### 1차 — print 동작 (2026-08-12)
 
 **환경: IronPython 2.7.12 (2.7.12.1000), .NET Framework 4.8.9332.0 (64-bit)**
 
@@ -61,36 +61,20 @@
 | `print("a", end="")` | `SyntaxError: unexpected token '='` | 예상대로 실패 |
 | `from __future__ import print_function` + `sep="-"` | `a-b` | **지원됨** |
 
-### 결정적 증거
-
-`print("a", end="")` 의 오류 스택에 다음이 찍혔습니다.
+**결정적 증거** — `print("a", end="")` 의 오류 스택:
 
 ```text
 IronPython.Compiler.Parser.ParsePrintStmt()
 ```
 
-파서가 이 줄을 **print 문**으로 처리하다가 `=` 에서 실패했다는 뜻입니다.
-`print` 가 함수라면 `ParseCallExpression` 계열이 찍혔을 것입니다.
+파서가 이 줄을 **print 문**으로 처리하다 `=` 에서 실패했다는 뜻입니다.
+`print` 가 함수였다면 호출식(call expression) 파싱 경로가 찍혔을 것입니다.
 
-### 교안 반영 완료
+**교안 반영 완료**
 
-- **4.1** — `print("hello")` 가 동작하는 이유와 `print(a, b)` 함정, `__future__` 사용법 추가
-- **7.5** — AI 검증 체크리스트 1번을 "인자 2개 이상인 `print(a, b)`" 로 정정
-- **13 FAQ** — "Python 3 문법을 쓰면 안 되나요?" 답변에 예외 두 가지 추가
-- **버전 정보** — 확인 환경(2.7.12 / .NET 4.8) 명시
+- 4.1 — `print("hello")` 가 동작하는 이유, `print(a, b)` 함정, `__future__` 사용법 추가
+- 7.5 — AI 검증 체크리스트 1번을 "인자 2개 이상인 `print(a, b)`" 로 정정
+- 13 FAQ — Python 3 문법 답변에 예외 두 가지 추가
+- 버전 정보 — 확인 환경 명시
 
-### 남은 확인 사항
-
-테스트 A의 5)·6) 항목(`type(u"한글")`, `type("한글")`)이 **빈 값으로 보였습니다.**
-출력이 `<type 'unicode'>` 처럼 꺾쇠로 시작해서, 어딘가에서 HTML 태그로 인식되어
-사라진 것으로 보입니다. 다음 한 줄로 다시 확인할 수 있습니다.
-
-```python
-print "5) 유니코드:", str(type(u"한글")).replace("<", "[").replace(">", "]")
-print "6) 일반문자:", str(type("한글")).replace("<", "[").replace(">", "]")
-```
-
-기대: `[type 'unicode']` 와 `[type 'str']`
-
-`from __future__ import division` 도 `print_function` 과 같은 방식이라
-동작할 가능성이 높지만, 아직 직접 확인하지는 않았습니다.
+미확인으로 남은 것(`type()` 출력, `__future__ division`)은 2차 `01_environment.py` 에 포함했습니다.
