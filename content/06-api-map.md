@@ -84,20 +84,48 @@ for visual in Document.ActivePageReference.Visuals:
 
 ### 주요 시각화 유형 식별자
 
+아래는 Spotfire 14.x에서 `dir(VisualTypeIdentifiers)` 로 실제 확인한 전체 목록입니다.
+
 ```python
 VisualTypeIdentifiers.BarChart
 VisualTypeIdentifiers.LineChart
 VisualTypeIdentifiers.ScatterPlot
+VisualTypeIdentifiers.ScatterPlot3D
 VisualTypeIdentifiers.PieChart
-VisualTypeIdentifiers.CrossTable
-VisualTypeIdentifiers.Table
-VisualTypeIdentifiers.HeatMap
 VisualTypeIdentifiers.CombinationChart
-VisualTypeIdentifiers.TreemapChart
+VisualTypeIdentifiers.WaterfallChart
+VisualTypeIdentifiers.BoxPlot
+VisualTypeIdentifiers.HeatMap
+VisualTypeIdentifiers.Treemap             # TreemapChart 가 아님에 주의
+VisualTypeIdentifiers.ParallelCoordinatePlot
+VisualTypeIdentifiers.MapChart
+VisualTypeIdentifiers.MapChart2
+VisualTypeIdentifiers.Table
+VisualTypeIdentifiers.CrossTable
+VisualTypeIdentifiers.SummaryTable
 VisualTypeIdentifiers.GraphicalTable
-VisualTypeIdentifiers.HtmlTextArea       # 텍스트 영역
 VisualTypeIdentifiers.KpiChart
+VisualTypeIdentifiers.KpiVisualization
+VisualTypeIdentifiers.HtmlTextArea        # 텍스트 영역
+VisualTypeIdentifiers.TextArea
+
+# 그래픽 테이블 안의 미니 시각화들
+VisualTypeIdentifiers.SparklineMiniatureVisualization
+VisualTypeIdentifiers.BulletGraphMiniatureVisualization
+VisualTypeIdentifiers.CalculatedValueMiniatureVisualization
+VisualTypeIdentifiers.IconMiniatureVisualization
 ```
+
+!!! warning "이름을 추측하지 마세요"
+    `Treemap` 을 `TreemapChart` 로 쓰면 `AttributeError` 가 납니다.
+    확실하지 않으면 아래로 직접 확인하세요.
+
+    ```python
+    from Spotfire.Dxp.Application.Visuals import VisualTypeIdentifiers
+    for name in dir(VisualTypeIdentifiers):
+        if not name.startswith("_"):
+            print name
+    ```
 
 ### 시각화의 데이터 설정
 

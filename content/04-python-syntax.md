@@ -10,8 +10,8 @@ Python 3만 써 본 사람은 여기서 반드시 한 번 걸립니다. 이 장�
 |------|------------------------|----------|
 | print | `print "hello"` (문) — 괄호를 써도 **동작함** | `print("hello")` (함수) |
 | 정수 나눗셈 | `1 / 2` → `0` | `1 / 2` → `0.5` |
-| 문자열 | `str`(바이트) / `unicode` 분리 | 모두 `str`(유니코드) |
-| 유니코드 리터럴 | `u"한글"` 필요 | 기본이 유니코드 |
+| 문자열 | **`str` 이 곧 `unicode`** (아래 4.4 참조) | 모두 `str`(유니코드) |
+| 유니코드 리터럴 | `u"한글"` **불필요**(붙여도 무방) | 기본이 유니코드 |
 | 예외 문법 | `except E, e:` 또는 `except E as e:` | `except E as e:` |
 | 딕셔너리 순회 | `d.iteritems()` 사용 가능 | `d.items()` |
 | range | `range()`는 리스트, `xrange()`는 반복자 | `range()`가 반복자 |
@@ -91,6 +91,8 @@ progress = 3 / 4          # 0.75
     계산이 들어가는 스크립트라면 첫 줄에 넣어 두는 편이 안전합니다.
     단, 이 줄은 **반드시 파일의 맨 처음**(주석 제외)에 와야 합니다.
 
+    IronPython 2.7.12에서 **동작을 확인했습니다.** (`3 / 4` → `0.75`, `3 // 4` → `0`)
+
 ## 4.2 변수와 기본 자료형
 
 ```python
@@ -164,13 +166,31 @@ title = "{0} / {1}".format("2024", "Q1")
 
 ### 한글을 쓸 때
 
-IronPython 2.7에서 한글 문자열은 **`u` 접두사**를 붙이세요. 붙이지 않으면 인코딩 오류나
-글자 깨짐이 발생할 수 있습니다.
+**IronPython에서는 `str` 과 `unicode` 가 같은 타입입니다.** .NET의 `System.String` 이
+이미 UTF-16이라, CPython 2처럼 바이트열과 유니코드로 나뉘지 않습니다.
+
+```python
+# IronPython 2.7.12 실측 결과
+type(u"한글")   # [type 'str']
+type("한글")    # [type 'str']     ← 같은 타입
+len(u"한글")    # 2
+len("한글")     # 2                ← 바이트가 아니라 글자 수
+```
+
+즉 **`u` 접두사는 없어도 동작합니다.** CPython 2였다면 `len("한글")` 이 6(UTF-8 바이트 수)이
+나왔을 텐데, 여기서는 2가 나옵니다.
+
+그래도 이 교안은 한글 문자열에 `u` 를 붙입니다. 이유는 두 가지입니다.
+
+- **의도가 드러납니다.** "이건 유니코드 텍스트다"가 코드에 명시됩니다
+- **이식성**이 있습니다. 같은 코드를 CPython 2 환경(데이터 함수 등)에 옮겨도 안전합니다
 
 ```python
 Document.Properties["Msg"] = u"처리가 완료되었습니다."
 label = u"%s 개 시각화를 변경했습니다." % 12
 ```
+
+붙이지 않아도 되지만, 붙여서 손해 볼 일은 없습니다.
 
 ### 자주 쓰는 문자열 메서드
 
@@ -380,11 +400,21 @@ for info in infos:
 
 표준 라이브러리 일부는 쓸 수 있습니다.
 
+IronPython 2.7.12에서 다음 12개는 **모두 import 되는 것을 확인했습니다.**
+
 ```python
-import re                 # 정규표현식
+import re            # 정규표현식
 import math
 import datetime
-import json               # 버전에 따라 가능
+import json
+import csv
+import collections
+import itertools
+import os
+import codecs
+import random
+import time
+import string
 ```
 
 !!! danger "`pandas`, `numpy`는 쓸 수 없습니다"

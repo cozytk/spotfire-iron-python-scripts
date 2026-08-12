@@ -72,12 +72,12 @@ Python 3만 써 본 사람은 여기서 반드시 한 번 걸립니다. 이 장�
 </tr>
 <tr>
 <td>문자열</td>
-<td><code>str</code>(바이트) / <code>unicode</code> 분리</td>
+<td><strong><code>str</code> 이 곧 <code>unicode</code></strong> (아래 4.4 참조)</td>
 <td>모두 <code>str</code>(유니코드)</td>
 </tr>
 <tr>
 <td>유니코드 리터럴</td>
-<td><code>u"한글"</code> 필요</td>
+<td><code>u"한글"</code> <strong>불필요</strong>(붙여도 무방)</td>
 <td>기본이 유니코드</td>
 </tr>
 <tr>
@@ -167,6 +167,7 @@ print "처리 완료", count       # 처리 완료 12        ← 맞음</code></
 <p class="admonition-title"><code>from __future__ import division</code>을 습관화하세요</p>
 <p>계산이 들어가는 스크립트라면 첫 줄에 넣어 두는 편이 안전합니다.
 단, 이 줄은 <strong>반드시 파일의 맨 처음</strong>(주석 제외)에 와야 합니다.</p>
+<p>IronPython 2.7.12에서 <strong>동작을 확인했습니다.</strong> (<code>3 / 4</code> → <code>0.75</code>, <code>3 // 4</code> → <code>0</code>)</p>
 </div>
 <h2 id="42">4.2 변수와 기본 자료형</h2>
 <div class="codehilite"><pre><span></span><code><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;Sales&quot;</span>            <span class="c1"># 문자열</span>
@@ -231,12 +232,27 @@ if value is not None:
 </code></pre></div>
 
 <h3 id="_1">한글을 쓸 때</h3>
-<p>IronPython 2.7에서 한글 문자열은 <strong><code>u</code> 접두사</strong>를 붙이세요. 붙이지 않으면 인코딩 오류나
-글자 깨짐이 발생할 수 있습니다.</p>
+<p><strong>IronPython에서는 <code>str</code> 과 <code>unicode</code> 가 같은 타입입니다.</strong> .NET의 <code>System.String</code> 이
+이미 UTF-16이라, CPython 2처럼 바이트열과 유니코드로 나뉘지 않습니다.</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># IronPython 2.7.12 실측 결과</span>
+<span class="nb">type</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;한글&quot;</span><span class="p">)</span>   <span class="c1"># [type &#39;str&#39;]</span>
+<span class="nb">type</span><span class="p">(</span><span class="s2">&quot;한글&quot;</span><span class="p">)</span>    <span class="c1"># [type &#39;str&#39;]     ← 같은 타입</span>
+<span class="nb">len</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;한글&quot;</span><span class="p">)</span>    <span class="c1"># 2</span>
+<span class="nb">len</span><span class="p">(</span><span class="s2">&quot;한글&quot;</span><span class="p">)</span>     <span class="c1"># 2                ← 바이트가 아니라 글자 수</span>
+</code></pre></div>
+
+<p>즉 <strong><code>u</code> 접두사는 없어도 동작합니다.</strong> CPython 2였다면 <code>len("한글")</code> 이 6(UTF-8 바이트 수)이
+나왔을 텐데, 여기서는 2가 나옵니다.</p>
+<p>그래도 이 교안은 한글 문자열에 <code>u</code> 를 붙입니다. 이유는 두 가지입니다.</p>
+<ul>
+<li><strong>의도가 드러납니다.</strong> "이건 유니코드 텍스트다"가 코드에 명시됩니다</li>
+<li><strong>이식성</strong>이 있습니다. 같은 코드를 CPython 2 환경(데이터 함수 등)에 옮겨도 안전합니다</li>
+</ul>
 <div class="codehilite"><pre><span></span><code><span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;Msg&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;처리가 완료되었습니다.&quot;</span>
 <span class="n">label</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> 개 시각화를 변경했습니다.&quot;</span> <span class="o">%</span> <span class="mi">12</span>
 </code></pre></div>
 
+<p>붙이지 않아도 되지만, 붙여서 손해 볼 일은 없습니다.</p>
 <h3 id="_2">자주 쓰는 문자열 메서드</h3>
 <div class="codehilite"><pre><span></span><code><span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;  Sales Amount  &quot;</span>
 <span class="n">s</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>               <span class="c1"># 앞뒤 공백 제거</span>
@@ -419,10 +435,19 @@ for v in targets:
 
 <h2 id="410-import">4.10 모듈 import</h2>
 <p>표준 라이브러리 일부는 쓸 수 있습니다.</p>
-<div class="codehilite"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">re</span>                 <span class="c1"># 정규표현식</span>
+<p>IronPython 2.7.12에서 다음 12개는 <strong>모두 import 되는 것을 확인했습니다.</strong></p>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">re</span>            <span class="c1"># 정규표현식</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">datetime</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>               <span class="c1"># 버전에 따라 가능</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">csv</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">collections</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">itertools</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">codecs</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">string</span>
 </code></pre></div>
 
 <div class="admonition danger">

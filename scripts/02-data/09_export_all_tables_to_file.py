@@ -14,11 +14,14 @@ from Spotfire.Dxp.Data.Export import DataWriterTypeIdentifiers
 from System.IO import File, Path, Directory
 from System import DateTime
 
-# 형식 선택:
-#   DataWriterTypeIdentifiers.ExcelXlsDataWriter  → .xls
-#   DataWriterTypeIdentifiers.StdfDataWriter      → .stdf (Spotfire 이진 형식)
-WRITER = DataWriterTypeIdentifiers.ExcelXlsDataWriter
-EXTENSION = ".xls"
+# 형식 선택 (14.x 에서 실제 확인된 것들)
+#   ExcelXlsDataWriter             → .xls
+#   ExcelXlsxDataWriter            → .xlsx
+#   SpreadsheetDataCsvUtf8Writer   → .csv  (UTF-8, 한글 안전)
+#   SpreadsheetDataCsvWriter       → .csv  (시스템 인코딩)
+#   SbdfDataWriter / StdfDataWriter → Spotfire 이진 형식
+WRITER = DataWriterTypeIdentifiers.SpreadsheetDataCsvUtf8Writer
+EXTENSION = ".csv"
 
 stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss")
 folder = Path.Combine(outDir, "export_" + stamp)

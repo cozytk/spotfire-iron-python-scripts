@@ -194,10 +194,17 @@ Python 모듈처럼 <code>from ... import ...</code> 로 가져옵니다.</p>
 <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tables</span><span class="p">:</span>
     <span class="nb">print</span> <span class="n">t</span><span class="o">.</span><span class="n">Name</span>
 
-<span class="c1"># 이름/인덱스로 조회</span>
+<span class="c1"># 이름으로 조회</span>
 <span class="n">sales</span> <span class="o">=</span> <span class="n">tables</span><span class="p">[</span><span class="s2">&quot;Sales&quot;</span><span class="p">]</span>
-<span class="n">first</span> <span class="o">=</span> <span class="n">tables</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 <span class="n">sales</span> <span class="o">=</span> <span class="n">tables</span><span class="o">.</span><span class="n">Item</span><span class="p">[</span><span class="s2">&quot;Sales&quot;</span><span class="p">]</span>     <span class="c1"># Item 프로퍼티 명시 (동일)</span>
+
+<span class="c1"># 주의: 데이터 테이블 컬렉션은 숫자 인덱스를 받지 않습니다</span>
+<span class="c1"># tables[0]  -&gt;  TypeError: expected str, got int</span>
+<span class="c1"># 첫 번째 테이블이 필요하면 순회해서 꺼내세요</span>
+<span class="n">first</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tables</span><span class="p">:</span>
+    <span class="n">first</span> <span class="o">=</span> <span class="n">t</span>
+    <span class="k">break</span>
 
 <span class="c1"># 존재 여부 — 파이썬의 in 대신 Contains를 쓰는 편이 안전</span>
 <span class="k">if</span> <span class="n">tables</span><span class="o">.</span><span class="n">Contains</span><span class="p">(</span><span class="s2">&quot;Sales&quot;</span><span class="p">):</span>

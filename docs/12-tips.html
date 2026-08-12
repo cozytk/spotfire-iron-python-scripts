@@ -200,16 +200,23 @@
 </tr>
 <tr>
 <td>마킹 이름</td>
-<td>기본값이 <code>"Marking"</code>이 아닐 수 있음</td>
-<td>존재 확인</td>
+<td><strong>한국어 UI에서는 <code>"마킹"</code></strong> (실측 확인)</td>
+<td><code>ActiveMarkingSelectionReference</code></td>
 </tr>
 </tbody>
 </table>
-<div class="codehilite"><pre><span></span><code><span class="c1"># 방어적으로</span>
-<span class="n">MARKING_NAME</span> <span class="o">=</span> <span class="s2">&quot;Marking&quot;</span>
+<div class="admonition danger">
+<p class="admonition-title">마킹 이름은 UI 언어에 따라 다릅니다</p>
+<p>한국어 Spotfire에서 기본 마킹 이름은 <code>"Marking"</code> 이 아니라 <strong><code>"마킹"</code></strong> 입니다.
+두 번째부터는 <code>"마킹 (2)"</code>, <code>"마킹 (3)"</code> 이 됩니다.
+영어 UI 기준으로 쓴 스크립트가 한국어 환경에서 조용히 실패하는 대표적인 원인입니다.</p>
+</div>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 가장 좋은 방법: 이름을 쓰지 않는다</span>
+<span class="n">markedRows</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">ActiveMarkingSelectionReference</span><span class="o">.</span><span class="n">GetSelection</span><span class="p">(</span><span class="n">table</span><span class="p">)</span><span class="o">.</span><span class="n">AsIndexSet</span><span class="p">()</span>
+
+<span class="c1"># 특정 마킹을 꼭 지목해야 한다면, 존재 확인 후 사용</span>
 <span class="n">markingNames</span> <span class="o">=</span> <span class="p">[</span><span class="n">m</span><span class="o">.</span><span class="n">Name</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Markings</span><span class="p">]</span>
-<span class="k">if</span> <span class="n">MARKING_NAME</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">markingNames</span><span class="p">:</span>
-    <span class="n">MARKING_NAME</span> <span class="o">=</span> <span class="n">markingNames</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">markingNames</span> <span class="k">else</span> <span class="kc">None</span>
+<span class="nb">print</span> <span class="n">markingNames</span>        <span class="c1"># 예: [&#39;마킹&#39;, &#39;마킹 (2)&#39;, &#39;마킹 (3)&#39;]</span>
 </code></pre></div>
 
 <h2 id="125">12.5 여러 번 실행해도 안전하게 (멱등성)</h2>

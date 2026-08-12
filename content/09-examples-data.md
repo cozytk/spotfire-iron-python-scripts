@@ -88,12 +88,19 @@ Document.Properties["ScriptLog"] = msg
 
 !!! danger "검증 포인트 — Analyst 전용입니다"
     - **Web Player에서는 동작하지 않습니다.** 로컬 파일 시스템에 쓰기 때문입니다.
-    - `VisualContent.Render(Graphics, Rectangle)` 방식은 오래전부터 쓰인 방법이지만,
-      **텍스트 영역과 Mod 시각화는 렌더링되지 않거나 빈 이미지가 나올 수 있습니다.**
-      위 코드는 실패한 것을 목록으로 보고합니다.
-    - 신형 API인 `RenderSync` / `RenderAsync`(7.12+)를 쓰면 **현재 테마가 적용된**
-      이미지를 얻을 수 있습니다. 버전에 따라 시그니처가 다르므로, 위 방식이 잘 되면
-      굳이 바꿀 필요는 없습니다.
+    - `VisualContent.Render(Graphics, Rectangle)` 방식은 **동작을 확인했습니다.**(14.x)
+    - **텍스트 영역은 실패합니다.** 실측 오류 메시지는 다음과 같습니다.
+
+      ```text
+      Attempt take snapshot on application thread in state 'Executing'.
+      ```
+
+      위 코드처럼 `try/except` 로 감싸고 실패 목록을 보고하는 구조가 필요한 이유입니다.
+      Mod 시각화도 같은 이유로 실패할 수 있습니다.
+    - **`RenderSync` 는 존재하지 않습니다.** 실측 결과 `Visual` 객체에는
+      `RenderAsync` 만 있습니다(`hasattr(visual, "RenderSync")` → `False`,
+      `RenderAsync` → `True`). 현재 테마를 적용한 이미지가 필요하면 `RenderAsync` 쪽을
+      알아보세요. 위 방식으로 충분하면 굳이 바꿀 필요는 없습니다.
     - 해상도를 키우면 텍스트가 상대적으로 작아집니다. 보고서용이면 `WIDTH/HEIGHT` 비율을
       실제 시각화 배치 비율과 비슷하게 맞추세요.
     - 폴더가 없으면 `Directory.CreateDirectory`가 만들어 줍니다. 쓰기 권한은 확인하세요.
@@ -132,11 +139,14 @@ from Spotfire.Dxp.Data.Export import DataWriterTypeIdentifiers
 from System.IO import File, Path, Directory
 from System import DateTime
 
-# 형식 선택:
-#   DataWriterTypeIdentifiers.ExcelXlsDataWriter  → .xls
-#   DataWriterTypeIdentifiers.StdfDataWriter      → .stdf (Spotfire 이진 형식)
-WRITER = DataWriterTypeIdentifiers.ExcelXlsDataWriter
-EXTENSION = ".xls"
+# 형식 선택 (14.x 에서 실제 확인된 것들)
+#   ExcelXlsDataWriter             → .xls
+#   ExcelXlsxDataWriter            → .xlsx
+#   SpreadsheetDataCsvUtf8Writer   → .csv  (UTF-8, 한글 안전)
+#   SpreadsheetDataCsvWriter       → .csv  (시스템 인코딩)
+#   SbdfDataWriter / StdfDataWriter → Spotfire 이진 형식
+WRITER = DataWriterTypeIdentifiers.SpreadsheetDataCsvUtf8Writer
+EXTENSION = ".csv"
 
 stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss")
 folder = Path.Combine(outDir, "export_" + stamp)
@@ -182,9 +192,21 @@ columnNames = [c.Name for c in table.Columns if "_internal" not in c.Name]
       `File.Create(path)`를 쓰세요.
     - `writer.Write`가 요구하는 컬럼 이름은 **파이썬 리스트로 넘어갑니다.**
       타입 오류가 나면 `Array[String](columnNames)`로 변환해 보세요 → [3.5 참조](05-dotnet-interop.html#55-net)
-    - CSV(텍스트)로 내보내려면 확장자만 바꾸는 것으로는 안 됩니다.
-      사용 가능한 `DataWriterTypeIdentifiers` 목록은 버전마다 다르므로
-      `for m in dir(DataWriterTypeIdentifiers): print m` 으로 확인하세요.
+    - **CSV로 내보내려면 확장자만 바꾸면 안 되고 writer 를 바꿔야 합니다.**
+      한글이 들어간다면 `SpreadsheetDataCsvUtf8Writer` 를 쓰세요.
+    - Spotfire 14.x에서 확인된 전체 목록입니다.
+
+      ```text
+      ExcelXlsDataWriter                    SpreadsheetDataSemicolonWriter
+      ExcelXlsxDataWriter                   SpreadsheetDataWriter
+      SbdfDataWriter                        SpreadsheetUtf8DataWriter
+      SpreadsheetDataCsvUtf8Writer          StdfDataWriter
+      SpreadsheetDataCsvWriter              StdfOneDataWriter
+      SpreadsheetDataSemicolonUtf8Writer
+      ```
+
+      버전마다 다를 수 있으니 다음으로 확인하세요.
+      `for m in dir(DataWriterTypeIdentifiers): print m`
 
 ---
 
@@ -223,10 +245,9 @@ from Spotfire.Dxp.Data.Export import DataWriterTypeIdentifiers
 from Spotfire.Dxp.Data.Import import StdfDataSource
 from System.IO import MemoryStream, SeekOrigin
 
-MARKING_NAME = "Marking"
-
-marking = Document.Data.Markings[MARKING_NAME]
-markedRows = marking.GetSelection(sourceTable).AsIndexSet()
+# 마킹 이름을 하드코딩하지 않는다.
+# 한국어 UI에서는 기본 마킹 이름이 "Marking" 이 아니라 "마킹" 이다.
+markedRows = Document.ActiveMarkingSelectionReference.GetSelection(sourceTable).AsIndexSet()
 
 if markedRows.Count == 0:
     Document.Properties["ScriptLog"] = u"마킹된 행이 없습니다. 먼저 차트에서 선택하세요."
@@ -261,18 +282,31 @@ else:
 - **원본 대비 고정**: 필터를 바꿔도 스냅샷은 그대로 남습니다
 
 !!! note "검증 포인트"
-    - `StdfDataSource`의 위치(`Spotfire.Dxp.Data.Import`)는 **버전에 따라 다를 수 있습니다.**
-      import에서 실패하면 다음으로 확인하세요.
+!!! danger "이 예제의 `StdfDataSource` 는 확인 중입니다"
+    실측 결과 **`StdfDataSource` 라는 이름은 존재하지 않습니다.**
+    Spotfire 14.x의 `Spotfire.Dxp.Data.Import` 에 실제로 있는 것은 다음입니다.
 
-      ```python
-      import Spotfire.Dxp.Data.Import as imp
-      for m in dir(imp):
-          if "Stdf" in m or "Source" in m:
-              print m
-      ```
+    ```text
+    StdfFileDataSource    SbdfFileDataSource    SbdfLibraryDataSource
+    TextFileDataSource    DataTableDataSource   DatabaseDataSource
+    FileDataSource        InformationLinkDataSource
+    DataSourceFactory     FileDataSourceFactory
+    ```
+
+    이 중 무엇이 **메모리 스트림**을 받는지 확인한 뒤 이 예제를 정확한 코드로
+    교체할 예정입니다. 확인용 스크립트는 저장소의
+    [`checks/07_snapshot_datasource.py`](https://github.com/cozytk/spotfire-iron-python-scripts/blob/main/checks/07_snapshot_datasource.py)
+    에 있습니다.
+
+    그때까지는 위 코드의 `StdfDataSource` 를 `SbdfFileDataSource` 로 바꿔서
+    시도해 보세요. 기록 쪽은 `StdfDataWriter` 대신 `SbdfDataWriter` 를 씁니다.
+
+!!! note "검증 포인트"
+    - `SbdfDataWriter` / `StdfDataWriter` 로 **메모리에 기록하는 것 자체는 확인했습니다.**
     - 스냅샷 테이블은 **문서에 포함되어 저장**됩니다. 행이 많으면 파일 크기가 커집니다.
-    - 마킹 이름이 `"Marking"`이 아닐 수 있습니다. `for m in Document.Data.Markings: print m.Name`
-      으로 실제 이름을 확인하세요.
+    - **마킹 이름을 하드코딩하지 마세요.** 한국어 UI에서는 기본 마킹 이름이
+      `"Marking"` 이 아니라 `"마킹"` 입니다(실측 확인). 여러 개면 `"마킹 (2)"` 처럼 붙습니다.
+      `Document.ActiveMarkingSelectionReference` 를 쓰면 이름과 무관하게 동작합니다.
     - `ReplaceData`는 기존 테이블 내용을 지웁니다. 스냅샷 이름을 원본과 같게 두지 마세요.
 
 ---
@@ -527,9 +561,13 @@ for table in Document.Data.Tables:
       `Refresh()`를 부르세요.
     - 임베디드(파일에 포함된) 데이터는 `IsRefreshable`이 `False`입니다.
     - 테이블이 많고 크면 실행에 시간이 걸립니다. 실행 중 Spotfire가 멈춘 것처럼 보일 수 있습니다.
-    - `NotificationService`의 메서드 이름(`AddInformationNotification`,
-      `AddWarningNotification`)은 버전에 따라 다를 수 있습니다. 실패하면
-      `for m in dir(ns): print m` 으로 확인하세요.
+    - `NotificationService` 의 메서드는 **실측으로 확인했습니다.**(14.x)
+
+      ```text
+      AddInformationNotification    AddInformationNotificationWithActions
+      AddWarningNotification        AddWarningNotificationWithActions
+      AddErrorNotification          AddErrorNotificationWithActions
+      ```
 
 ---
 

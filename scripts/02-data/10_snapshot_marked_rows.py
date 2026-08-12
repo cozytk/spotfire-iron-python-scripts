@@ -15,10 +15,9 @@ from Spotfire.Dxp.Data.Export import DataWriterTypeIdentifiers
 from Spotfire.Dxp.Data.Import import StdfDataSource
 from System.IO import MemoryStream, SeekOrigin
 
-MARKING_NAME = "Marking"
-
-marking = Document.Data.Markings[MARKING_NAME]
-markedRows = marking.GetSelection(sourceTable).AsIndexSet()
+# 마킹 이름을 하드코딩하지 않는다.
+# 한국어 UI에서는 기본 마킹 이름이 "Marking" 이 아니라 "마킹" 이다.
+markedRows = Document.ActiveMarkingSelectionReference.GetSelection(sourceTable).AsIndexSet()
 
 if markedRows.Count == 0:
     Document.Properties["ScriptLog"] = u"마킹된 행이 없습니다. 먼저 차트에서 선택하세요."

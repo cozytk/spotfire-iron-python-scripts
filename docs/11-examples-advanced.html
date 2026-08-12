@@ -109,12 +109,11 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Data</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataValueCursor</span>
 
 <span class="n">PAGE_TITLE</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;자동 생성 비교&quot;</span>
-<span class="n">MARKING_NAME</span> <span class="o">=</span> <span class="s2">&quot;Marking&quot;</span>
 <span class="n">MAX_CHARTS</span> <span class="o">=</span> <span class="mi">12</span>          <span class="c1"># 너무 많이 만들지 않도록 상한</span>
 
 <span class="c1"># 1) 마킹된 행에서 분할 기준 값의 고유 목록을 얻는다</span>
-<span class="n">marking</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Markings</span><span class="p">[</span><span class="n">MARKING_NAME</span><span class="p">]</span>
-<span class="n">markedRows</span> <span class="o">=</span> <span class="n">marking</span><span class="o">.</span><span class="n">GetSelection</span><span class="p">(</span><span class="n">sourceTable</span><span class="p">)</span><span class="o">.</span><span class="n">AsIndexSet</span><span class="p">()</span>
+<span class="c1">#    마킹 이름은 하드코딩하지 않는다 (한국어 UI에서는 &quot;마킹&quot;)</span>
+<span class="n">markedRows</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">ActiveMarkingSelectionReference</span><span class="o">.</span><span class="n">GetSelection</span><span class="p">(</span><span class="n">sourceTable</span><span class="p">)</span><span class="o">.</span><span class="n">AsIndexSet</span><span class="p">()</span>
 <span class="n">cursor</span> <span class="o">=</span> <span class="n">DataValueCursor</span><span class="o">.</span><span class="n">CreateFormatted</span><span class="p">(</span><span class="n">sourceTable</span><span class="o">.</span><span class="n">Columns</span><span class="p">[</span><span class="n">splitColumn</span><span class="p">])</span>
 
 <span class="n">values</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
@@ -318,8 +317,8 @@ Spotfire에는 <strong>표현식 전체 검색</strong> 기능이 없습니다.
 <div class="admonition note">
 <p class="admonition-title">검증 포인트</p>
 <ul>
-<li><code>TextDataReaderSettings</code>의 메서드 이름(<code>AddColumnNameRow</code>, <code>SetDataType</code>, <code>Separator</code>)은
-  오래 유지된 API지만, 실패하면 <code>dir(settings)</code>로 확인하세요.</li>
+<li><code>TextDataReaderSettings</code> 의 <code>Separator</code>·<code>AddColumnNameRow</code>·<code>SetDataType</code> 는
+  <strong>모두 존재를 확인했습니다.</strong>(14.x)</li>
 <li>인코딩을 <code>Encoding.UTF8</code>로 지정했습니다. 한글 페이지 제목이 깨지면 이 부분을 의심하세요.</li>
 <li>표현식 안의 탭·줄바꿈을 공백으로 바꿉니다. 그러지 않으면 컬럼이 밀립니다.</li>
 <li>만들어진 테이블은 문서에 <strong>저장</strong>됩니다. 배포 전에 지우고 싶다면
@@ -588,17 +587,22 @@ Spotfire에는 산점도 매트릭스(SPLOM) 시각화가 없습니다.
 <div class="admonition note">
 <p class="admonition-title">검증 포인트</p>
 <ul>
-<li><strong><code>AddNew[ScatterPlot]()</code>은 시각화 콘텐츠를 반환하지, 레이아웃에 넣을
-  <code>Visual</code> 컨테이너를 반환하지 않습니다.</strong> 그래서 위 코드는 생성 직후
-  제목으로 컨테이너를 다시 찾습니다. 이 점을 놓치면 <code>ApplyLayout</code>에서 실패합니다.</li>
-<li>그래서 <strong>제목이 겹치면 안 됩니다.</strong> 컬럼 이름이 유일하므로 <code>"Y vs X"</code> 제목은 안전합니다.</li>
-<li><code>BeginStackedSection(weight)</code>는 버전에 따라 인자를 받지 않을 수 있어 <code>try</code>로 감쌌습니다.</li>
-<li>축 표현식에 <code>&lt;[컬럼]&gt;</code> 형식(꺾쇠 포함)을 썼습니다. 이건 <strong>축 선택기가 붙는 형태</strong>로,
-  일반 표현식 <code>[컬럼]</code>과 달리 사용자가 축을 바꿀 수 있게 합니다.</li>
-<li>컬럼을 6개 이상 고르면 36개 이상의 산점도가 생겨 <strong>매우 느려집니다.</strong>
-  실무에서는 5개 정도로 제한하세요.</li>
-<li>재실행하면 기존 산점도를 지우고 다시 만듭니다. <strong>그 페이지를 손으로 편집했다면 사라집니다.</strong></li>
+<li><strong><code>AddNew[ScatterPlot]()</code> 은 시각화 콘텐츠를 반환하지, 레이아웃에 넣을
+  <code>Visual</code> 컨테이너를 반환하지 않습니다.</strong> 실측으로 확인했습니다.</li>
 </ul>
+<p><code>text
+  page.Visuals.AddNew[BarChart]()  -&gt;  [type 'BarChart']    (콘텐츠)
+  page.Visuals 를 순회해서 얻는 것  -&gt;  [type 'Visual']       (컨테이너)</code></p>
+<p>그래서 위 코드는 생성 직후 제목으로 컨테이너를 다시 찾습니다.
+  이 점을 놓치면 <code>ApplyLayout</code> 에서 실패합니다.
+- 그래서 <strong>제목이 겹치면 안 됩니다.</strong> 컬럼 이름이 유일하므로 <code>"Y vs X"</code> 제목은 안전합니다.
+- <code>BeginStackedSection(weight)</code> 는 <strong>인자를 받는 형태로 동작을 확인했습니다.</strong>(14.x)
+  위 코드의 <code>try/except</code> 는 구버전 대비 안전장치로 남겨 둔 것입니다.
+- 축 표현식에 <code>&lt;[컬럼]&gt;</code> 형식(꺾쇠 포함)을 썼습니다. 이건 <strong>축 선택기가 붙는 형태</strong>로,
+  일반 표현식 <code>[컬럼]</code>과 달리 사용자가 축을 바꿀 수 있게 합니다.
+- 컬럼을 6개 이상 고르면 36개 이상의 산점도가 생겨 <strong>매우 느려집니다.</strong>
+  실무에서는 5개 정도로 제한하세요.
+- 재실행하면 기존 산점도를 지우고 다시 만듭니다. <strong>그 페이지를 손으로 편집했다면 사라집니다.</strong></p>
 </div>
 <hr />
 <h2 id="_2">예제들을 조합하기</h2>

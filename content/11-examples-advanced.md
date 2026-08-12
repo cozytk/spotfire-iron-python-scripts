@@ -45,12 +45,11 @@ from Spotfire.Dxp.Application.Visuals import BarChart
 from Spotfire.Dxp.Data import DataValueCursor
 
 PAGE_TITLE = u"자동 생성 비교"
-MARKING_NAME = "Marking"
 MAX_CHARTS = 12          # 너무 많이 만들지 않도록 상한
 
 # 1) 마킹된 행에서 분할 기준 값의 고유 목록을 얻는다
-marking = Document.Data.Markings[MARKING_NAME]
-markedRows = marking.GetSelection(sourceTable).AsIndexSet()
+#    마킹 이름은 하드코딩하지 않는다 (한국어 UI에서는 "마킹")
+markedRows = Document.ActiveMarkingSelectionReference.GetSelection(sourceTable).AsIndexSet()
 cursor = DataValueCursor.CreateFormatted(sourceTable.Columns[splitColumn])
 
 values = set()
@@ -247,8 +246,8 @@ else:
 3. 문서 속성 `AuditSearch`에 `Amount`를 넣고 다시 실행하면 해당 컬럼 사용처만 남습니다
 
 !!! note "검증 포인트"
-    - `TextDataReaderSettings`의 메서드 이름(`AddColumnNameRow`, `SetDataType`, `Separator`)은
-      오래 유지된 API지만, 실패하면 `dir(settings)`로 확인하세요.
+    - `TextDataReaderSettings` 의 `Separator`·`AddColumnNameRow`·`SetDataType` 는
+      **모두 존재를 확인했습니다.**(14.x)
     - 인코딩을 `Encoding.UTF8`로 지정했습니다. 한글 페이지 제목이 깨지면 이 부분을 의심하세요.
     - 표현식 안의 탭·줄바꿈을 공백으로 바꿉니다. 그러지 않으면 컬럼이 밀립니다.
     - 만들어진 테이블은 문서에 **저장**됩니다. 배포 전에 지우고 싶다면
@@ -501,11 +500,19 @@ BeginSideBySideSection()          가로 분할
 ```
 
 !!! note "검증 포인트"
-    - **`AddNew[ScatterPlot]()`은 시각화 콘텐츠를 반환하지, 레이아웃에 넣을
-      `Visual` 컨테이너를 반환하지 않습니다.** 그래서 위 코드는 생성 직후
-      제목으로 컨테이너를 다시 찾습니다. 이 점을 놓치면 `ApplyLayout`에서 실패합니다.
+    - **`AddNew[ScatterPlot]()` 은 시각화 콘텐츠를 반환하지, 레이아웃에 넣을
+      `Visual` 컨테이너를 반환하지 않습니다.** 실측으로 확인했습니다.
+
+      ```text
+      page.Visuals.AddNew[BarChart]()  ->  [type 'BarChart']    (콘텐츠)
+      page.Visuals 를 순회해서 얻는 것  ->  [type 'Visual']       (컨테이너)
+      ```
+
+      그래서 위 코드는 생성 직후 제목으로 컨테이너를 다시 찾습니다.
+      이 점을 놓치면 `ApplyLayout` 에서 실패합니다.
     - 그래서 **제목이 겹치면 안 됩니다.** 컬럼 이름이 유일하므로 `"Y vs X"` 제목은 안전합니다.
-    - `BeginStackedSection(weight)`는 버전에 따라 인자를 받지 않을 수 있어 `try`로 감쌌습니다.
+    - `BeginStackedSection(weight)` 는 **인자를 받는 형태로 동작을 확인했습니다.**(14.x)
+      위 코드의 `try/except` 는 구버전 대비 안전장치로 남겨 둔 것입니다.
     - 축 표현식에 `<[컬럼]>` 형식(꺾쇠 포함)을 썼습니다. 이건 **축 선택기가 붙는 형태**로,
       일반 표현식 `[컬럼]`과 달리 사용자가 축을 바꿀 수 있게 합니다.
     - 컬럼을 6개 이상 고르면 36개 이상의 산점도가 생겨 **매우 느려집니다.**

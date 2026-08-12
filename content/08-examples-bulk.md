@@ -227,7 +227,7 @@ for page in Document.Pages:
                 vc.SectorSizeAxis.Expression = expression
                 changed.append(visual.Title)
 
-            elif visual.TypeId == VisualTypeIdentifiers.TreemapChart:
+            elif visual.TypeId == VisualTypeIdentifiers.Treemap:
                 vc.SizeAxis.Expression = expression
                 changed.append(visual.Title)
         except:

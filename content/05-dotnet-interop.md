@@ -153,10 +153,17 @@ tables = Document.Data.Tables
 for t in tables:
     print t.Name
 
-# 이름/인덱스로 조회
+# 이름으로 조회
 sales = tables["Sales"]
-first = tables[0]
 sales = tables.Item["Sales"]     # Item 프로퍼티 명시 (동일)
+
+# 주의: 데이터 테이블 컬렉션은 숫자 인덱스를 받지 않습니다
+# tables[0]  ->  TypeError: expected str, got int
+# 첫 번째 테이블이 필요하면 순회해서 꺼내세요
+first = None
+for t in tables:
+    first = t
+    break
 
 # 존재 여부 — 파이썬의 in 대신 Contains를 쓰는 편이 안전
 if tables.Contains("Sales"):

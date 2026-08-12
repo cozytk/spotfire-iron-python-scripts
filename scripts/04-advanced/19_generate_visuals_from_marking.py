@@ -16,12 +16,11 @@ from Spotfire.Dxp.Application.Visuals import BarChart
 from Spotfire.Dxp.Data import DataValueCursor
 
 PAGE_TITLE = u"자동 생성 비교"
-MARKING_NAME = "Marking"
 MAX_CHARTS = 12          # 너무 많이 만들지 않도록 상한
 
 # 1) 마킹된 행에서 분할 기준 값의 고유 목록을 얻는다
-marking = Document.Data.Markings[MARKING_NAME]
-markedRows = marking.GetSelection(sourceTable).AsIndexSet()
+#    마킹 이름은 하드코딩하지 않는다 (한국어 UI에서는 "마킹")
+markedRows = Document.ActiveMarkingSelectionReference.GetSelection(sourceTable).AsIndexSet()
 cursor = DataValueCursor.CreateFormatted(sourceTable.Columns[splitColumn])
 
 values = set()

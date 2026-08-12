@@ -122,20 +122,46 @@
 </code></pre></div>
 
 <h3 id="_1">주요 시각화 유형 식별자</h3>
+<p>아래는 Spotfire 14.x에서 <code>dir(VisualTypeIdentifiers)</code> 로 실제 확인한 전체 목록입니다.</p>
 <div class="codehilite"><pre><span></span><code><span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">BarChart</span>
 <span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">LineChart</span>
 <span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">ScatterPlot</span>
+<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">ScatterPlot3D</span>
 <span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">PieChart</span>
-<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">CrossTable</span>
-<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">Table</span>
-<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">HeatMap</span>
 <span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">CombinationChart</span>
-<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">TreemapChart</span>
+<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">WaterfallChart</span>
+<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">BoxPlot</span>
+<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">HeatMap</span>
+<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">Treemap</span>             <span class="c1"># TreemapChart 가 아님에 주의</span>
+<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">ParallelCoordinatePlot</span>
+<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">MapChart</span>
+<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">MapChart2</span>
+<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">Table</span>
+<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">CrossTable</span>
+<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">SummaryTable</span>
 <span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">GraphicalTable</span>
-<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">HtmlTextArea</span>       <span class="c1"># 텍스트 영역</span>
 <span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">KpiChart</span>
+<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">KpiVisualization</span>
+<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">HtmlTextArea</span>        <span class="c1"># 텍스트 영역</span>
+<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">TextArea</span>
+
+<span class="c1"># 그래픽 테이블 안의 미니 시각화들</span>
+<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">SparklineMiniatureVisualization</span>
+<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">BulletGraphMiniatureVisualization</span>
+<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">CalculatedValueMiniatureVisualization</span>
+<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">IconMiniatureVisualization</span>
 </code></pre></div>
 
+<div class="admonition warning">
+<p class="admonition-title">이름을 추측하지 마세요</p>
+<p><code>Treemap</code> 을 <code>TreemapChart</code> 로 쓰면 <code>AttributeError</code> 가 납니다.
+확실하지 않으면 아래로 직접 확인하세요.</p>
+<p><code>python
+from Spotfire.Dxp.Application.Visuals import VisualTypeIdentifiers
+for name in dir(VisualTypeIdentifiers):
+    if not name.startswith("_"):
+        print name</code></p>
+</div>
 <h3 id="_2">시각화의 데이터 설정</h3>
 <div class="codehilite"><pre><span></span><code><span class="n">vc</span> <span class="o">=</span> <span class="n">visual</span><span class="o">.</span><span class="n">As</span><span class="p">[</span><span class="n">VisualContent</span><span class="p">]()</span>
 

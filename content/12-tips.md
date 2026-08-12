@@ -105,14 +105,20 @@ ps = Application.GetService[ProgressService]()
 | 페이지 제목 | 자주 바뀜 | 인덱스 또는 매개변수 |
 | 데이터 테이블 이름 | 재구성 시 바뀜 | 매개변수 (`DataTable` 타입) |
 | 컬럼 이름 | 데이터 소스 변경 시 | 존재 확인 후 사용 |
-| 마킹 이름 | 기본값이 `"Marking"`이 아닐 수 있음 | 존재 확인 |
+| 마킹 이름 | **한국어 UI에서는 `"마킹"`** (실측 확인) | `ActiveMarkingSelectionReference` |
+
+!!! danger "마킹 이름은 UI 언어에 따라 다릅니다"
+    한국어 Spotfire에서 기본 마킹 이름은 `"Marking"` 이 아니라 **`"마킹"`** 입니다.
+    두 번째부터는 `"마킹 (2)"`, `"마킹 (3)"` 이 됩니다.
+    영어 UI 기준으로 쓴 스크립트가 한국어 환경에서 조용히 실패하는 대표적인 원인입니다.
 
 ```python
-# 방어적으로
-MARKING_NAME = "Marking"
+# 가장 좋은 방법: 이름을 쓰지 않는다
+markedRows = Document.ActiveMarkingSelectionReference.GetSelection(table).AsIndexSet()
+
+# 특정 마킹을 꼭 지목해야 한다면, 존재 확인 후 사용
 markingNames = [m.Name for m in Document.Data.Markings]
-if MARKING_NAME not in markingNames:
-    MARKING_NAME = markingNames[0] if markingNames else None
+print markingNames        # 예: ['마킹', '마킹 (2)', '마킹 (3)']
 ```
 
 ## 12.5 여러 번 실행해도 안전하게 (멱등성)

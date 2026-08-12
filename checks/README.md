@@ -37,44 +37,25 @@
 
 ---
 
-## 개별 항목 상세 확인 (선택)
+## 지금 확인할 것 (3차)
 
-00 에서 `[NO]` 가 난 항목을 더 파고들 때 쓰는 파일들입니다.
-00 만으로 충분하면 굳이 안 돌리셔도 됩니다.
+### [`07_snapshot_datasource.py`](07_snapshot_datasource.py)
 
-| 파일 | 확인 대상 | 문서 변경 | 관련 교안 |
-|------|-----------|:---------:|-----------|
-| [`01_environment.py`](01_environment.py) | `__future__ division`, 표준 라이브러리, .NET 접근, 문자열 타입 | 없음 | 4장 |
-| [`02_visual_api.py`](02_visual_api.py) | 시각화 유형별로 어떤 속성이 실제 존재하는지, `AxisRange`, 유형 식별자 전체 목록 | 없음 | 6장, 예제 3·4·6·7 |
-| [`03_services_and_types.py`](03_services_and_types.py) | `NotificationService`·`ProgressService` 메서드명, `DataWriterTypeIdentifiers`, `StdfDataSource` 존재, `TextDataReaderSettings` | 없음 | 예제 9·10·13·20 |
-| [`04_data_and_filters.py`](04_data_and_filters.py) | 커서·`GetDistinctRows`·마킹·필터링 스킴, `scheme[table][column]` 인덱싱 | 없음 | 6장, 예제 11·12·18 |
-| [`05_render_and_export.py`](05_render_and_export.py) | `VisualContent.Render`, `RenderSync` 존재, writer 생성 | 없음 | 예제 8·9 |
-| [`06_page_and_layout.py`](06_page_and_layout.py) | `Page.Visible`, `AddNew` 반환형, `LayoutDefinition` 인자 형태 | **있음** | 예제 15·19·21 |
+2차에서 **예제 10(마킹 행 스냅샷)이 깨진다는 것**이 드러났습니다.
+`StdfDataSource` 라는 이름이 존재하지 않습니다. 무엇으로 대체할지 확정하기 위한 확인입니다.
 
-### 실행 순서
+| 단계 | 내용 | 문서 변경 |
+|------|------|:---------:|
+| 1 | 컬렉션별 숫자 인덱싱 가능 여부 (`Tables[0]` 이 왜 실패했는지 특정) | 없음 |
+| 2 | `SbdfDataWriter` / `StdfDataWriter` 로 메모리에 기록 | 없음 |
+| 3 | `SbdfFileDataSource` 등이 **메모리 스트림을 받는지** | 없음 |
+| 4 | 실제 왕복 — 임시 테이블 생성 후 삭제 | **있음** |
 
-권장: **00 먼저** → `[NO]` 가 난 부분만 해당 파일로 파고들기
+4단계는 `__SNAPSHOT_TEST__` 테이블을 만들었다 지웁니다.
+부담스러우면 파일 맨 위의 `RUN_ROUNDTRIP = True` 를 `False` 로 바꾸면 1~3단계만 돕니다.
+**사본에서 실행**하시길 권합니다.
 
-**01 → 05 는 전부 읽기 전용**이라 원본에서 실행해도 안전합니다.
-한 번에 다 하실 필요 없고, 편한 것부터 주셔도 됩니다.
-
-**06 은 문서를 변경합니다.** 반드시 **분석 파일 사본**에서 실행하세요.
-
-- `__API_TEST__` 라는 임시 페이지를 만들어 시험하고 마지막에 삭제합니다
-- 중간에 오류가 나면 그 페이지가 남을 수 있습니다. 직접 지우시면 됩니다
-- 06이 부담스러우면 건너뛰셔도 됩니다. 해당 API는 교안에 "확인 필요"로 남겨 두겠습니다
-
-### 준비하면 결과가 풍부해지는 것
-
-- **02, 05**: 막대·선·산점도·표·교차표·텍스트 영역이 **여러 종류 섞인 페이지**를 활성 페이지로 두고 실행
-- **04**: 데이터 테이블과 필터가 있는 분석 파일
-
-### 출력 규칙
-
-- 각 줄이 `[OK]` / `[NO]` / `[??]` 로 시작합니다
-- 꺾쇠(`<` `>`)는 대괄호(`[` `]`)로 바꿔서 출력합니다
-  — 1차 때 `<type 'unicode'>` 가 HTML 태그로 인식되어 사라졌기 때문입니다
-- 출력 전체를 그대로 복사해 붙여 주시면 됩니다
+마지막 "요약" 절에 예제 10 에 쓸 조합이 나옵니다. 그것만 주셔도 됩니다.
 
 ---
 
@@ -129,3 +110,91 @@ type("한글")  -> [type 'str']
 결과가 나오면 교안 4장의 "한글에는 `u` 를 붙이세요" 서술을 정확하게 고치겠습니다.
 
 `__future__ division` 확인도 `01_environment.py` 에 포함했습니다.
+
+---
+
+### 2차 — 환경·API 실측 (2026-08-12)
+
+**환경: IronPython 2.7.12 / .NET Framework 4.8 (64-bit) / Spotfire 14.x**
+
+#### 언어·환경
+
+| 항목 | 결과 |
+|------|------|
+| `from __future__ import division` | **지원** (`3/4` → `0.75`, `3//4` → `0`) |
+| `type(u"한글")` / `type("한글")` | 둘 다 `str` — **같은 타입** |
+| `len(u"한글")` / `len("한글")` | 둘 다 `2` — **바이트가 아니라 글자 수** |
+| 표준 라이브러리 | `re math datetime json csv collections itertools os codecs random time string` 전부 OK |
+| `clr`, `System.IO`, `System.DateTime`, `List[str]` | 전부 OK |
+| `Application` 실제 타입 | `RichAnalysisApplication` |
+
+→ **`u` 접두사는 정확성을 위해 필요하지 않습니다.** 교안에서는 의도 표현과 이식성을
+이유로 계속 쓰되, "필요하다"는 서술은 정정했습니다.
+
+#### 교안 오류 발견
+
+| 문제 | 실제 | 반영 |
+|------|------|------|
+| `VisualTypeIdentifiers.TreemapChart` | **`Treemap`** 이 맞음 | 예제 3, 6장 수정 |
+| `StdfDataSource` | **존재하지 않음** | 예제 10 보류, 3차에서 확정 |
+| `RenderSync` | **없음.** `RenderAsync` 만 존재 | 예제 8 수정 |
+| 마킹 이름 `"Marking"` | 한국어 UI에서는 **`"마킹"`** | 예제 10·19, 12장 수정 |
+| `Document.Data.Tables[0]` | `expected str, got int` 로 추정 실패 | 5장 수정, 3차에서 확정 |
+
+#### 확정된 API (교안의 "버전 확인 필요" 표시 제거)
+
+| 항목 | 결과 |
+|------|------|
+| `Page.Visible` | 읽기·쓰기 모두 동작 |
+| `AxisRange.DefaultRange` / `AxisRange(0, 100)` | 동작 |
+| `LayoutDefinition` | `Add` `BeginSideBySideSection` `BeginStackedSection` `EndSection` 존재 |
+| `BeginStackedSection(weight)` | **인자 받는 형태로 동작.** `ApplyLayout` 성공 |
+| `Visuals.AddNew[BarChart]()` 반환형 | `BarChart`(콘텐츠). 컨테이너는 `Visual` — 예제 21의 경고가 맞았음 |
+| `VisualContent.Render(Graphics, Rectangle)` | 동작 |
+| `NotificationService` | `Add{Information,Warning,Error}Notification` + `...WithActions` |
+| `ProgressService` | `CurrentProgress`, `ExecuteWithProgress`, `BackgroundProgresses` |
+| `TextDataReaderSettings` | `Separator`, `AddColumnNameRow`, `SetDataType` 존재 |
+| `scheme.ResetAllFilters()` | 스킴 3개 모두 존재 |
+
+#### 시각화 유형별 속성 (일괄 처리 루프 설계 근거)
+
+| 시각화 | 확인된 것 |
+|--------|-----------|
+| `Table` | `Data.*`, `Legend.Visible`, `TableColumns`, `SortInfos` — **축(`XAxis`/`YAxis`) 없음** |
+| `HtmlTextArea` | `As[VisualContent]()` **캐스팅은 성공하지만 속성이 하나도 없음** |
+
+→ **캐스팅 성공만으로는 대상을 걸러낼 수 없습니다.** 속성별 `try/except` 가 필요하다는
+교안의 설계가 실측으로 뒷받침되었습니다.
+
+#### `DataWriterTypeIdentifiers` 전체 (14.x)
+
+```text
+ExcelXlsDataWriter                 SpreadsheetDataSemicolonWriter
+ExcelXlsxDataWriter                SpreadsheetDataWriter
+SbdfDataWriter                     SpreadsheetUtf8DataWriter
+SpreadsheetDataCsvUtf8Writer       StdfDataWriter
+SpreadsheetDataCsvWriter           StdfOneDataWriter
+SpreadsheetDataSemicolonUtf8Writer
+```
+
+→ **CSV writer 가 있습니다.** 한글이 있으면 `SpreadsheetDataCsvUtf8Writer`.
+예제 9를 이걸로 바꿨습니다.
+
+#### `Spotfire.Dxp.Data.Import` 의 DataSource 전체 (14.x)
+
+```text
+StdfFileDataSource    SbdfFileDataSource    SbdfLibraryDataSource
+TextFileDataSource    DataTableDataSource   DatabaseDataSource
+FileDataSource        InformationLinkDataSource
+DataSourceFactory     FileDataSourceFactory
+```
+
+#### 렌더링 실패 사례
+
+텍스트 영역에서 `Render` 실패:
+
+```text
+Attempt take snapshot on application thread in state 'Executing'.
+```
+
+→ 예제 8의 `try/except` + 실패 목록 보고 구조가 필요한 이유입니다.
