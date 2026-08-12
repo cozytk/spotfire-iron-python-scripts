@@ -246,8 +246,14 @@ try:
     note(OK, "DataWriterTypeIdentifiers: %s" % clean(", ".join(names)))
     for name in names:
         try:
-            Document.Data.CreateDataWriter(getattr(DataWriterTypeIdentifiers, name))
-            note(OK, "CreateDataWriter(%s) 성공" % name)
+            writer = Document.Data.CreateDataWriter(getattr(DataWriterTypeIdentifiers, name))
+            # 반환값을 반드시 확인한다. 예외 없이 None 이 오는 경우가 있다
+            if writer is None:
+                note(NO, "CreateDataWriter(%s) -> None 반환 (Write 호출 불가)" % name)
+            elif not hasattr(writer, "Write"):
+                note(NO, "CreateDataWriter(%s) -> Write 메서드 없음" % name)
+            else:
+                note(OK, "CreateDataWriter(%s) -> 사용 가능" % name)
         except Exception, e:
             note(NO, "CreateDataWriter(%s) -> %s" % (name, clean(str(e))[:50]))
 except Exception, e:

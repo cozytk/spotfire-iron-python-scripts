@@ -157,7 +157,7 @@ for t in tables:
 sales = tables["Sales"]
 sales = tables.Item["Sales"]     # Item 프로퍼티 명시 (동일)
 
-# 주의: 데이터 테이블 컬렉션은 숫자 인덱스를 받지 않습니다
+# 주의: 데이터 테이블 컬렉션은 숫자 인덱스를 받지 않습니다 (14.x 실측 확인)
 # tables[0]  ->  TypeError: expected str, got int
 # 첫 번째 테이블이 필요하면 순회해서 꺼내세요
 first = None
@@ -177,8 +177,20 @@ tableList = [t for t in tables]
 tableList.sort(key=lambda t: t.Name)
 ```
 
-!!! warning "`len()`이 안 되는 컬렉션이 있습니다"
-    .NET 컬렉션은 `.Count` 프로퍼티를 쓰세요. `len()`은 일부 타입에서만 동작합니다.
+!!! warning "컬렉션마다 인덱싱 방식이 다릅니다"
+    Spotfire 14.x에서 실제로 확인한 결과입니다.
+
+    | 컬렉션 | 숫자 인덱스 | 이름 인덱스 |
+    |--------|:-----------:|:-----------:|
+    | `Document.Data.Tables` | **불가** | 가능 |
+    | `table.Columns` | 가능 | 가능 |
+    | `Document.Pages` | 가능 | — |
+    | `Document.FilteringSchemes` | 가능 | — |
+
+    `Document.Data.Tables[0]` 은 `TypeError: expected str, got int` 로 실패합니다.
+    확실하지 않으면 **순회해서 꺼내는 방식**이 안전합니다.
+
+    또한 .NET 컬렉션은 `len()` 대신 `.Count` 프로퍼티를 쓰세요.
 
 ## 5.5 .NET 타입과 열거형
 

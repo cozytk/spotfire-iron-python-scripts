@@ -37,7 +37,33 @@
 
 ---
 
-## 지금 확인할 것 (3차)
+## 지금 확인할 것 (5차)
+
+### [`08_data_export_api.py`](08_data_export_api.py)
+
+4차에서 **`Document.Data.CreateDataWriter(...)` 가 `None` 을 반환**하는 것이 드러났습니다.
+예제 9(데이터 내보내기)와 예제 10(마킹 스냅샷)이 둘 다 이 API에 의존하므로,
+올바른 사용법을 찾아야 합니다.
+
+전부 **조회만** 합니다. 파일도 쓰지 않고 문서도 바꾸지 않습니다.
+
+| 단계 | 내용 |
+|------|------|
+| 1 | `Document.Data` 의 실제 타입과 Create/Writer/Export 관련 멤버 |
+| 2 | `CreateDataWriter` 반환값 정밀 확인 (오버로드 정보 포함) |
+| 3 | `DataManager` 서비스로 얻은 객체에서도 같은지 |
+| 4 | `Spotfire.Dxp.Data.Export` 전체 멤버 |
+| 5 | `DataWriter` 를 직접 만들 수 있는지 |
+| 6 | **표 시각화의 `ExportText` / `ExportData`** (대안 경로) |
+| 7 | `DataTableDataSource` 로 부분집합을 만들 수 있는지 (예제 10 대안) |
+| 8 | 데이터 테이블 자체의 export/save 계열 메서드 |
+
+**6단계 때문에 표(Table) 시각화가 있는 페이지**에서 실행해 주세요.
+없으면 그 항목만 건너뜁니다.
+
+---
+
+## 이전 차수 (참고)
 
 ### [`07_snapshot_datasource.py`](07_snapshot_datasource.py)
 
@@ -260,3 +286,50 @@ FiscalYearOffset, Preview.Thumb, Preview.Mode, 최대, 최소, token
 ```
 
 앞의 10개는 Spotfire 내장 속성이고, `최대`·`최소`·`token` 이 사용자가 만든 것입니다.
+
+---
+
+### 4차 — 스냅샷/인덱싱 확인 (2026-08-12)
+
+#### 확정
+
+| 항목 | 결과 |
+|------|------|
+| `Document.Data.Tables[0]` | **`expected str, got int`** — 숫자 인덱스 불가 확정 |
+| `Document.FilteringSchemes[0]` | 가능 |
+| `table.Columns[0]` | 가능 |
+| `Document.Pages[0]` | 가능 |
+
+→ **예제 18의 실패는 제 검증 하네스 버그였습니다.** 하네스가 `Tables[0]` 을 썼기 때문이고,
+예제 18 본문은 `for dataTable in Document.Data.Tables:` 로 순회하므로 영향이 없습니다.
+5장에 컬렉션별 인덱싱 표를 넣었습니다.
+
+#### 새로 드러난 문제 — 데이터 내보내기 API
+
+```python
+writer = Document.Data.CreateDataWriter(DataWriterTypeIdentifiers.SbdfDataWriter)
+writer.Write(stream, table, rows, columnNames)
+# -> 'NoneType' object has no attribute 'Write'
+```
+
+**호출은 예외 없이 지나가는데 반환값이 `None`** 입니다. `SbdfDataWriter` 와
+`StdfDataWriter` 둘 다 같습니다.
+
+이 때문에 **예제 9(데이터 내보내기)와 예제 10(마킹 스냅샷)이 모두 막혔습니다.**
+두 예제에 경고를 달고 5차 확인(`08_data_export_api.py`)으로 넘겼습니다.
+
+#### 또 하나의 하네스 버그
+
+3차에서 `CreateDataWriter(SbdfDataWriter) 성공` 으로 보고했던 것은 **오보고**였습니다.
+반환값을 확인하지 않고 호출만 해 봤기 때문입니다. `None` 체크를 추가했습니다.
+
+> 교훈: "예외가 안 났다"와 "동작한다"는 다릅니다.
+> 검증 코드는 **반환값까지 확인**해야 합니다.
+
+#### 대안 후보
+
+| 후보 | 상태 |
+|------|------|
+| `DataTableDataSource(table)` | **생성 성공.** 단 테이블 전체를 복사함 |
+| `TablePlot.ExportText(writer)` | 5차에서 확인 예정 |
+| `TablePlot.ExportData(...)` | 5차에서 확인 예정 |

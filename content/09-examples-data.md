@@ -185,6 +185,43 @@ Document.Properties["ScriptLog"] = u"%s<br>저장 위치: %s" % (u"<br>".join(ex
 columnNames = [c.Name for c in table.Columns if "_internal" not in c.Name]
 ```
 
+!!! danger "이 예제는 확인 중입니다 — `CreateDataWriter` 가 `None` 을 반환합니다"
+    Spotfire 14.x 실측에서 다음이 나왔습니다.
+
+    ```python
+    writer = Document.Data.CreateDataWriter(DataWriterTypeIdentifiers.SbdfDataWriter)
+    writer.Write(...)
+    # -> 'NoneType' object has no attribute 'Write'
+    ```
+
+    **호출은 예외 없이 지나가는데 반환값이 `None`** 입니다.
+    그래서 이 예제는 현재 상태로는 동작하지 않습니다.
+
+    확인된 것과 확인 중인 것을 정리하면:
+
+    | 항목 | 상태 |
+    |------|------|
+    | `DataWriterTypeIdentifiers` 의 식별자 목록 | 확인됨 (아래 표) |
+    | `Document.Data.CreateDataWriter(...)` 호출 | 예외는 없으나 **`None` 반환** |
+    | 올바른 writer 획득 방법 | **확인 중** |
+    | 표 시각화의 `ExportText` / `ExportData` (대안 경로) | 확인 중 |
+
+    확인용 스크립트는 [`checks/08_data_export_api.py`](https://github.com/cozytk/spotfire-iron-python-scripts/blob/main/checks/08_data_export_api.py)
+    에 있습니다. 결과가 나오는 대로 이 예제를 정확한 코드로 교체하겠습니다.
+
+    그때까지 데이터를 파일로 내보내야 한다면 **표 시각화의 `ExportText`** 를 쓰는
+    아래 방식을 시도해 보세요.
+
+    ```python
+    from System.IO import StreamWriter
+    from Spotfire.Dxp.Application.Visuals import TablePlot
+
+    # 매개변수: vTable (Visualization) = 표 시각화
+    writer = StreamWriter("C:/temp/out.txt")
+    vTable.As[TablePlot]().ExportText(writer)
+    writer.Close()
+    ```
+
 !!! note "검증 포인트"
     - **Analyst 전용**입니다(로컬 파일 쓰기).
     - `File.OpenWrite`는 기존 파일이 더 길면 뒷부분이 남을 수 있습니다.
@@ -282,8 +319,8 @@ else:
 - **원본 대비 고정**: 필터를 바꿔도 스냅샷은 그대로 남습니다
 
 !!! note "검증 포인트"
-!!! danger "이 예제의 `StdfDataSource` 는 확인 중입니다"
-    실측 결과 **`StdfDataSource` 라는 이름은 존재하지 않습니다.**
+!!! danger "이 예제는 확인 중입니다 — 두 가지가 막혀 있습니다"
+    **첫째, `StdfDataSource` 라는 이름이 존재하지 않습니다.**
     Spotfire 14.x의 `Spotfire.Dxp.Data.Import` 에 실제로 있는 것은 다음입니다.
 
     ```text
@@ -298,11 +335,22 @@ else:
     [`checks/07_snapshot_datasource.py`](https://github.com/cozytk/spotfire-iron-python-scripts/blob/main/checks/07_snapshot_datasource.py)
     에 있습니다.
 
-    그때까지는 위 코드의 `StdfDataSource` 를 `SbdfFileDataSource` 로 바꿔서
-    시도해 보세요. 기록 쪽은 `StdfDataWriter` 대신 `SbdfDataWriter` 를 씁니다.
+    **둘째, 기록에 쓰는 `CreateDataWriter` 가 `None` 을 반환합니다**(예제 9 참조).
+    그래서 메모리에 기록하는 단계부터 막힙니다.
+
+    확인된 대안 하나는 `DataTableDataSource` 입니다. 생성은 성공했습니다.
+
+    ```python
+    import Spotfire.Dxp.Data.Import as imp
+    source = imp.DataTableDataSource(table)      # 생성 성공 확인
+    Document.Data.Tables.Add(u"복사본", source)
+    ```
+
+    다만 이 방식은 **테이블 전체를 복사**하므로, 마킹된 행만 남기려면
+    새 테이블에 데이터 제한을 따로 걸어야 합니다.
+    행 부분집합을 직접 지정할 수 있는지는 확인 중입니다.
 
 !!! note "검증 포인트"
-    - `SbdfDataWriter` / `StdfDataWriter` 로 **메모리에 기록하는 것 자체는 확인했습니다.**
     - 스냅샷 테이블은 **문서에 포함되어 저장**됩니다. 행이 많으면 파일 크기가 커집니다.
     - **마킹 이름을 하드코딩하지 마세요.** 한국어 UI에서는 기본 마킹 이름이
       `"Marking"` 이 아니라 `"마킹"` 입니다(실측 확인). 여러 개면 `"마킹 (2)"` 처럼 붙습니다.

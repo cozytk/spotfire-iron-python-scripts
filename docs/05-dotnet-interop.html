@@ -198,7 +198,7 @@ Python 모듈처럼 <code>from ... import ...</code> 로 가져옵니다.</p>
 <span class="n">sales</span> <span class="o">=</span> <span class="n">tables</span><span class="p">[</span><span class="s2">&quot;Sales&quot;</span><span class="p">]</span>
 <span class="n">sales</span> <span class="o">=</span> <span class="n">tables</span><span class="o">.</span><span class="n">Item</span><span class="p">[</span><span class="s2">&quot;Sales&quot;</span><span class="p">]</span>     <span class="c1"># Item 프로퍼티 명시 (동일)</span>
 
-<span class="c1"># 주의: 데이터 테이블 컬렉션은 숫자 인덱스를 받지 않습니다</span>
+<span class="c1"># 주의: 데이터 테이블 컬렉션은 숫자 인덱스를 받지 않습니다 (14.x 실측 확인)</span>
 <span class="c1"># tables[0]  -&gt;  TypeError: expected str, got int</span>
 <span class="c1"># 첫 번째 테이블이 필요하면 순회해서 꺼내세요</span>
 <span class="n">first</span> <span class="o">=</span> <span class="kc">None</span>
@@ -219,8 +219,42 @@ Python 모듈처럼 <code>from ... import ...</code> 로 가져옵니다.</p>
 </code></pre></div>
 
 <div class="admonition warning">
-<p class="admonition-title"><code>len()</code>이 안 되는 컬렉션이 있습니다</p>
-<p>.NET 컬렉션은 <code>.Count</code> 프로퍼티를 쓰세요. <code>len()</code>은 일부 타입에서만 동작합니다.</p>
+<p class="admonition-title">컬렉션마다 인덱싱 방식이 다릅니다</p>
+<p>Spotfire 14.x에서 실제로 확인한 결과입니다.</p>
+<table>
+<thead>
+<tr>
+<th>컬렉션</th>
+<th style="text-align: center;">숫자 인덱스</th>
+<th style="text-align: center;">이름 인덱스</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Document.Data.Tables</code></td>
+<td style="text-align: center;"><strong>불가</strong></td>
+<td style="text-align: center;">가능</td>
+</tr>
+<tr>
+<td><code>table.Columns</code></td>
+<td style="text-align: center;">가능</td>
+<td style="text-align: center;">가능</td>
+</tr>
+<tr>
+<td><code>Document.Pages</code></td>
+<td style="text-align: center;">가능</td>
+<td style="text-align: center;">—</td>
+</tr>
+<tr>
+<td><code>Document.FilteringSchemes</code></td>
+<td style="text-align: center;">가능</td>
+<td style="text-align: center;">—</td>
+</tr>
+</tbody>
+</table>
+<p><code>Document.Data.Tables[0]</code> 은 <code>TypeError: expected str, got int</code> 로 실패합니다.
+확실하지 않으면 <strong>순회해서 꺼내는 방식</strong>이 안전합니다.</p>
+<p>또한 .NET 컬렉션은 <code>len()</code> 대신 <code>.Count</code> 프로퍼티를 쓰세요.</p>
 </div>
 <h2 id="55-net">5.5 .NET 타입과 열거형</h2>
 <h3 id="enum">열거형(Enum)</h3>
