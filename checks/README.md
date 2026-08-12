@@ -37,24 +37,28 @@
 
 ---
 
-## 지금 확인할 것 (7차 · 마지막)
+## 지금 확인할 것 (8차 · 진짜 마지막)
 
-### [`10_final_export.py`](10_final_export.py)
+### [`11_snapshot_semantics.py`](11_snapshot_semantics.py)
 
-6차에서 예제 9의 답은 **확정**됐고, 예제 10은 방향이 잡혔습니다. 마지막 확인입니다.
+예제 10의 해법은 **확정**됐습니다. 남은 질문은 하나뿐입니다.
 
-| 단계 | 내용 | 문서 변경 |
-|------|------|:---------:|
-| 1 | **마킹/필터링이 `DataSelection` 의 구체 클래스인가** — 예제 10의 열쇠 | 없음 |
-| 2 | `CreateDataWriter` 가 `None` 인 이유 — 라이선스 확인 | 없음 |
-| 3 | `TablePlot.ExportData` 를 **메모리로** 실행 (파일 안 씀) | 없음 |
-| 4 | **마킹 행만 새 테이블로** 만들고 행 수 대조 후 삭제 | **있음** |
+> `DataTableDataSource(table, 마킹)` 으로 만든 테이블이
+> **마킹 시점에 고정**되는가, **마킹을 따라 바뀌는가**?
 
-4단계가 핵심입니다. **행 수가 마킹된 행 수와 일치하면 예제 10이 완성**됩니다.
-실행 전에 **차트에서 몇 개 마킹해 두세요.** 마킹이 없으면 건너뜁니다.
+둘 다 유용하지만 교안에서 설명하는 방식이 달라집니다.
 
-3단계를 위해 **표(Table) 시각화가 있는 페이지**에서 실행하면 좋습니다.
-부담스러우면 `RUN_ROUNDTRIP = False` 로 두고 1~3단계만 돌려 주세요.
+**이 스크립트가 마킹을 직접 설정하므로 미리 마킹해 두실 필요 없습니다.**
+10행 마킹 → 테이블 생성 → 20행으로 변경 → 테이블 행 수 관찰, 순서로 판정합니다.
+
+| 건드리는 것 | 복구 |
+|-------------|------|
+| 활성 마킹 | 끝나면 **원래 상태로 되돌립니다** |
+| 임시 테이블 `__SNAPSHOT_TEST__` | 끝나면 삭제합니다 |
+
+**반드시 사본에서 실행하세요.** 20행 이상인 데이터 테이블이 활성 상태여야 합니다.
+
+마지막 "결론" 절만 주셔도 됩니다.
 
 ---
 
@@ -432,3 +436,53 @@ First  Last  IsEmpty  IsFull  GetNextIndex  GetPreviousIndex
 예제 1 검사가 `contents[0]` (첫 시각화)을 쓰는데, 그것이 텍스트 영역이면
 `'HtmlTextArea' object has no attribute 'Data'` 가 납니다.
 **예제 1 본문은 `try/except` 로 감싸므로 무관**합니다.
+
+
+---
+
+### 7차 — 내보내기 경로 확정 (2026-08-12)
+
+#### 예제 10 해법 확정
+
+```text
+마킹 타입   : DataMarkingSelection     isinstance(마킹, DataSelection)   -> True
+필터링 타입 : DataFilteringSelection   isinstance(필터링, DataSelection) -> True
+
+DataTableDataSource(table, 마킹)   -> 생성 성공
+DataTableDataSource(table, 필터링) -> 생성 성공
+```
+
+**마킹과 필터링이 곧 `DataSelection` 의 구체 클래스**입니다.
+별도 객체를 만들 필요 없이 그대로 넘기면 됩니다. 예제 10을 이 방식으로 교체했습니다.
+
+보너스로 **필터링을 넘기면 "현재 필터를 통과한 행만" 새 테이블**이 됩니다.
+같은 코드로 두 가지 기능이 나옵니다.
+
+`DataTableDataSourceUpdateBehavior` 값은 `Automatic` 과 `Manual` 두 가지인데,
+`(dataTable, updateBehavior)` 오버로드에서만 지정 가능하므로 `dataSelection` 과
+동시에 줄 수는 없습니다.
+
+#### 예제 9 — `ExportData` 도 실패, `ExportText` 만 동작
+
+| 경로 | 결과 |
+|------|------|
+| `Document.Data.CreateDataWriter(...)` | `None` 반환 |
+| `TablePlot.ExportData(식별자, 스트림)` | **실패** |
+| `TablePlot.ExportText(writer)` | **성공** (408,144 글자, 탭 구분) |
+
+`ExportData` 의 실패 메시지가 결정적이었습니다.
+
+```text
+The writer with typeidentifier Spreadsheet CSV UTF8 data writer cannot write from reader.
+```
+
+`DataWriter` 에 `CanWriteFromReader` 멤버가 있는 것으로 보아, 이 writer 들이
+**reader 기반 쓰기를 지원하지 않는** 구조입니다.
+6차에서 `ExportData` 를 "권장"으로 적었던 것은 시그니처만 보고 판단한 것이라 틀렸습니다.
+
+**예제 9를 `ExportText` 기준으로 다시 썼습니다.** 출력이 탭 구분이므로
+CSV 변환 코드와, 모든 표를 한 번에 내보내는 일괄 코드를 함께 넣었습니다.
+
+> 교훈: 시그니처가 맞다고 동작하는 것은 아닙니다.
+> 5차에서 `ExportData` 시그니처를 확인하고 "확정"이라고 했지만, 실제로 호출해 보니
+> 실패했습니다. **호출까지 해 봐야 검증입니다.**

@@ -185,88 +185,151 @@ Document.Properties["ScriptLog"] = u"%s<br>저장 위치: %s" % (u"<br>".join(ex
 columnNames = [c.Name for c in table.Columns if "_internal" not in c.Name]
 ```
 
-!!! danger "`Document.Data.CreateDataWriter` 는 이 경로로 쓰지 마세요"
-    Spotfire 14.x 실측 결과, 메서드 시그니처는 정상인데 **어떤 식별자를 넣어도
-    `None` 이 돌아옵니다**(Sbdf / Stdf / Excel / CSV 전부). 예외도 나지 않습니다.
+!!! danger "이 환경에서 동작하는 것은 `ExportText` 하나뿐입니다"
+    Spotfire 14.x에서 내보내기 경로를 전부 시험한 결과입니다.
+
+    | 경로 | 결과 |
+    |------|------|
+    | `Document.Data.CreateDataWriter(...)` | **`None` 반환** (예외 없음) |
+    | `TablePlot.ExportData(식별자, 스트림)` | **실패** — `cannot write from reader` |
+    | `TablePlot.ExportText(writer)` | **성공** (408,144 글자, 탭 구분) |
+
+    `ExportData` 는 시그니처가 맞는데도 writer 쪽에서 거부합니다.
 
     ```text
-    CreateDataWriter(self: DataManager, typeId: TypeIdentifier) -> DataWriter
-    writer = Document.Data.CreateDataWriter(...)   # None
+    The writer with typeidentifier Spreadsheet CSV UTF8 data writer cannot write from reader.
     ```
 
-    원인은 **라이선스**로 보입니다. `DataWriterFactory` 에 `IsLicensed` 와
-    `requiredLicenses` 멤버가 있는 것이 근거입니다. 즉 writer 종류마다 라이선스가
-    걸려 있고, 없으면 조용히 `None` 이 돌아옵니다.
+    `DataWriter` 에 `CanWriteFromReader` 라는 멤버가 있는 것으로 보아, 해당 writer 들이
+    **reader 기반 쓰기를 지원하지 않는** 구조입니다. `CreateDataWriter` 가 `None` 인 것도
+    `DataWriterFactory` 의 `IsLicensed` / `requiredLicenses` 를 볼 때 **라이선스 제약**으로
+    보입니다.
 
-    **코드를 고칠 문제가 아닙니다.** 아래의 검증된 경로를 쓰세요.
+    결론: **`ExportText` 를 쓰세요.** 아래가 이 환경에서 검증된 코드입니다.
 
-### 방법 1 — 표 시각화의 `ExportData` (권장, 시그니처 확인됨)
-
-`CreateDataWriter` 를 거치지 않고 **식별자와 스트림을 직접** 넘깁니다.
+### 검증된 방법 — `ExportText`
 
 ```text
-ExportData(self: TablePlot, typeIdentifier: TypeIdentifier, stream: Stream)
+ExportText(self: TablePlotBase, writer: TextWriter)
 ```
+
+출력은 **탭 구분 텍스트**입니다. 첫 줄이 컬럼 이름입니다.
 
 ```python
 # -*- coding: utf-8 -*-
-# 표 시각화의 데이터를 파일로 내보낸다. (Analyst 전용)
+# 표 시각화의 데이터를 탭 구분 텍스트 파일로 내보낸다. (Analyst 전용)
 #
 # 매개변수:
 #   vTable (Visualization) 표(Table) 시각화
 
 from Spotfire.Dxp.Application.Visuals import TablePlot
-from Spotfire.Dxp.Data.Export import DataWriterTypeIdentifiers
-from System.IO import FileStream, FileMode
+from System.IO import StreamWriter
+from System.Text import Encoding
 
-PATH = "C:/temp/export.csv"
+PATH = "C:/temp/export.txt"
 
 plot = vTable.As[TablePlot]()
 
 if not plot.ExportDataEnabled:
     Document.Properties["ScriptLog"] = u"이 시각화는 데이터 내보내기가 비활성화되어 있습니다."
 else:
-    stream = FileStream(PATH, FileMode.Create)
+    # 한글이 있으면 UTF-8 로 명시한다
+    writer = StreamWriter(PATH, False, Encoding.UTF8)
     try:
-        # 한글이 있으면 Utf8 계열을 쓴다
-        plot.ExportData(DataWriterTypeIdentifiers.SpreadsheetDataCsvUtf8Writer, stream)
+        plot.ExportText(writer)
     finally:
-        stream.Close()
+        writer.Close()
     Document.Properties["ScriptLog"] = u"내보내기 완료: " + PATH
 ```
 
-### 방법 2 — 표 시각화의 `ExportText`
+### CSV가 필요하면 직접 변환
 
-텍스트로만 충분하면 더 간단합니다.
-
-```text
-ExportText(self: TablePlotBase, writer: TextWriter)
-```
+`ExportText` 는 탭 구분이므로, 쉼표가 필요하면 문자열로 받아서 바꿉니다.
 
 ```python
+# -*- coding: utf-8 -*-
 from Spotfire.Dxp.Application.Visuals import TablePlot
-from System.IO import StreamWriter
+from System.IO import StringWriter, StreamWriter
+from System.Text import Encoding
 
-writer = StreamWriter("C:/temp/export.txt")
+plot = vTable.As[TablePlot]()
+
+# 1) 메모리로 받는다
+buffer = StringWriter()
 try:
-    vTable.As[TablePlot]().ExportText(writer)
+    plot.ExportText(buffer)
+    text = buffer.ToString()
+finally:
+    buffer.Close()
+
+# 2) 탭을 쉼표로 (값에 쉼표가 있으면 따옴표로 감싼다)
+lines = []
+for line in text.split("\n"):
+    fields = []
+    for field in line.rstrip("\r").split("\t"):
+        if "," in field or '"' in field:
+            field = '"' + field.replace('"', '""') + '"'
+        fields.append(field)
+    lines.append(",".join(fields))
+
+# 3) 파일로
+writer = StreamWriter("C:/temp/export.csv", False, Encoding.UTF8)
+try:
+    writer.Write("\n".join(lines))
 finally:
     writer.Close()
 ```
 
-### 방법 3 — 라이브러리로 내보내기 (Web Player 안전)
+### 여러 표를 한 번에
 
-로컬 파일이 아니라 Spotfire 라이브러리에 저장하므로 **브라우저에서도 동작**합니다.
+원래 이 예제의 목적(일괄 내보내기)은 이렇게 달성합니다.
 
-```text
-ExportDataToLibrary(self: DataTable, libraryItem: LibraryItem, title: str) -> LibraryItem
+```python
+# -*- coding: utf-8 -*-
+# 모든 페이지의 모든 표 시각화를 각각 파일로 내보낸다.
+
+from Spotfire.Dxp.Application.Visuals import TablePlot
+from System.IO import StreamWriter, Path, Directory
+from System.Text import Encoding
+from System import DateTime
+
+OUT_DIR = "C:/temp"
+
+folder = Path.Combine(OUT_DIR, "export_" + DateTime.Now.ToString("yyyyMMdd_HHmmss"))
+Directory.CreateDirectory(folder)
+
+exported, skipped = [], []
+
+for page in Document.Pages:
+    for visual in page.Visuals:
+        try:
+            plot = visual.As[TablePlot]()
+            if plot is None:
+                continue
+        except:
+            continue
+
+        if not plot.ExportDataEnabled:
+            skipped.append(visual.Title)
+            continue
+
+        safe = (visual.Title or u"table").replace("/", "_").replace("\\", "_")
+        path = Path.Combine(folder, safe + ".txt")
+
+        writer = StreamWriter(path, False, Encoding.UTF8)
+        try:
+            plot.ExportText(writer)
+        finally:
+            writer.Close()
+        exported.append(visual.Title)
+
+Document.Properties["ScriptLog"] = u"%d개 내보냄 / %d개 건너뜀<br>%s" % (
+    len(exported), len(skipped), folder)
 ```
 
-`LibraryItem`(대상 폴더)을 먼저 얻어야 하므로 라이브러리 접근 코드가 추가로 필요합니다.
-
-!!! tip "표 시각화가 꼭 있어야 하나요"
-    방법 1·2는 **표(Table) 시각화를 경유**합니다. 데이터 테이블만 있고 표가 없다면,
-    숨긴 페이지에 표를 하나 만들어 두고 그것을 매개변수로 넘기는 방식이 실무적입니다.
+!!! tip "표 시각화가 없다면"
+    이 방법은 **표(Table) 시각화를 경유**합니다. 데이터 테이블만 있다면
+    숨긴 페이지에 표를 하나 만들어 두고 그것을 대상으로 삼는 방식이 실무적입니다.
 
 ---
 
@@ -372,55 +435,75 @@ else:
 - **검토 목록 관리**: 이상치를 마킹해 스냅샷으로 저장 → 그 테이블로만 표를 만들어 검토
 - **원본 대비 고정**: 필터를 바꿔도 스냅샷은 그대로 남습니다
 
-!!! danger "이 예제는 교체 중입니다 — 훨씬 단순한 방법이 있습니다"
-    위 코드에는 문제가 두 개 있습니다.
-
-    1. **`StdfDataSource` 라는 이름이 존재하지 않습니다** (실측 확인)
-    2. **`CreateDataWriter` 가 `None` 을 반환합니다** — 라이선스 문제 (예제 9 참조)
-
-    그런데 `DataTableDataSource` 에 이런 오버로드가 있습니다.
+!!! success "해법 확정 — 마킹을 그대로 넘기면 됩니다"
+    위 코드는 두 군데가 막혀 있습니다(`StdfDataSource` 부재, `CreateDataWriter` → `None`).
+    하지만 실측으로 **훨씬 단순한 방법**이 확인되었습니다.
 
     ```text
-    DataTableDataSource(dataTable, dataSelection)
+    마킹 타입   : DataMarkingSelection    isinstance(마킹, DataSelection)   -> True
+    필터링 타입 : DataFilteringSelection  isinstance(필터링, DataSelection) -> True
+
+    DataTableDataSource(table, 마킹)   -> 생성 성공
+    DataTableDataSource(table, 필터링) -> 생성 성공
     ```
 
-    처음에는 `DataSelection` 을 직접 만들려 했지만 **추상 클래스라 불가능**했습니다.
-
-    ```text
-    Cannot create instances of DataSelection because it is abstract
-    ```
-
-    대신 **마킹과 필터링이 곧 `DataSelection` 의 구체 클래스**입니다.
-    그렇다면 별도 객체를 만들 필요 없이 이렇게 됩니다.
+    `DataTableDataSource(dataTable, dataSelection)` 오버로드의 `dataSelection` 자리에
+    **마킹이나 필터링을 그대로 넣으면 됩니다.** 별도 객체를 만들 필요가 없습니다.
 
     ```python
     # -*- coding: utf-8 -*-
-    # 확인 중인 최종 형태 — checks/10_final_export.py 로 검증 중
+    # 마킹된 행만 새 데이터 테이블로 만든다.
+    #
+    # 매개변수:
+    #   sourceTable  (DataTable) 원본 테이블
+    #   snapshotName (String)    만들 테이블 이름
+
     from Spotfire.Dxp.Data.Import import DataTableDataSource
 
-    source = DataTableDataSource(sourceTable, Document.ActiveMarkingSelectionReference)
+    marking = Document.ActiveMarkingSelectionReference
+    markedRows = marking.GetSelection(sourceTable).AsIndexSet()
 
-    if Document.Data.Tables.Contains(snapshotName):
-        Document.Data.Tables[snapshotName].ReplaceData(source)
+    if markedRows.Count == 0:
+        Document.Properties["ScriptLog"] = u"마킹된 행이 없습니다. 먼저 차트에서 선택하세요."
     else:
-        Document.Data.Tables.Add(snapshotName, source)
+        source = DataTableDataSource(sourceTable, marking)
+
+        if Document.Data.Tables.Contains(snapshotName):
+            Document.Data.Tables[snapshotName].ReplaceData(source)
+            action = u"갱신"
+        else:
+            Document.Data.Tables.Add(snapshotName, source)
+            action = u"생성"
+
+        Document.Properties["ScriptLog"] = u"'%s' 테이블을 %s했습니다. (%d행)" % (
+            snapshotName, action, markedRows.Count)
     ```
 
-    writer 도, 메모리 스트림도, STDF/SBDF 변환도 없습니다. **세 줄입니다.**
-    게다가 라이선스 제약의 영향도 받지 않습니다.
+    **보너스**: 마킹 대신 `Document.ActiveFilteringSelectionReference` 를 넘기면
+    **현재 필터를 통과한 행만** 새 테이블로 만들 수 있습니다. 같은 코드로 두 가지가 됩니다.
 
-    확인이 필요한 것은 두 가지입니다.
+!!! warning "아직 확인 중인 것 — 스냅샷인가, 실시간 연동인가"
+    `DataTableDataSource(table, selection)` 로 만든 테이블이
 
-    - 마킹을 넘겼을 때 **마킹된 행만** 들어오는가 (전체가 복사되는 것은 아닌가)
-    - 그 테이블이 **고정(스냅샷)** 인가, 마킹이 바뀌면 **따라 바뀌는가**
-      (`DataTableDataSourceUpdateBehavior` 로 조절할 수 있을 것으로 보입니다)
+    - **마킹 시점에 고정**되는지(진짜 스냅샷), 아니면
+    - **마킹이 바뀌면 따라 바뀌는지**(실시간 뷰)
 
-    검증 스크립트는
-    [`checks/10_final_export.py`](https://github.com/cozytk/spotfire-iron-python-scripts/blob/main/checks/10_final_export.py)
+    아직 확인하지 못했습니다. 마킹된 행이 0이라 왕복 검증이 건너뛰어졌습니다.
+
+    `DataTableDataSourceUpdateBehavior` 에는 `Automatic` 과 `Manual` 두 값이 있는데,
+    이는 `(dataTable, updateBehavior)` 오버로드에서만 지정할 수 있어
+    `dataSelection` 과 동시에 주는 것은 불가능합니다.
+
+    **어느 쪽이든 유용하지만 의미가 다릅니다.**
+    실시간 연동이라면 "마킹한 것만 보는 보조 테이블"이 되고,
+    고정이라면 원래 의도한 "스냅샷"이 됩니다.
+    확인용 스크립트는
+    [`checks/11_snapshot_semantics.py`](https://github.com/cozytk/spotfire-iron-python-scripts/blob/main/checks/11_snapshot_semantics.py)
     에 있습니다.
 
 ---
 
+### 원래 코드 (참고 — 현재 동작하지 않습니다)
 ### 원래 코드 (참고 — 현재 동작하지 않습니다)
 
 위 코드 블록이 그것입니다. `StdfDataSource` 와 `CreateDataWriter` 두 군데가 막혀 있습니다.

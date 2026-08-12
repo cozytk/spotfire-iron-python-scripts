@@ -242,76 +242,156 @@ Spotfire의 이미지 내보내기는 <strong>한 번에 하나씩</strong>입�
 </code></pre></div>
 
 <div class="admonition danger">
-<p class="admonition-title"><code>Document.Data.CreateDataWriter</code> 는 이 경로로 쓰지 마세요</p>
-<p>Spotfire 14.x 실측 결과, 메서드 시그니처는 정상인데 <strong>어떤 식별자를 넣어도
-<code>None</code> 이 돌아옵니다</strong>(Sbdf / Stdf / Excel / CSV 전부). 예외도 나지 않습니다.</p>
+<p class="admonition-title">이 환경에서 동작하는 것은 <code>ExportText</code> 하나뿐입니다</p>
+<p>Spotfire 14.x에서 내보내기 경로를 전부 시험한 결과입니다.</p>
+<table>
+<thead>
+<tr>
+<th>경로</th>
+<th>결과</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Document.Data.CreateDataWriter(...)</code></td>
+<td><strong><code>None</code> 반환</strong> (예외 없음)</td>
+</tr>
+<tr>
+<td><code>TablePlot.ExportData(식별자, 스트림)</code></td>
+<td><strong>실패</strong> — <code>cannot write from reader</code></td>
+</tr>
+<tr>
+<td><code>TablePlot.ExportText(writer)</code></td>
+<td><strong>성공</strong> (408,144 글자, 탭 구분)</td>
+</tr>
+</tbody>
+</table>
+<p><code>ExportData</code> 는 시그니처가 맞는데도 writer 쪽에서 거부합니다.</p>
 <p><code>text
-CreateDataWriter(self: DataManager, typeId: TypeIdentifier) -&gt; DataWriter
-writer = Document.Data.CreateDataWriter(...)   # None</code></p>
-<p>원인은 <strong>라이선스</strong>로 보입니다. <code>DataWriterFactory</code> 에 <code>IsLicensed</code> 와
-<code>requiredLicenses</code> 멤버가 있는 것이 근거입니다. 즉 writer 종류마다 라이선스가
-걸려 있고, 없으면 조용히 <code>None</code> 이 돌아옵니다.</p>
-<p><strong>코드를 고칠 문제가 아닙니다.</strong> 아래의 검증된 경로를 쓰세요.</p>
+The writer with typeidentifier Spreadsheet CSV UTF8 data writer cannot write from reader.</code></p>
+<p><code>DataWriter</code> 에 <code>CanWriteFromReader</code> 라는 멤버가 있는 것으로 보아, 해당 writer 들이
+<strong>reader 기반 쓰기를 지원하지 않는</strong> 구조입니다. <code>CreateDataWriter</code> 가 <code>None</code> 인 것도
+<code>DataWriterFactory</code> 의 <code>IsLicensed</code> / <code>requiredLicenses</code> 를 볼 때 <strong>라이선스 제약</strong>으로
+보입니다.</p>
+<p>결론: <strong><code>ExportText</code> 를 쓰세요.</strong> 아래가 이 환경에서 검증된 코드입니다.</p>
 </div>
-<h3 id="1-exportdata">방법 1 — 표 시각화의 <code>ExportData</code> (권장, 시그니처 확인됨)</h3>
-<p><code>CreateDataWriter</code> 를 거치지 않고 <strong>식별자와 스트림을 직접</strong> 넘깁니다.</p>
-<div class="codehilite"><pre><span></span><code>ExportData(self: TablePlot, typeIdentifier: TypeIdentifier, stream: Stream)
+<h3 id="exporttext">검증된 방법 — <code>ExportText</code></h3>
+<div class="codehilite"><pre><span></span><code>ExportText(self: TablePlotBase, writer: TextWriter)
 </code></pre></div>
 
+<p>출력은 <strong>탭 구분 텍스트</strong>입니다. 첫 줄이 컬럼 이름입니다.</p>
 <div class="codehilite"><pre><span></span><code><span class="c1"># -*- coding: utf-8 -*-</span>
-<span class="c1"># 표 시각화의 데이터를 파일로 내보낸다. (Analyst 전용)</span>
+<span class="c1"># 표 시각화의 데이터를 탭 구분 텍스트 파일로 내보낸다. (Analyst 전용)</span>
 <span class="c1">#</span>
 <span class="c1"># 매개변수:</span>
 <span class="c1">#   vTable (Visualization) 표(Table) 시각화</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Visuals</span><span class="w"> </span><span class="kn">import</span> <span class="n">TablePlot</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Data.Export</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataWriterTypeIdentifiers</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">System.IO</span><span class="w"> </span><span class="kn">import</span> <span class="n">FileStream</span><span class="p">,</span> <span class="n">FileMode</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">System.IO</span><span class="w"> </span><span class="kn">import</span> <span class="n">StreamWriter</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">System.Text</span><span class="w"> </span><span class="kn">import</span> <span class="n">Encoding</span>
 
-<span class="n">PATH</span> <span class="o">=</span> <span class="s2">&quot;C:/temp/export.csv&quot;</span>
+<span class="n">PATH</span> <span class="o">=</span> <span class="s2">&quot;C:/temp/export.txt&quot;</span>
 
 <span class="n">plot</span> <span class="o">=</span> <span class="n">vTable</span><span class="o">.</span><span class="n">As</span><span class="p">[</span><span class="n">TablePlot</span><span class="p">]()</span>
 
 <span class="k">if</span> <span class="ow">not</span> <span class="n">plot</span><span class="o">.</span><span class="n">ExportDataEnabled</span><span class="p">:</span>
     <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;이 시각화는 데이터 내보내기가 비활성화되어 있습니다.&quot;</span>
 <span class="k">else</span><span class="p">:</span>
-    <span class="n">stream</span> <span class="o">=</span> <span class="n">FileStream</span><span class="p">(</span><span class="n">PATH</span><span class="p">,</span> <span class="n">FileMode</span><span class="o">.</span><span class="n">Create</span><span class="p">)</span>
+    <span class="c1"># 한글이 있으면 UTF-8 로 명시한다</span>
+    <span class="n">writer</span> <span class="o">=</span> <span class="n">StreamWriter</span><span class="p">(</span><span class="n">PATH</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="n">Encoding</span><span class="o">.</span><span class="n">UTF8</span><span class="p">)</span>
     <span class="k">try</span><span class="p">:</span>
-        <span class="c1"># 한글이 있으면 Utf8 계열을 쓴다</span>
-        <span class="n">plot</span><span class="o">.</span><span class="n">ExportData</span><span class="p">(</span><span class="n">DataWriterTypeIdentifiers</span><span class="o">.</span><span class="n">SpreadsheetDataCsvUtf8Writer</span><span class="p">,</span> <span class="n">stream</span><span class="p">)</span>
+        <span class="n">plot</span><span class="o">.</span><span class="n">ExportText</span><span class="p">(</span><span class="n">writer</span><span class="p">)</span>
     <span class="k">finally</span><span class="p">:</span>
-        <span class="n">stream</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
+        <span class="n">writer</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
     <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;내보내기 완료: &quot;</span> <span class="o">+</span> <span class="n">PATH</span>
 </code></pre></div>
 
-<h3 id="2-exporttext">방법 2 — 표 시각화의 <code>ExportText</code></h3>
-<p>텍스트로만 충분하면 더 간단합니다.</p>
-<div class="codehilite"><pre><span></span><code>ExportText(self: TablePlotBase, writer: TextWriter)
-</code></pre></div>
+<h3 id="csv">CSV가 필요하면 직접 변환</h3>
+<p><code>ExportText</code> 는 탭 구분이므로, 쉼표가 필요하면 문자열로 받아서 바꿉니다.</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Visuals</span><span class="w"> </span><span class="kn">import</span> <span class="n">TablePlot</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">System.IO</span><span class="w"> </span><span class="kn">import</span> <span class="n">StringWriter</span><span class="p">,</span> <span class="n">StreamWriter</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">System.Text</span><span class="w"> </span><span class="kn">import</span> <span class="n">Encoding</span>
 
-<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Visuals</span><span class="w"> </span><span class="kn">import</span> <span class="n">TablePlot</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">System.IO</span><span class="w"> </span><span class="kn">import</span> <span class="n">StreamWriter</span>
+<span class="n">plot</span> <span class="o">=</span> <span class="n">vTable</span><span class="o">.</span><span class="n">As</span><span class="p">[</span><span class="n">TablePlot</span><span class="p">]()</span>
 
-<span class="n">writer</span> <span class="o">=</span> <span class="n">StreamWriter</span><span class="p">(</span><span class="s2">&quot;C:/temp/export.txt&quot;</span><span class="p">)</span>
+<span class="c1"># 1) 메모리로 받는다</span>
+<span class="n">buffer</span> <span class="o">=</span> <span class="n">StringWriter</span><span class="p">()</span>
 <span class="k">try</span><span class="p">:</span>
-    <span class="n">vTable</span><span class="o">.</span><span class="n">As</span><span class="p">[</span><span class="n">TablePlot</span><span class="p">]()</span><span class="o">.</span><span class="n">ExportText</span><span class="p">(</span><span class="n">writer</span><span class="p">)</span>
+    <span class="n">plot</span><span class="o">.</span><span class="n">ExportText</span><span class="p">(</span><span class="n">buffer</span><span class="p">)</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="n">buffer</span><span class="o">.</span><span class="n">ToString</span><span class="p">()</span>
+<span class="k">finally</span><span class="p">:</span>
+    <span class="n">buffer</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
+
+<span class="c1"># 2) 탭을 쉼표로 (값에 쉼표가 있으면 따옴표로 감싼다)</span>
+<span class="n">lines</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">text</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">):</span>
+    <span class="n">fields</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">line</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\r</span><span class="s2">&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="s2">&quot;,&quot;</span> <span class="ow">in</span> <span class="n">field</span> <span class="ow">or</span> <span class="s1">&#39;&quot;&#39;</span> <span class="ow">in</span> <span class="n">field</span><span class="p">:</span>
+            <span class="n">field</span> <span class="o">=</span> <span class="s1">&#39;&quot;&#39;</span> <span class="o">+</span> <span class="n">field</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;&quot;&#39;</span><span class="p">,</span> <span class="s1">&#39;&quot;&quot;&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;&quot;&#39;</span>
+        <span class="n">fields</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">field</span><span class="p">)</span>
+    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">fields</span><span class="p">))</span>
+
+<span class="c1"># 3) 파일로</span>
+<span class="n">writer</span> <span class="o">=</span> <span class="n">StreamWriter</span><span class="p">(</span><span class="s2">&quot;C:/temp/export.csv&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="n">Encoding</span><span class="o">.</span><span class="n">UTF8</span><span class="p">)</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">writer</span><span class="o">.</span><span class="n">Write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">))</span>
 <span class="k">finally</span><span class="p">:</span>
     <span class="n">writer</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
 </code></pre></div>
 
-<h3 id="3-web-player">방법 3 — 라이브러리로 내보내기 (Web Player 안전)</h3>
-<p>로컬 파일이 아니라 Spotfire 라이브러리에 저장하므로 <strong>브라우저에서도 동작</strong>합니다.</p>
-<div class="codehilite"><pre><span></span><code>ExportDataToLibrary(self: DataTable, libraryItem: LibraryItem, title: str) -&gt; LibraryItem
+<h3 id="_2">여러 표를 한 번에</h3>
+<p>원래 이 예제의 목적(일괄 내보내기)은 이렇게 달성합니다.</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="c1"># 모든 페이지의 모든 표 시각화를 각각 파일로 내보낸다.</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Visuals</span><span class="w"> </span><span class="kn">import</span> <span class="n">TablePlot</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">System.IO</span><span class="w"> </span><span class="kn">import</span> <span class="n">StreamWriter</span><span class="p">,</span> <span class="n">Path</span><span class="p">,</span> <span class="n">Directory</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">System.Text</span><span class="w"> </span><span class="kn">import</span> <span class="n">Encoding</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">System</span><span class="w"> </span><span class="kn">import</span> <span class="n">DateTime</span>
+
+<span class="n">OUT_DIR</span> <span class="o">=</span> <span class="s2">&quot;C:/temp&quot;</span>
+
+<span class="n">folder</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">Combine</span><span class="p">(</span><span class="n">OUT_DIR</span><span class="p">,</span> <span class="s2">&quot;export_&quot;</span> <span class="o">+</span> <span class="n">DateTime</span><span class="o">.</span><span class="n">Now</span><span class="o">.</span><span class="n">ToString</span><span class="p">(</span><span class="s2">&quot;yyyyMMdd_HHmmss&quot;</span><span class="p">))</span>
+<span class="n">Directory</span><span class="o">.</span><span class="n">CreateDirectory</span><span class="p">(</span><span class="n">folder</span><span class="p">)</span>
+
+<span class="n">exported</span><span class="p">,</span> <span class="n">skipped</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+
+<span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">Pages</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">visual</span> <span class="ow">in</span> <span class="n">page</span><span class="o">.</span><span class="n">Visuals</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">plot</span> <span class="o">=</span> <span class="n">visual</span><span class="o">.</span><span class="n">As</span><span class="p">[</span><span class="n">TablePlot</span><span class="p">]()</span>
+            <span class="k">if</span> <span class="n">plot</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">plot</span><span class="o">.</span><span class="n">ExportDataEnabled</span><span class="p">:</span>
+            <span class="n">skipped</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">visual</span><span class="o">.</span><span class="n">Title</span><span class="p">)</span>
+            <span class="k">continue</span>
+
+        <span class="n">safe</span> <span class="o">=</span> <span class="p">(</span><span class="n">visual</span><span class="o">.</span><span class="n">Title</span> <span class="ow">or</span> <span class="sa">u</span><span class="s2">&quot;table&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">)</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">Combine</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="n">safe</span> <span class="o">+</span> <span class="s2">&quot;.txt&quot;</span><span class="p">)</span>
+
+        <span class="n">writer</span> <span class="o">=</span> <span class="n">StreamWriter</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="n">Encoding</span><span class="o">.</span><span class="n">UTF8</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">plot</span><span class="o">.</span><span class="n">ExportText</span><span class="p">(</span><span class="n">writer</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">writer</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
+        <span class="n">exported</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">visual</span><span class="o">.</span><span class="n">Title</span><span class="p">)</span>
+
+<span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;</span><span class="si">%d</span><span class="s2">개 내보냄 / </span><span class="si">%d</span><span class="s2">개 건너뜀&lt;br&gt;</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span>
+    <span class="nb">len</span><span class="p">(</span><span class="n">exported</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">skipped</span><span class="p">),</span> <span class="n">folder</span><span class="p">)</span>
 </code></pre></div>
 
-<p><code>LibraryItem</code>(대상 폴더)을 먼저 얻어야 하므로 라이브러리 접근 코드가 추가로 필요합니다.</p>
 <div class="admonition tip">
-<p class="admonition-title">표 시각화가 꼭 있어야 하나요</p>
-<p>방법 1·2는 <strong>표(Table) 시각화를 경유</strong>합니다. 데이터 테이블만 있고 표가 없다면,
-숨긴 페이지에 표를 하나 만들어 두고 그것을 매개변수로 넘기는 방식이 실무적입니다.</p>
+<p class="admonition-title">표 시각화가 없다면</p>
+<p>이 방법은 <strong>표(Table) 시각화를 경유</strong>합니다. 데이터 테이블만 있다면
+숨긴 페이지에 표를 하나 만들어 두고 그것을 대상으로 삼는 방식이 실무적입니다.</p>
 </div>
 <hr />
-<h3 id="_2">원래 코드 (참고 — 이 환경에서는 동작하지 않습니다)</h3>
+<h3 id="_3">원래 코드 (참고 — 이 환경에서는 동작하지 않습니다)</h3>
 <p>아래는 널리 알려진 <code>CreateDataWriter</code> 방식입니다.
 라이선스가 있는 환경에서는 동작하므로 참고용으로 남겨 둡니다.</p>
 <div class="admonition note">
@@ -414,51 +494,74 @@ Spotfire UI에는 "마킹된 행을 새 데이터 테이블로 저장" 기능이
         <span class="n">snapshotName</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">markedRows</span><span class="o">.</span><span class="n">Count</span><span class="p">)</span>
 </code></pre></div>
 
-<h3 id="_3">활용</h3>
+<h3 id="_4">활용</h3>
 <ul>
 <li><strong>What-if 비교</strong>: 조건을 바꿔 가며 마킹 → 스냅샷을 여러 개 만들어 나란히 비교</li>
 <li><strong>검토 목록 관리</strong>: 이상치를 마킹해 스냅샷으로 저장 → 그 테이블로만 표를 만들어 검토</li>
 <li><strong>원본 대비 고정</strong>: 필터를 바꿔도 스냅샷은 그대로 남습니다</li>
 </ul>
-<div class="admonition danger">
-<p class="admonition-title">이 예제는 교체 중입니다 — 훨씬 단순한 방법이 있습니다</p>
-<p>위 코드에는 문제가 두 개 있습니다.</p>
-<ol>
-<li><strong><code>StdfDataSource</code> 라는 이름이 존재하지 않습니다</strong> (실측 확인)</li>
-<li><strong><code>CreateDataWriter</code> 가 <code>None</code> 을 반환합니다</strong> — 라이선스 문제 (예제 9 참조)</li>
-</ol>
-<p>그런데 <code>DataTableDataSource</code> 에 이런 오버로드가 있습니다.</p>
-<p><code>text
-DataTableDataSource(dataTable, dataSelection)</code></p>
-<p>처음에는 <code>DataSelection</code> 을 직접 만들려 했지만 <strong>추상 클래스라 불가능</strong>했습니다.</p>
-<p><code>text
-Cannot create instances of DataSelection because it is abstract</code></p>
-<p>대신 <strong>마킹과 필터링이 곧 <code>DataSelection</code> 의 구체 클래스</strong>입니다.
-그렇다면 별도 객체를 만들 필요 없이 이렇게 됩니다.</p>
+<div class="admonition success">
+<p class="admonition-title">해법 확정 — 마킹을 그대로 넘기면 됩니다</p>
+<p>위 코드는 두 군데가 막혀 있습니다(<code>StdfDataSource</code> 부재, <code>CreateDataWriter</code> → <code>None</code>).
+하지만 실측으로 <strong>훨씬 단순한 방법</strong>이 확인되었습니다.</p>
+<p>```text
+마킹 타입   : DataMarkingSelection    isinstance(마킹, DataSelection)   -&gt; True
+필터링 타입 : DataFilteringSelection  isinstance(필터링, DataSelection) -&gt; True</p>
+<p>DataTableDataSource(table, 마킹)   -&gt; 생성 성공
+DataTableDataSource(table, 필터링) -&gt; 생성 성공
+```</p>
+<p><code>DataTableDataSource(dataTable, dataSelection)</code> 오버로드의 <code>dataSelection</code> 자리에
+<strong>마킹이나 필터링을 그대로 넣으면 됩니다.</strong> 별도 객체를 만들 필요가 없습니다.</p>
 <p>```python</p>
 <h1 id="-coding-utf-8-">-<em>- coding: utf-8 -</em>-</h1>
-<h1 id="checks10_final_exportpy">확인 중인 최종 형태 — checks/10_final_export.py 로 검증 중</h1>
+<h1 id="_5">마킹된 행만 새 데이터 테이블로 만든다.</h1>
+<h1 id="_6"></h1>
+<h1 id="_7">매개변수:</h1>
+<h1 id="sourcetable-datatable">sourceTable  (DataTable) 원본 테이블</h1>
+<h1 id="snapshotname-string">snapshotName (String)    만들 테이블 이름</h1>
 <p>from Spotfire.Dxp.Data.Import import DataTableDataSource</p>
-<p>source = DataTableDataSource(sourceTable, Document.ActiveMarkingSelectionReference)</p>
-<p>if Document.Data.Tables.Contains(snapshotName):
+<p>marking = Document.ActiveMarkingSelectionReference
+markedRows = marking.GetSelection(sourceTable).AsIndexSet()</p>
+<p>if markedRows.Count == 0:
+    Document.Properties["ScriptLog"] = u"마킹된 행이 없습니다. 먼저 차트에서 선택하세요."
+else:
+    source = DataTableDataSource(sourceTable, marking)</p>
+<div class="codehilite"><pre><span></span><code>if Document.Data.Tables.Contains(snapshotName):
     Document.Data.Tables[snapshotName].ReplaceData(source)
+    action = u&quot;갱신&quot;
 else:
     Document.Data.Tables.Add(snapshotName, source)
-```</p>
-<p>writer 도, 메모리 스트림도, STDF/SBDF 변환도 없습니다. <strong>세 줄입니다.</strong>
-게다가 라이선스 제약의 영향도 받지 않습니다.</p>
-<p>확인이 필요한 것은 두 가지입니다.</p>
+    action = u&quot;생성&quot;
+
+Document.Properties[&quot;ScriptLog&quot;] = u&quot;&#39;%s&#39; 테이블을 %s했습니다. (%d행)&quot; % (
+    snapshotName, action, markedRows.Count)
+</code></pre></div>
+
+<p>```</p>
+<p><strong>보너스</strong>: 마킹 대신 <code>Document.ActiveFilteringSelectionReference</code> 를 넘기면
+<strong>현재 필터를 통과한 행만</strong> 새 테이블로 만들 수 있습니다. 같은 코드로 두 가지가 됩니다.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">아직 확인 중인 것 — 스냅샷인가, 실시간 연동인가</p>
+<p><code>DataTableDataSource(table, selection)</code> 로 만든 테이블이</p>
 <ul>
-<li>마킹을 넘겼을 때 <strong>마킹된 행만</strong> 들어오는가 (전체가 복사되는 것은 아닌가)</li>
-<li>그 테이블이 <strong>고정(스냅샷)</strong> 인가, 마킹이 바뀌면 <strong>따라 바뀌는가</strong>
-  (<code>DataTableDataSourceUpdateBehavior</code> 로 조절할 수 있을 것으로 보입니다)</li>
+<li><strong>마킹 시점에 고정</strong>되는지(진짜 스냅샷), 아니면</li>
+<li><strong>마킹이 바뀌면 따라 바뀌는지</strong>(실시간 뷰)</li>
 </ul>
-<p>검증 스크립트는
-<a href="https://github.com/cozytk/spotfire-iron-python-scripts/blob/main/checks/10_final_export.py"><code>checks/10_final_export.py</code></a>
+<p>아직 확인하지 못했습니다. 마킹된 행이 0이라 왕복 검증이 건너뛰어졌습니다.</p>
+<p><code>DataTableDataSourceUpdateBehavior</code> 에는 <code>Automatic</code> 과 <code>Manual</code> 두 값이 있는데,
+이는 <code>(dataTable, updateBehavior)</code> 오버로드에서만 지정할 수 있어
+<code>dataSelection</code> 과 동시에 주는 것은 불가능합니다.</p>
+<p><strong>어느 쪽이든 유용하지만 의미가 다릅니다.</strong>
+실시간 연동이라면 "마킹한 것만 보는 보조 테이블"이 되고,
+고정이라면 원래 의도한 "스냅샷"이 됩니다.
+확인용 스크립트는
+<a href="https://github.com/cozytk/spotfire-iron-python-scripts/blob/main/checks/11_snapshot_semantics.py"><code>checks/11_snapshot_semantics.py</code></a>
 에 있습니다.</p>
 </div>
 <hr />
-<h3 id="_4">원래 코드 (참고 — 현재 동작하지 않습니다)</h3>
+<h3 id="_8">원래 코드 (참고 — 현재 동작하지 않습니다)</h3>
+<h3 id="_9">원래 코드 (참고 — 현재 동작하지 않습니다)</h3>
 <p>위 코드 블록이 그것입니다. <code>StdfDataSource</code> 와 <code>CreateDataWriter</code> 두 군데가 막혀 있습니다.</p>
 <div class="admonition note">
 <p class="admonition-title">검증 포인트</p>
@@ -728,7 +831,7 @@ Spotfire에서 테이블 간 마킹 연동은 <strong>데이터 테이블 관계
     <span class="n">ns</span><span class="o">.</span><span class="n">AddInformationNotification</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;데이터 새로고침&quot;</span><span class="p">,</span> <span class="n">summary</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
 </code></pre></div>
 
-<h3 id="_5">변형: 필요한 것만 새로고침</h3>
+<h3 id="_10">변형: 필요한 것만 새로고침</h3>
 <div class="codehilite"><pre><span></span><code><span class="k">for</span> <span class="n">table</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Tables</span><span class="p">:</span>
     <span class="k">if</span> <span class="n">table</span><span class="o">.</span><span class="n">IsRefreshable</span> <span class="ow">and</span> <span class="n">table</span><span class="o">.</span><span class="n">NeedsRefresh</span><span class="p">:</span>
         <span class="n">table</span><span class="o">.</span><span class="n">Refresh</span><span class="p">()</span>
@@ -762,21 +865,22 @@ Spotfire에서 테이블 간 마킹 연동은 <strong>데이터 테이블 관계
 <li><a href="#8-png">예제 8. 모든 페이지의 시각화를 PNG로 일괄 내보내기</a></li>
 <li><a href="#9">예제 9. 여러 데이터 테이블을 한 번에 파일로 내보내기</a><ul>
 <li><a href="#_1">변형: 특정 컬럼만 내보내기</a></li>
-<li><a href="#1-exportdata">방법 1 — 표 시각화의 ExportData (권장, 시그니처 확인됨)</a></li>
-<li><a href="#2-exporttext">방법 2 — 표 시각화의 ExportText</a></li>
-<li><a href="#3-web-player">방법 3 — 라이브러리로 내보내기 (Web Player 안전)</a></li>
-<li><a href="#_2">원래 코드 (참고 — 이 환경에서는 동작하지 않습니다)</a></li>
+<li><a href="#exporttext">검증된 방법 — ExportText</a></li>
+<li><a href="#csv">CSV가 필요하면 직접 변환</a></li>
+<li><a href="#_2">여러 표를 한 번에</a></li>
+<li><a href="#_3">원래 코드 (참고 — 이 환경에서는 동작하지 않습니다)</a></li>
 </ul>
 </li>
 <li><a href="#10">예제 10. 마킹한 행을 새 데이터 테이블로 스냅샷</a><ul>
-<li><a href="#_3">활용</a></li>
-<li><a href="#_4">원래 코드 (참고 — 현재 동작하지 않습니다)</a></li>
+<li><a href="#_4">활용</a></li>
+<li><a href="#_8">원래 코드 (참고 — 현재 동작하지 않습니다)</a></li>
+<li><a href="#_9">원래 코드 (참고 — 현재 동작하지 않습니다)</a></li>
 </ul>
 </li>
 <li><a href="#11">예제 11. 마킹 결과를 문서 속성으로 넘기기</a></li>
 <li><a href="#12">예제 12. 키 컬럼으로 다른 테이블에 마킹 전파</a></li>
 <li><a href="#13">예제 13. 모든 데이터 테이블 일괄 새로고침</a><ul>
-<li><a href="#_5">변형: 필요한 것만 새로고침</a></li>
+<li><a href="#_10">변형: 필요한 것만 새로고침</a></li>
 </ul>
 </li>
 </ul>
