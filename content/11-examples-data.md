@@ -217,7 +217,7 @@ if result.IsValid:
 `Page.RenderAsync` 쪽이 훨씬 간단합니다. 두 번째 인자만 `PageRenderSettings` 로 바뀝니다.
 
 **이 절의 코드도 검증 환경에서 실행해 보지 않았습니다.** 공식 API 문서의 시그니처를
-그대로 옮긴 것이니, 쓰기 전에 [7.9의 확인 방법](07-pitfalls.html)으로 한 번 걸러 보세요.
+그대로 옮긴 것이니, 쓰기 전에 [7.10의 확인 방법](07-pitfalls.html)으로 한 번 걸러 보세요.
 
 ---
 

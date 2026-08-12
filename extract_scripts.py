@@ -51,6 +51,10 @@ FILENAMES = {
     21: "scatter_plot_matrix",
     22: "script_inventory",
     23: "environment_report",
+    24: "unify_tooltips",
+    25: "unify_axis_formatting",
+    26: "tag_marked_rows",
+    27: "focus_mode_by_marking",
 }
 
 HEADING = re.compile(r"^## 예제 (\d+)\.\s*(.+?)\s*$", re.M)

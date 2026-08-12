@@ -131,6 +131,28 @@ AI는 **붙여 넣은 코드의 스타일과 API를 모방**합니다.
 [6장](06-api-map.html)의 객체 모델 구조나 [14장 치트시트](14-cheatsheet.html)의
 해당 부분을 붙여 넣습니다. 특히 **속성 이름이 정확해야 하는 작업**에서 효과가 큽니다.
 
+### 재료 D — 외부 문서에서 오려온 근거 한 조각
+
+교안에 없는 주제면, 먼저 **사람이 근거를 찾아서** 붙여 넣는 편이 빠릅니다.
+AI에게 "찾아보"라고 하면 대개 그럴듯한 이름을 지어냅니다.
+
+| 모르는 것 | 어디서 오리나 |
+|-----------|-------------|
+| "이 기능이 스크립트로 되는지" | [Community 예제 색인](https://community.spotfire.com/articles/spotfire/ironpython-scripting-in-spotfire/)에서 비슷한 제목 찾기 |
+| "속성 이름과 열거형 값" | [sf-ref.com](https://www.sf-ref.com/ironpython/) 또는 [API Reference](https://docs.tibco.com/pub/doc_remote/sfire_dev/area/doc/api/tib_sfire-analyst_api/index.aspx) |
+| "이건 아예 스크립트 영역이 아닌지" | [1.3절 · C# 확장과의 경계](01-what-you-can-do.html) |
+
+붙여 넣을 때는 **출처 URL을 같이** 주고, "이 문서에 있는 이름만 써"라고 못을 박으세요.
+
+!!! warning "커뮤니티 코드를 그대로 주면 그 습관까지 복사됩니다"
+    외부 예제는 대부분 마킹 이름을 하드코딩하고(`Markings["Marking"]`),
+    반환값을 검사하지 않습니다. 재료로 줄 때 반드시 단서를 달아 주세요.
+
+    ```text
+    아래는 커뮤니티 예제야. 동작 방식만 참고하고,
+    마킹 이름 하드코딩·무검사 반환값·MessageBox 는 그대로 쓰지 마.
+    ```
+
 ---
 
 ## 8.4 ③ 요청 — 프롬프트 템플릿

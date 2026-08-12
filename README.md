@@ -1,6 +1,6 @@
 # Spotfire IronPython 2.7 교안
 
-Spotfire의 IronPython 2.7 스크립팅 한국어 교안과, 바로 실행할 수 있는 예제 스크립트 23종입니다.
+Spotfire의 IronPython 2.7 스크립팅 한국어 교안과, 바로 실행할 수 있는 예제 스크립트 27종입니다.
 
 **프로그래밍을 해 본 적 없어도** 따라올 수 있도록 개념부터 시작하고,
 **생성형 AI로 원하는 스크립트를 얻어내는 절차**까지 다룹니다.
@@ -18,7 +18,7 @@ Spotfire의 IronPython 2.7 스크립팅 한국어 교안과, 바로 실행할 �
 | 6 | **Spotfire API 객체 모델** — `Document` 아래로 내려가는 지도 |
 | 7 | **스크립팅의 현실** — 실제로 부딪힌 함정 모음. 이 교안만의 내용 |
 | 8 | **생성형 AI로 만들기** — 5단계 틀, 프롬프트 템플릿, 검증 체크리스트 |
-| 9~12 | **예제 23선** — 위험도 배지 포함 |
+| 9~12 | **예제 27선** — 위험도 배지 포함 |
 | 13~14 | **레퍼런스** — 실무 팁, 치트시트 & FAQ |
 
 코딩 경험이 있으면 3장은 건너뛰고, 1 → 2 → 4.1 → 5 → 6 → 7 순으로 보면 됩니다.
@@ -41,7 +41,7 @@ Spotfire의 IronPython 2.7 스크립팅 한국어 교안과, 바로 실행할 �
 여기에 더해, Spotfire 관련 Q&A에서 반복적으로 올라오는 주제(필터 초기화, 마킹 제어,
 이미지·데이터 내보내기, 문서 속성 조작, 시각화 순회)를 우선 반영했습니다.
 
-## 예제 23선
+## 예제 27선
 
 예제는 **무엇을 다루는지**로 묶었고, 각 예제에 위험도를 표시했습니다.
 
@@ -60,6 +60,8 @@ Spotfire의 IronPython 2.7 스크립팅 한국어 교안과, 바로 실행할 �
 | 5 | 모든 차트의 줌·축 범위 초기화 | 낮음 |
 | 6 | 시각화 유형 일괄 토글 | 중간 |
 | 7 | 모든 시각화의 데이터 테이블 일괄 교체 | **높음** |
+| 24 | 모든 시각화의 툴팁 일괄 통일 | 중간 · 미검증 |
+| 25 | 축 눈금 서식 일괄 통일 | 낮음 · 미검증 |
 
 ### 10장 · 필터·마킹·페이지 상태 — [`scripts/02-state/`](scripts/02-state)
 
@@ -71,6 +73,8 @@ Spotfire의 IronPython 2.7 스크립팅 한국어 교안과, 바로 실행할 �
 | 11 | 원하는 컬럼의 필터만 선택적으로 초기화 | 낮음 |
 | 12 | 역할별 필터 패널 구성 | 낮음 |
 | 13 | 문서 속성 값으로 페이지 표시/숨김 | 낮음 |
+| 26 | 마킹한 행에 태그 붙이기 | 중간 · 미검증 |
+| 27 | 마킹으로 대시보드 전체 좀혀보기 | 중간 · 미검증 |
 
 ### 11장 · 데이터와 내보내기 — [`scripts/03-data/`](scripts/03-data)
 
@@ -119,7 +123,7 @@ Spotfire IronPython은 AI 학습 데이터가 적은 분야라, 그냥 물어보
 cp -r .claude/skills/spotfire-ironpython ~/.claude/skills/
 ```
 
-스킬에는 실측으로 확인한 API 목록, 존재하지 않는 이름 목록, 예제 23종 색인이 들어 있어
+스킬에는 실측으로 확인한 API 목록, 존재하지 않는 이름 목록, 예제 27종 색인이 들어 있어
 프롬프트를 따로 붙여 넣을 필요가 없습니다.
 
 ## 스크립트 사용법
@@ -168,9 +172,10 @@ API 실측 결과가 정리되어 있습니다. 교안의 "검증 포인트"는 
 잡아 고쳤습니다. 교안을 수정한 뒤에는 `checks/00_verify_all_examples.py` 로
 회귀 확인을 할 수 있습니다.
 
-나중에 추가한 **예제 22·23은 아직 실측하지 않았습니다.** Spotfire 15.0 API 레퍼런스와
-공식 커뮤니티 문서를 근거로 작성했고, 둘 다 문서를 변경하지 않는 읽기 전용입니다.
-교안의 해당 절에도 그 사실을 표시해 두었습니다.
+나중에 추가한 **예제 22~27은 아직 실측하지 않았습니다.** Spotfire 15.0 API 레퍼런스,
+공식 커뮤니티 문서, sf-ref.com을 근거로 작성했으며 교안의 해당 절과 목록에
+`미검증` 을 표시해 두었습니다. 22·23은 읽기 전용이지만 24~27은 **문서를 변경하므로
+반드시 사본에서 먼저 시험**하세요.
 
 ## 로컬에서 빌드하기
 
@@ -196,16 +201,20 @@ python -m http.server 8000 --directory docs
 
 ## 참고 자료
 
-- [IronPython Scripting in Spotfire® – Overview (Spotfire Community)](https://community.spotfire.com/articles/spotfire/ironpython-scripting-in-spotfire/)
-  — 수백 개 예제의 분류 색인
-- [Spotfire Analyst API Reference](https://docs.tibco.com/pub/doc_remote/sfire_dev/area/doc/api/tib_sfire-analyst_api/index.aspx)
-  — 이름·시그니처·폐기 여부의 최종 근거
-- [The Spotfire IronPython Quick Reference](https://www.sf-ref.com/ironpython/)
-- [IronPython Example Scripts (Spotfire 제품 문서)](https://docs.tibco.com/pub/sfire-analyst/12.0.6/doc/html/en-US/TIB_sfire-analyst_UsersGuide/text/text_ironpython_example_scripts.htm)
-- [essejhsif/spotfire](https://github.com/essejhsif/spotfire)
-- [Gurudutt-Goswami/Spotfire-Ironpython](https://github.com/Gurudutt-Goswami/Spotfire-Ironpython)
+어느 자료를 언제 보는지까지 [14장 · 참고한 자료](https://cozytk.github.io/spotfire-iron-python-scripts/14-cheatsheet.html)에 정리해 두었습니다.
 
-교안이 근거로 삼은 개별 공식 문서 목록은
+| 자료 | 언제 보나 |
+|------|----------|
+| [IronPython Scripting in Spotfire® – Overview](https://community.spotfire.com/articles/spotfire/ironpython-scripting-in-spotfire/) | "이런 것도 되나?" — 수백 개 예제의 분류 색인 |
+| [Spotfire Analyst API Reference](https://docs.tibco.com/pub/doc_remote/sfire_dev/area/doc/api/tib_sfire-analyst_api/index.aspx) | 이름·시그니처·폐기 여부의 최종 근거 |
+| [The Spotfire IronPython Quick Reference (sf-ref.com)](https://www.sf-ref.com/ironpython/) | 시각화 속성 대화상자 탭 ↔ 코드 대응 |
+| [IronPython Example Scripts (제품 문서)](https://docs.tibco.com/pub/sfire-cloud/14.6.2/doc/html/en-US/TIB_sfire_client/client/topics/en-US/iron_python_example_scripts.html) | 공식 예제 3개와 매개변수 사용법 |
+| [essejhsif/spotfire](https://github.com/essejhsif/spotfire) · [Gurudutt-Goswami/Spotfire-Ironpython](https://github.com/Gurudutt-Goswami/Spotfire-Ironpython) | 짧고 오래된 스니펫 모음 — 7장 체크리스트로 걸러서 |
+
+스크립팅으로 안 되는 일(새 시각화 유형 만들기 등)의 경계는
+[`CustomVisualView` API 문서](https://docs.tibco.com/pub/doc_remote/sfire_dev/area/doc/api/tib_sfire-analyst_api/index.aspx?topic=html/t_spotfire_dxp_application_extension_customvisualview.htm)를
+근거로 [1.3절](https://cozytk.github.io/spotfire-iron-python-scripts/01-what-you-can-do.html)에
+정리했습니다. 교안이 근거로 삼은 개별 공식 문서 목록은
 [14장 · 참고한 자료](https://cozytk.github.io/spotfire-iron-python-scripts/14-cheatsheet.html)에
 정리해 두었습니다.
 

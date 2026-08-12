@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# 예제 23종 사전 검증 하네스
+# 예제 27종 사전 검증 하네스
 #
 # 목적:
 #   예제를 하나씩 실제로 돌리지 않고도, 각 예제가 쓰는 API가 이 환경에 존재하고
@@ -573,11 +573,109 @@ except Exception, e:
     note(NO, "ApplicationThread -> %s" % clean(str(e)))
 
 
+# ---------------------------------------------------------------
+# 예제 24~27 (문서 기반으로 추가된 예제) — 전부 읽기 전용 확인
+# ---------------------------------------------------------------
+
+start(24, u"툴팁 일괄 통일")
+detailsVc = first_with("Details")
+if detailsVc is None:
+    note(SKIP, u"Details 를 가진 시각화가 이 페이지에 없음")
+else:
+    attempt("Details.Items 개수", lambda: detailsVc.Details.Items.Count)
+    has("Details.Items", detailsVc.Details.Items, "AddExpression")
+    has("Details.Items", detailsVc.Details.Items, "InsertExpression")
+    try:
+        firstItem = None
+        for item in detailsVc.Details.Items:
+            firstItem = item
+            break
+        writable("Details 항목.Visible", firstItem, "Visible")
+    except Exception, e:
+        note(NO, "Details 항목 순회 -> %s" % clean(str(e)))
+    note(SKIP, u"AddExpression 은 항목을 실제로 늘리므로 호출하지 않음")
+
+start(25, u"축 눈금 서식 일괄 통일")
+try:
+    from Spotfire.Dxp.Data import DataType
+    from Spotfire.Dxp.Data.Formatters import NumberFormatCategory
+    imported("DataType / NumberFormatCategory", True)
+    attempt("DataType.Real.CreateLocalizedFormatter()",
+            lambda: DataType.Real.CreateLocalizedFormatter().GetType().Name)
+    note(OK, "NumberFormatCategory 멤버: %s" % clean(
+        ", ".join([n for n in dir(NumberFormatCategory) if not n.startswith("_")][:12])))
+except Exception, e:
+    imported("DataType / NumberFormatCategory", False, e)
+scaleVc = first_with("YAxis")
+if scaleVc is None:
+    note(SKIP, u"YAxis 를 가진 시각화 없음")
+else:
+    try:
+        formatting = scaleVc.YAxis.Scale.Formatting
+        note(OK, "YAxis.Scale.Formatting 멤버: %s" % clean(
+            ", ".join(real_members(formatting)[:12])))
+    except Exception, e:
+        note(NO, "YAxis.Scale.Formatting -> %s" % clean(str(e)))
+
+start(26, u"마킹한 행에 태그 붙이기")
+try:
+    from Spotfire.Dxp.Data import TagsColumn
+    imported("TagsColumn", True)
+    note(OK, "TagsColumn 멤버: %s" % clean(
+        ", ".join([n for n in dir(TagsColumn) if not n.startswith("_")][:12])))
+except Exception, e:
+    imported("TagsColumn", False, e)
+if table is None:
+    note(SKIP, u"데이터 테이블 없음")
+else:
+    tagFound = None
+    try:
+        from Spotfire.Dxp.Data import TagsColumn
+        for column in table.Columns:
+            try:
+                candidate = column.As[TagsColumn]()
+                if candidate is not None:
+                    tagFound = column.Name
+                    break
+            except:
+                continue
+    except:
+        pass
+    if tagFound is None:
+        note(SKIP, u"이 테이블에 태그 컴럼이 없음 (데이터 > 태그 추가로 만들면 확인 가능)")
+    else:
+        note(OK, u"태그 컴럼 발견: %s" % clean(tagFound))
+    note(SKIP, u"Tag(...) 는 데이터를 바꾸므로 호출하지 않음")
+
+start(27, u"마킹으로 대시보드 좀혀보기")
+try:
+    from Spotfire.Dxp.Application.Visuals import LimitingMarkingsEmptyBehavior
+    imported("LimitingMarkingsEmptyBehavior", True)
+    note(OK, "멤버: %s" % clean(
+        ", ".join([n for n in dir(LimitingMarkingsEmptyBehavior) if not n.startswith("_")][:12])))
+except Exception, e:
+    imported("LimitingMarkingsEmptyBehavior", False, e)
+dataVc = first_with("Data")
+if dataVc is None:
+    note(SKIP, u"대상 시각화 없음")
+else:
+    try:
+        filterings = dataVc.Data.Filterings
+        note(OK, "Data.Filterings 멤버: %s" % clean(
+            ", ".join(real_members(filterings)[:12])))
+    except Exception, e:
+        note(NO, "Data.Filterings -> %s" % clean(str(e)))
+    writable("Data.LimitingMarkingsEmptyBehavior", dataVc.Data, "LimitingMarkingsEmptyBehavior")
+    attempt("ActiveMarkingSelectionReference.Name",
+            lambda: Document.ActiveMarkingSelectionReference.Name)
+    note(SKIP, u"Filterings.Add/Remove 는 화면을 바꾸므로 호출하지 않음")
+
+
 # ===============================================================
 # 결과 출력
 # ===============================================================
 print "==============================================="
-print " 예제 23종 API 사전 검증 결과"
+print " 예제 27종 API 사전 검증 결과"
 print "==============================================="
 print "활성 페이지:", clean(page.Title)
 print "시각화:", len(allVisuals), "개 (VisualContent 캐스팅 가능", len(contents), "개)"

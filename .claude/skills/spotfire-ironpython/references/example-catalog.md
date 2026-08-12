@@ -79,6 +79,24 @@
 | 22 | 문서 스크립트 전수 조사 | **읽기 전용** · 미검증 | `Document.ScriptManager.GetScripts()` |
 | 23 | 실행 환경 진단 리포트 | **읽기 전용** · 미검증 | `Application.GetType()`, `CreateDataWriter` 가용성 |
 
+### 문서 기반으로 추가한 예제 (미검증)
+
+아래 네 개는 공식 API 레퍼런스·Spotfire Community·sf-ref.com을 근거로 작성했고
+**실측하지 않았습니다.** 사용자에게 그 사실을 명시하고, 사본에서 먼저 돌리게 하세요.
+
+| # | 예제 | 위험도 | 핵심 API | 위치 |
+|---|------|--------|----------|------|
+| 24 | 모든 시각화의 툴팁 일괄 통일 | 중간 · 미검증 | `vc.Details.Items.AddExpression` | `scripts/01-visuals/` |
+| 25 | 축 눈금 서식 일괄 통일 | 낮음 · 미검증 | `DataType.X.CreateLocalizedFormatter()`, `Scale.Formatting.XFormatter` | `scripts/01-visuals/` |
+| 26 | 마킹한 행에 태그 붙이기 | 중간 · 미검증 | `column.As[TagsColumn]().Tag(value, selection)` | `scripts/02-state/` |
+| 27 | 마킹으로 대시보드 좀혀보기 | 중간 · 미검증 | `vc.Data.Filterings.Add/Remove`, `LimitingMarkingsEmptyBehavior` | `scripts/02-state/` |
+
+주의할 점 두 가지.
+
+- 24번의 `AddExpression` 은 **멱등하지 않습니다.** 누를 때마다 툴팁 항목이 늘어납니다.
+- 27번은 **마킹을 만드는 시각화를 반드시 제외**해야 합니다. 자기 자신을 제한하면
+  마킹을 바꿀 수단이 사라집니다.
+
 ## 위험한 작업 전에
 
 18(인벤토리)·19(표현식 감사)·22(스크립트 조사)·23(환경 진단)은 **읽기 전용**입니다.

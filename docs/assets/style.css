@@ -200,7 +200,9 @@ th { background: var(--bg-soft); font-weight: 700; white-space: nowrap; }
 .badge.risk-mid  { background: var(--warn-bg); border-color: var(--warn-border); color: #8a6d00; }
 .badge.risk-high { background: var(--danger-bg); border-color: var(--danger-border); color: var(--danger-border); }
 .badge.analyst,
-.badge.env { border-style: dashed; }
+.badge.env,
+.badge.doc { border-style: dashed; }
+.badge.doc { color: var(--warn-border); border-color: var(--warn-border); }
 
 html[data-theme="dark"] .badge.risk-mid { color: #e3b341; }
 

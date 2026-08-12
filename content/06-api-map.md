@@ -481,7 +481,153 @@ if found:
 | 스크립트 목록 | `Document.ScriptManager` |
 | 클라이언트 종류 판별 | `Application.GetType().ToString()` |
 
-## 6.10 공식 API 레퍼런스에서 클래스 찾기
+## 6.10 시각화 속성 레시피 — UI 탭과 코드의 대응표
+
+시각화 속성 대화상자의 탭 하나하나가 대체로 코드 한 줄에 대응합니다.
+여기서는 그 대응관계를 모아 둡니다. 전부 `vc = visual.As[VisualContent]()` 로 내려온
+다음을 전제로 합니다.
+
+!!! warning "이 절은 문서 · 외부 레퍼런스 기반입니다"
+    9~12장 예제와 달리, 이 절의 속성 이름은 공식 API 레퍼런스와
+    [sf-ref.com](https://www.sf-ref.com/ironpython/)을 대조해 정리한 것이며,
+    **이 교안의 검증 환경에서 전부 실행해 본 것은 아닙니다.**
+    시각화 유형마다 있는 속성이 다르므로, 쓰기 전에 `dir(vc)` 로 한 번 확인하세요 → [7.6](07-pitfalls.html)
+
+### 축 — 범위·줌·눈금·로그 스케일
+
+```python
+from Spotfire.Dxp.Application.Visuals import AxisRange, AxisTransformType
+
+vc.XAxis.Expression = "[Month]"
+vc.YAxis.Range = AxisRange(0, 100)          # 고정
+vc.YAxis.Range = AxisRange(None, None)      # 자동으로 되돌리기
+vc.YAxis.IncludeZeroInAutoZoom = True       # 원점 포함
+vc.XAxis.ManualZoom = True                  # 줌 슬라이더 표시
+vc.XAxis.Reversed = True                    # 축 반전
+vc.YAxis.TransformType = AxisTransformType.Log10   # 로그 스케일
+vc.XAxis.Scale.ShowGridlines = True
+vc.XAxis.Scale.ShowLabels = True
+```
+
+줌 범위를 초기화할 때는 `Range` 가 아니라 `ZoomRange` 입니다 → [예제 5](09-examples-visuals.html)
+
+```python
+vc.XAxis.ZoomRange = AxisRange.DefaultRange
+```
+
+### 눈금 서식 — 데이터 타입별 포매터
+
+서식은 **축의 데이터 타입에 따라 받는 포매터 이름이 다릅니다.** 이게 가장 흔한 실수입니다.
+
+```python
+from Spotfire.Dxp.Data import DataType
+from Spotfire.Dxp.Data.Formatters import NumberFormatCategory
+
+fmt = DataType.Real.CreateLocalizedFormatter()
+fmt.Category = NumberFormatCategory.Currency
+fmt.DecimalDigits = 0
+fmt.GroupSeparatorEnabled = True      # 천 단위 구분
+fmt.ShortFormattingEnabled = True     # 1200 -> 1.2K
+
+vc.YAxis.Scale.Formatting.RealFormatter = fmt
+```
+
+| 컬럼 데이터 타입 | 대입할 속성 |
+|-------------------|-------------|
+| Real | `Formatting.RealFormatter` |
+| SingleReal | `Formatting.SingleRealFormatter` |
+| Integer | `Formatting.IntegerFormatter` |
+| LongInteger | `Formatting.LongIntegerFormatter` |
+| Currency | `Formatting.CurrencyFormatter` |
+| DateTime / Date / Time | `Formatting.DateTimeFormatter` |
+
+문자열·불리언·범주형·빈 컬럼은 서식을 받지 않습니다.
+UI 서식 탭에 "텍스트"만 보이는 축이라면 코드로도 안 됩니다.
+
+### 범례
+
+```python
+from Spotfire.Dxp.Application.Visuals import LegendDock
+
+vc.Legend.Visible = True
+vc.Legend.Dock = LegendDock.Right
+vc.Legend.Width = 150
+
+for item in vc.Legend.Items:          # 항목별로 켜고 끄기
+    item.Visible = (item.Title == "Color by")
+```
+
+### 툴팁(Details)
+
+```python
+for t in vc.Details.Items:             # 기본 항목 전부 끄기
+    t.Visible = False
+
+vc.Details.Items.AddExpression("Sum([Revenue]) as [매출]")
+vc.Details.Items.InsertExpression(0, "[Region] as [지역]")   # 맨 앞에
+```
+
+### 트렉스(분할 보기)
+
+```python
+from Spotfire.Dxp.Application.Visuals import TrellisMode
+
+vc.Trellis.TrellisMode = TrellisMode.Panels
+vc.Trellis.PanelAxis.Expression = "<[Region]>"    # 범주형은 <[ ]>
+vc.Trellis.ManualLayout = True
+vc.Trellis.ManualColumnCount = 3
+
+# 행/열 모드
+vc.Trellis.TrellisMode = TrellisMode.RowsColumns
+vc.Trellis.RowAxis.Expression = "<[Category]>"
+vc.Trellis.ColumnAxis.Expression = "<[Year]>"
+```
+
+트렉스·색상·마커 등 **범주형 축은 `<[컬럼]>` 처럼 꺠솠 괄호**를 씁니다.
+그냥 `[컬럼]` 을 넣으면 오류가 나거나 집계로 해석됩니다.
+
+### 시각화의 데이터 범위 설정
+
+```python
+from Spotfire.Dxp.Application.Visuals import LimitingMarkingsEmptyBehavior
+
+vc.Data.DataTableReference = Document.Data.Tables["Sales"]
+vc.Data.MarkingReference = Document.Data.Markings["Marking"]     # 이 시각화가 쓰는 마킹
+vc.Data.WhereClauseExpression = "[Region] = 'East'"              # 데이터 제한 표현식
+vc.Data.UseActiveFiltering = False                               # 페이지 필터링 무시
+
+# 마킹으로 데이터 제한 ("이 마킹에 속한 행만 보기")
+vc.Data.Filterings.Add(Document.Data.Markings["Marking"])
+vc.Data.LimitingMarkingsEmptyBehavior = LimitingMarkingsEmptyBehavior.ShowAll
+```
+
+이 세 가지를 헷갈리지 마세요.
+
+| 속성 | 의미 |
+|------|------|
+| `Data.MarkingReference` | 이 시각화에서 **드래그하면 칠해지는** 마킹 |
+| `Data.Filterings` | 이 시각화가 **보여 줄 범위를 좁히는** 마킹/필터링 |
+| `Data.WhereClauseExpression` | 표현식으로 직접 제한 (예제 1) |
+
+### 표 시각화 정렬
+
+```python
+from Spotfire.Dxp.Application.Visuals import TablePlot, TablePlotColumnSortMode
+
+tp = visual.As[TablePlot]()
+col = tp.Data.DataTableReference.Columns["Revenue"]
+tp.SortInfos.Clear()
+tp.SortInfos.Add(col, TablePlotColumnSortMode.Descending)
+```
+
+### 필터 패널·페이지 단위 토글
+
+```python
+panel = Document.ActivePageReference.FilterPanel
+panel.Visible = not panel.Visible
+```
+
+## 6.11 공식 API 레퍼런스에서 클래스 찾기
 
 Spotfire의 API 레퍼런스는 검색이 불편하지만, **URL 규칙이 단순**해서 주소창에 직접
 쳐 넣는 편이 빠릅니다.
@@ -509,7 +655,7 @@ Spotfire.Dxp.Application.Visual.RenderAsync (메서드)
 
 !!! warning "문서에 있다고 동작하는 것은 아닙니다"
     문서는 **이름과 시그니처**를 확인하는 용도입니다.
-    "그 환경에서 실제로 되는가"는 [7.9의 확인 방법](07-pitfalls.html)으로 따로 봐야 합니다.
+    "그 환경에서 실제로 되는가"는 [7.10의 확인 방법](07-pitfalls.html)으로 따로 봐야 합니다.
 
 ---
 

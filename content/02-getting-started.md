@@ -66,6 +66,41 @@ IronPython은 **.NET 위에서 도는 Python 구현체**입니다. Spotfire에�
 | 도구 > 개발 도구 > 스크립트 | 즉석 실행/시험용. 문서에 저장되지 않음 |
 | 텍스트 영역의 JavaScript | JavaScript API로 액션 컨트롤 버튼을 대신 눌러 간접 실행 |
 
+공식 문서가 직접 안내하는 입구는 세 곳입니다.
+
+- [텍스트 영역에 액션 추가하기](https://docs.tibco.com/pub/sfire-analyst/latest/doc/html/en-US/TIB_sfire_client/client/topics/en-US/adding_actions_to_a_text_area.html)
+- [시각화 항목 클릭 시 액션 (그래픽 표·KPI 차트)](https://docs.tibco.com/pub/sfire-analyst/latest/doc/html/en-US/TIB_sfire_client/client/topics/en-US/adding_actions_performed_when_clicking_on_visualization_items.html)
+- [스크립트 사용과 라이선스](https://docs.tibco.com/pub/sfire-analyst/latest/doc/html/en-US/TIB_sfire-analyst_UsersGuide/text/text_usage_of_scripts.htm)
+
+### 문서를 열 때 자동 실행이 필요하다면
+
+"대시보드가 열리자마자 초기화하고 싶다"는 요구는 자주 나오는데, 방법이 여럿이고
+환경에 따라 되고 안 되는 게 갈립니다. 선택지를 정리하면 이렇습니다.
+
+| 방법 | Web Player | 비고 |
+|------|-----------|------|
+| `문서 속성 > 스크립트` 에 등록 | △ | 문서가 열릴 때 실행. 가장 단순 |
+| 텍스트 영역 JavaScript 로 버튼 클릭 | ○ | [방법 문서](https://community.spotfire.com/s/article/How-to-trigger-an-IronPython-script-on-report-load-via-a-JavaScript-in-TIBCO-Spotfire) |
+| DateTime 데이터 함수 확장 경유 | ○ | 로드·필터·마킹 변경 시에도 트리거 가능. [Exchange 다운로드](https://community.spotfire.com/s/exchange/aCv4z0000008ObxCAE/custom-datetime-data-function-for-tibco-spotfire) |
+
+마킹·필터 변경을 직접 훅하는 API는 여전히 없습니다. 위 세 번째 방법도
+**확장을 설치해서** 우회하는 것입니다.
+
+### 스크립트 엔진 버전 선택기
+
+최근 버전의 스크립트 편집 대화상자에는 **스크립트마다 IronPython 버전을 고르는** 칸이
+있습니다(제품 문서 기준 2.0.2 / 2.7 계열 / 3.x). 이 교안은 **2.7 기준**이며,
+기존 문서를 물려받았는데 문법 오류가 이상하게 난다면 **이 선택값부터 확인**하세요.
+2.0.2로 잡혀 있으면 `print("a")` 조차 다르게 동작할 수 있습니다.
+
+### 스크립트는 분석 파일(DXP) 안에 산다
+
+공식 문서가 명시하는 중요한 사실입니다. **스크립트는 문서마다 따로 가집니다.**
+공용 스크립트 라이브러리 같은 개념이 없어서, 다른 분석 파일에 쓰려면 **사람이 복사**해야 합니다.
+그래서 이 저장소처럼 스크립트를 **파일로 가지고 있는 것**이 사실상 유일한 버전 관리입니다.
+문서 안에 어떤 스크립트가 들어 있는지는
+[예제 22 · 스크립트 전수 조사](12-examples-create.html)로 뒤지어 볼 수 있습니다.
+
 ### "트랜잭션으로 감싸기" 체크박스
 
 스크립트 편집 대화상자에는 스크립트를 **트랜잭션으로 감쌀지** 정하는 체크박스가 있습니다.
@@ -212,6 +247,16 @@ MessageBox.Show("완료")
     `OpenFileDialog`)와 로컬 경로 파일 쓰기는 **Analyst 데스크톱 클라이언트 전용**입니다.
     브라우저에서 여는 분석 파일에 넣으면 서버에서 실행되거나 오류가 납니다.
     배포 대상이 Web Player라면 문서 속성이나 `NotificationService`를 쓰세요.
+
+### 편집기에 기대하지 말 것
+
+Spotfire의 스크립트 편집기는 공식 문서가 인정하듯이 **문법 검사도, 자동완성도 없습니다.**
+사실상 메모장에 코드를 쓰는 것과 같아서, 오타는 전부 **실행 시점**에 터집니다.
+대책은 세 가지입니다.
+
+1. **이 저장소처럼 파일로 관리하고** 붙여넣기만 한다
+2. 긴 스크립트는 [외부 편집기 연동](https://community.spotfire.com/s/article/How-to-use-an-external-editor-to-edit-IronPython-scripts-with-autocomplete-and-syntax-checking)을 쓴다
+3. 처음 보는 API는 바로 쓰지 말고 `dir()` 로 먼저 확인한다 → [7.6](07-pitfalls.html)
 
 ### 오류 메시지 읽기
 

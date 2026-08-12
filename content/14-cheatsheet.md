@@ -113,6 +113,49 @@ scatter = visual.As[ScatterPlot]()
 scatter.MarkerSize = scatter.MarkerSize + 1
 ```
 
+### 더 있는 속성들 (문서 기반)
+
+```python
+# 툴팁(Details)
+for t in vc.Details.Items: t.Visible = False
+vc.Details.Items.AddExpression("Sum([Revenue]) as [매출]")
+
+# 트렉스 — 범주형 축은 <[ ]>
+from Spotfire.Dxp.Application.Visuals import TrellisMode
+vc.Trellis.TrellisMode = TrellisMode.Panels
+vc.Trellis.PanelAxis.Expression = "<[Region]>"
+
+# 눈금 서식 — 컴럼 데이터 타입에 맞는 포매터 속성에 넣는다
+from Spotfire.Dxp.Data import DataType
+from Spotfire.Dxp.Data.Formatters import NumberFormatCategory
+fmt = DataType.Real.CreateLocalizedFormatter()
+fmt.Category = NumberFormatCategory.Number
+fmt.GroupSeparatorEnabled = True
+vc.YAxis.Scale.Formatting.RealFormatter = fmt
+
+# 마킹으로 데이터 제한 (포커스 모드)
+vc.Data.Filterings.Add(Document.ActiveMarkingSelectionReference)
+
+# 표 시각화 정렬
+from Spotfire.Dxp.Application.Visuals import TablePlot, TablePlotColumnSortMode
+tp = visual.As[TablePlot]()
+tp.SortInfos.Clear()
+tp.SortInfos.Add(tp.Data.DataTableReference.Columns["Revenue"],
+                 TablePlotColumnSortMode.Descending)
+
+# 필터 패널 토글
+panel = Document.ActivePageReference.FilterPanel
+panel.Visible = not panel.Visible
+
+# 마킹된 행에 태그 붙이기 (태그 컴럼은 미리 만들어 둘 것)
+from Spotfire.Dxp.Data import TagsColumn
+tag = table.Columns["검토결과"].As[TagsColumn]()
+tag.Tag(u"확인됨", Document.ActiveMarkingSelectionReference.GetSelection(table))
+```
+
+이 블록은 **이 교안의 검증 환경에서 실행해 본 것이 아닙니다.**
+자세한 설명과 주의사항은 [6.10](06-api-map.html)과 예제 24~27에 있습니다.
+
 ### 유형 판별 두 가지 방식
 
 ```python
@@ -495,7 +538,7 @@ for m in Document.Data.Markings:
 
 1. **[공식 API 레퍼런스](https://docs.tibco.com/pub/doc_remote/sfire_dev/area/doc/api/tib_sfire-analyst_api/index.aspx)**
    — 이름·시그니처·폐기 여부의 최종 근거. URL 규칙이 단순해서 주소창에 직접 치는 편이 빠릅니다
-   → [6.10 참조](06-api-map.html)
+   → [6.11 참조](06-api-map.html)
 
    ```text
    .../html/T_Spotfire_Dxp_Application_Visuals_BarChart.htm
@@ -530,15 +573,40 @@ for m in Document.Data.Markings:
 
 ## 참고한 자료
 
-### 시작점
+### 다섯 가지 자료, 언제 무엇을 보나
 
-- [IronPython Scripting in Spotfire® – Overview (Spotfire Community)](https://community.spotfire.com/articles/spotfire/ironpython-scripting-in-spotfire/)
-  — 수백 개 예제의 분류 색인. 하고 싶은 일이 있으면 여기부터
-- [Spotfire Analyst API Reference](https://docs.tibco.com/pub/doc_remote/sfire_dev/area/doc/api/tib_sfire-analyst_api/index.aspx)
-  — 이름·시그니처·폐기 여부의 최종 근거 → [6.10](06-api-map.html)
-- [The Spotfire IronPython Quick Reference (sf-ref.com)](https://www.sf-ref.com/ironpython/)
-  — 시각화 유형별 속성 훑어보기
-- [IronPython Example Scripts (Spotfire 제품 문서)](https://docs.tibco.com/pub/sfire-analyst/12.0.6/doc/html/en-US/TIB_sfire-analyst_UsersGuide/text/text_ironpython_example_scripts.htm)
+자료마다 **잘하는 것이 다릅니다.** 뭐를 모르는지에 따라 골라 쓰세요.
+
+| 막힌 지점 | 볼 자료 |
+|-----------|---------|
+| "이런 것도 스크립트로 되나?" | [Community 예제 색인](https://community.spotfire.com/articles/spotfire/ironpython-scripting-in-spotfire/) — 데이터·시각화·필터/마킹·레이아웃·지도·문서·연동으로 분류된 수백 개 링크 |
+| "이 속성 이름이 맞나?" | [Analyst API Reference](https://docs.tibco.com/pub/doc_remote/sfire_dev/area/doc/api/tib_sfire-analyst_api/index.aspx) — 최종 근거 → [6.11](06-api-map.html) |
+| "UI의 이 체크박스는 코드로 뭐지?" | [sf-ref.com](https://www.sf-ref.com/ironpython/) — 속성 대화상자 탭 ↔ 코드 대응 → [6.10](06-api-map.html) |
+| "매개변수를 어떻게 쓰는 거지?" | [IronPython Example Scripts (제품 문서)](https://docs.tibco.com/pub/sfire-cloud/14.6.2/doc/html/en-US/TIB_sfire_client/client/topics/en-US/iron_python_example_scripts.html) — 공식 예제 3개 |
+| "비슷한 걸 짠 사람이 있을 텐데" | [essejhsif/spotfire](https://github.com/essejhsif/spotfire) · [Gurudutt-Goswami/Spotfire-Ironpython](https://github.com/Gurudutt-Goswami/Spotfire-Ironpython) — 짧은 스니펫 모음 |
+| "이건 스크립트로 안 되는 건가?" | [`CustomVisualView` API](https://docs.tibco.com/pub/doc_remote/sfire_dev/area/doc/api/tib_sfire-analyst_api/index.aspx?topic=html/t_spotfire_dxp_application_extension_customvisualview.htm) · [스크립팅 vs C# 확장](https://community.spotfire.com/s/article/How-to-choose-between-using-IronPython-scripting-and-creating-a-C-Extension-when-developing-for-TIBCO-Spotfire) → [1.3](01-what-you-can-do.html) |
+
+제품 문서의 공식 예제 3개는 이런 것들입니다. **전부 매개변수를 받는 형태**라,
+매개변수 쓰는 습관을 익히기에 좋습니다 → [2.4](02-getting-started.html)
+
+```python
+# 1) 새로고침이 필요한 테이블만 새로고침 — 매개변수 table (DataTable)
+if table.IsRefreshable and table.NeedsRefresh:
+    table.Refresh()
+
+# 2) 시각화의 X축 표현식 바꾸기 — 매개변수 visual (Visualization), expression (String)
+from Spotfire.Dxp.Application.Visuals import VisualContent
+visual.As[VisualContent]().XAxis.Expression = expression
+```
+
+나머지 하나는 SBDF 파일에서 열을 붙이는 예제입니다
+(`SbdfFileDataSource` + `AddColumnsSettings` + `JoinType`).
+
+!!! warning "sf-ref.com을 볼 때"
+    시각화 속성 정리는 가장 잘 되어 있지만, **산점도 중심**으로 쓰여 있고
+    페이지·데이터 테이블·북마크 섹션은 아직 비어 있습니다.
+    또 사이트의 변수명 관례가 이 교안과 달라서, 캐스팅 부분은
+    이 교안의 `visual.As[VisualContent]()` 을 기준으로 읽으세요 → [5.2](05-dotnet-interop.html)
 
 ### 이 교안이 근거로 삼은 공식 문서
 
@@ -548,6 +616,10 @@ for m in Document.Data.Markings:
 | 7.4 ③ 스냅샷 오류 우회 | [Attempt take snapshot … 오류 해결](https://community.spotfire.com/s/article/how-troubleshoot-exception-thrown-when-executing-ironpython-script-error-attempt-take-snapshot) |
 | 7.7 클라이언트 종류 판별 | [How to determine the client type](https://community.spotfire.com/s/article/how-determine-client-type-analyst-or-web-player-user-running-tibco-spotfire-using-ironpython) |
 | 2.3 `Context` 객체 | [Miniature Visualization Action Scripts](https://community.spotfire.com/s/article/How-to-use-Miniature-Visualization-Action-Scripts-using-IronPython-in-TIBCO-Spotfire) |
+| 2.2 문서 로드 시 실행·에디터 제약·버전 선택기 | [Trigger on report load via JavaScript](https://community.spotfire.com/s/article/How-to-trigger-an-IronPython-script-on-report-load-via-a-JavaScript-in-TIBCO-Spotfire) · [외부 편집기 연동](https://community.spotfire.com/s/article/How-to-use-an-external-editor-to-edit-IronPython-scripts-with-autocomplete-and-syntax-checking) · [IronPython Example Scripts](https://docs.tibco.com/pub/sfire-cloud/14.6.2/doc/html/en-US/TIB_sfire_client/client/topics/en-US/iron_python_example_scripts.html) |
+| 1.3 C# 확장과의 경계·`CustomVisualView` | [CustomVisualView API](https://docs.tibco.com/pub/doc_remote/sfire_dev/area/doc/api/tib_sfire-analyst_api/index.aspx?topic=html/t_spotfire_dxp_application_extension_customvisualview.htm) |
+| 6.10 시각화 속성 레시피 · 예제 24·25·27 | [sf-ref.com](https://www.sf-ref.com/ironpython/) + Analyst API Reference |
+| 7.9 문서가 예고하는 함정 · 예제 26 | [스크립트 개발과 한계](https://community.spotfire.com/s/article/How-to-develop-IronPython-scripts-in-TIBCO-Spotfire-and-their-limitations) · [essejhsif/spotfire](https://github.com/essejhsif/spotfire) |
 | 2.5 TRACE 로깅·알림 | [Debugging IronPython Scripts in Spotfire®](https://community.spotfire.com/s/article/Debugging-IronPython-Scripts-TIBCO-Spotfire) |
 | 6.8 · 예제 22 ScriptManager | [Introducing the Spotfire Script Management APIs](https://community.spotfire.com/articles/spotfire/introducing-the-spotfire-script-management-apis/) |
 | 13.2 진행 표시·취소 | [Progress bar and cancellation option](https://community.spotfire.com/s/article/How-to-Add-Progress-Bar-and-Cancellation-Option-when-Executing-IronPython-Scripts-in-TIBCO-Spotfire) |

@@ -588,4 +588,200 @@ role = u"재무" if userName in FINANCE_USERS else u"영업"
 
 ---
 
+## 예제 26. 마킹한 행에 태그 붙이기 (검토 결과 남기기)
+
+<ul class="meta">
+<li class="badge risk-mid">위험도 중간</li>
+<li class="badge hard">기본 기능으로 어려움</li>
+<li class="badge doc">문서 기반 · 미검증</li>
+</ul>
+
+**문제 상황**  
+이상치를 검토하는 회의입니다. 차트에서 문제 건을 마킹해 가며 보는데,
+**"이건 확인됨"을 데이터에 남기고** 싶습니다. 마킹은 클릭 한 번으로 사라지니까요.
+
+**기본 기능으로 어려운 이유**  
+UI에도 태그 기능은 있지만, **버튼 하나로 "마킹된 것만 Yes, 나머지는 No"** 를
+한 번에 적용하는 동작은 없습니다. 검토 세션을 반복할수록 손이 많이 갑니다.
+
+**사전 준비**  
+대상 데이터 테이블에 **태그 컬럼**이 있어야 합니다.
+`데이터 > 태그 추가` 로 만들고, 태그 값을 미리 두 개 정도 만들어 두세요.
+
+**스크립트 매개변수**
+
+| 이름 | 타입 | 값 |
+|------|------|-----|
+| `sourceTable` | DataTable | 대상 테이블 |
+| `tagColumnName` | String | 태그 컬럼 이름. 예: `"검토결과"` |
+| `tagValue` | String | 마킹된 행에 붙일 태그. 예: `"확인됨"` |
+
+```python
+# -*- coding: utf-8 -*-
+# 현재 마킹된 행에 지정한 태그를 붙인다.
+#
+# 매개변수:
+#   sourceTable   (DataTable) 대상 테이블
+#   tagColumnName (String)    태그 컬럼 이름
+#   tagValue      (String)    붙일 태그 값
+#
+# 사전 준비: 대상 테이블에 태그 컬럼이 이미 있어야 한다.
+
+from Spotfire.Dxp.Data import TagsColumn
+
+# 1) 태그 컬럼이 있는지 먼저 확인한다 (없으면 캐스팅이 터진다)
+if not sourceTable.Columns.Contains(tagColumnName):
+    Document.Properties["ScriptLog"] = u"태그 컬럼 '%s' 이 없습니다. 데이터 > 태그 추가로 먼저 만드세요." % tagColumnName
+else:
+    column = sourceTable.Columns[tagColumnName]
+    try:
+        tagColumn = column.As[TagsColumn]()
+    except:
+        tagColumn = None
+
+    if tagColumn is None:
+        Document.Properties["ScriptLog"] = u"'%s' 은 태그 컬럼이 아닙니다." % tagColumnName
+    else:
+        # 2) 마킹 이름을 하드코딩하지 않는다 — 한국어 UI에서는 "마킹" → 7.1 참조
+        marking = Document.ActiveMarkingSelectionReference
+        selection = marking.GetSelection(sourceTable)
+        markedCount = selection.AsIndexSet().Count
+
+        if markedCount == 0:
+            Document.Properties["ScriptLog"] = u"마킹된 행이 없습니다. 먼저 마킹하세요."
+        else:
+            # 3) 마킹된 행에만 태그를 붙인다
+            tagColumn.Tag(tagValue, selection)
+
+            Document.Properties["ScriptLog"] = u"'%s' 태그를 %d행에 적용했습니다." % (
+                tagValue, markedCount)
+
+print Document.Properties["ScriptLog"]
+```
+
+### 변형: 나머지 행을 반대 태그로 채우기
+
+커뮤니티 예제에서 흔히 보이는 형태입니다. **전체를 No로 칠한 뒤 마킹된 것만 Yes**로
+덮어씁니다. 검토를 처음부터 다시 시작할 때 쓸법합니다.
+
+```python
+from Spotfire.Dxp.Data import IndexSet, RowSelection, TagsColumn
+
+tagColumn = sourceTable.Columns[tagColumnName].As[TagsColumn]()
+marked = Document.ActiveMarkingSelectionReference.GetSelection(sourceTable)
+
+allRows = IndexSet(sourceTable.RowCount, True)      # 전체 행
+tagColumn.Tag(u"미확인", RowSelection(allRows))
+tagColumn.Tag(u"확인됨", marked)                     # 마킹된 행만 덮어쓴다
+```
+
+!!! danger "검증 포인트"
+    - **이 예제는 실측하지 않았습니다.** `TagsColumn.Tag(...)` 는 공식 API와
+      커뮤니티 예제 기준입니다. 사본에서 먼저 돌려 보세요.
+    - **태그는 데이터를 바꿉니다.** 실행 취소로 깔끔하게 되돌아지지 않을 수 있으므로
+      위험도를 중간으로 두었습니다.
+    - 태그 컬럼은 **스크립트로 만들지 말고 UI에서 미리 만들어 두세요.** 그쪽이 훨씬 단순합니다.
+    - 데이터를 새로고침하면 태그가 어떻게 되는지 반드시 확인하세요.
+      연결된(linked) 테이블에서는 행 순서가 바뀌면 태그가 엉뚱한 행에 남을 수 있습니다.
+
+---
+
+## 예제 27. 마킹으로 대시보드 전체 좀혀보기 (포커스 모드)
+
+<ul class="meta">
+<li class="badge risk-mid">위험도 중간</li>
+<li class="badge bulk">일괄 적용</li>
+<li class="badge hard">기본 기능으로 어려움</li>
+<li class="badge doc">문서 기반 · 미검증</li>
+</ul>
+
+**문제 상황**  
+한 차트에서 관심 있는 제품군을 마킹한 뒤, **대시보드 전체를 그 범위로만** 보고 싶습니다.
+보고가 끝나면 버튼 하나로 원래대로 되돌리고요.
+
+**기본 기능으로 어려운 이유**  
+시각화 속성의 `데이터 > 마킹으로 표시된 데이터 제한` 체크박스를 **시각화마다**
+켜고 끓는 수밖에 없습니다. 20개 시각화면 40번입니다.
+
+**스크립트 매개변수**
+
+| 이름 | 타입 | 값 |
+|------|------|-----|
+| `targetTable` | DataTable | 대상 테이블 |
+| `mode` | String | `"on"` 이면 제한 적용, 그 외에는 해제 |
+
+```python
+# -*- coding: utf-8 -*-
+# 현재 활성 마킹을 "데이터 제한" 으로 모든 시각화에 걸거나 해제한다.
+#
+# 매개변수:
+#   targetTable (DataTable) 대상 테이블
+#   mode        (String)    "on" 이면 적용, 그 외에는 해제
+#
+# 주의: 제한을 건 시각화에서는 마킹을 풀면 화면이 비거나 전체로 돌아간다.
+#       아래에서 LimitingMarkingsEmptyBehavior 로 그 동작을 정한다.
+
+from Spotfire.Dxp.Application.Visuals import VisualContent, LimitingMarkingsEmptyBehavior
+
+turnOn = str(mode).strip().lower() in ("on", "true", "1", "y", "yes")
+
+# 마킹 이름을 하드코딩하지 않는다 → 7.1 참조
+marking = Document.ActiveMarkingSelectionReference
+
+changed, skipped = 0, 0
+report = []
+
+for page in Document.Pages:
+    for visual in page.Visuals:
+        try:
+            vc = visual.As[VisualContent]()
+            if vc.Data.DataTableReference != targetTable:
+                continue
+            filterings = vc.Data.Filterings
+        except:
+            skipped += 1
+            continue
+
+        # 이 시각화 자신이 마킹을 만드는 곳이면 건드리지 않는다.
+        # 그렇지 않으면 마킹하는 순간 자기 자신이 사라진다.
+        try:
+            if vc.Data.MarkingReference == marking:
+                report.append(u"%s — 마킹 원본이라 유지" % visual.Title)
+                continue
+        except:
+            pass
+
+        try:
+            if turnOn:
+                if not filterings.Contains(marking):
+                    filterings.Add(marking)
+                # 마킹이 비었을 때 전체를 보여 준다 (빈 화면보다 덜 당황스럽다)
+                vc.Data.LimitingMarkingsEmptyBehavior = LimitingMarkingsEmptyBehavior.ShowAll
+            else:
+                if filterings.Contains(marking):
+                    filterings.Remove(marking)
+            changed += 1
+            report.append(u"%s — %s" % (visual.Title, u"제한 적용" if turnOn else u"제한 해제"))
+        except Exception, err:
+            skipped += 1
+            report.append(u"  ! %s : %s" % (visual.Title, err))
+
+summary = u"포커스 모드 %s: %d개 변경, %d개 건너뜀\n%s" % (
+    u"켬" if turnOn else u"끔", changed, skipped, u"\n".join(report))
+Document.Properties["ScriptLog"] = summary
+print summary
+```
+
+!!! danger "검증 포인트"
+    - **이 예제는 실측하지 않았습니다.** `Data.Filterings` · `LimitingMarkingsEmptyBehavior`
+      는 공식 API 레퍼런스와 sf-ref.com 기준입니다.
+      `Contains` 가 없는 버전이라면 `dir(vc.Data.Filterings)` 로 멤버를 먼저 확인하세요.
+    - **마킹을 만드는 시각화는 제외해야 합니다.** 자기 자신을 제한하면
+      마킹을 바꿔 끝 수단이 없어집니다. 위 코드의 `MarkingReference` 비교가 그 장치입니다.
+    - 반드시 **해제 버튼과 쌍으로 배포하세요.** 같은 스크립트에 `mode` 만 다르게 주면 됩니다.
+    - 이 설정은 **문서에 저장됩니다.** 제한을 걸어 둔 채로 저장하면
+      다음 사람은 "데이터가 안 보인다"고 문의합니다.
+
+---
+
 다음 장은 **데이터를 읽고 내보내는** 예제입니다.

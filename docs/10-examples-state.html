@@ -670,6 +670,228 @@ Spotfire에서 페이지 숨김은 <strong>작성 시점에 고정</strong>되�
 </ul>
 </div>
 <hr />
+<h2 id="26">예제 26. 마킹한 행에 태그 붙이기 (검토 결과 남기기)</h2>
+<ul class="meta">
+<li class="badge risk-mid">위험도 중간</li>
+<li class="badge hard">기본 기능으로 어려움</li>
+<li class="badge doc">문서 기반 · 미검증</li>
+</ul>
+
+<p><strong>문제 상황</strong><br />
+이상치를 검토하는 회의입니다. 차트에서 문제 건을 마킹해 가며 보는데,
+<strong>"이건 확인됨"을 데이터에 남기고</strong> 싶습니다. 마킹은 클릭 한 번으로 사라지니까요.</p>
+<p><strong>기본 기능으로 어려운 이유</strong><br />
+UI에도 태그 기능은 있지만, <strong>버튼 하나로 "마킹된 것만 Yes, 나머지는 No"</strong> 를
+한 번에 적용하는 동작은 없습니다. 검토 세션을 반복할수록 손이 많이 갑니다.</p>
+<p><strong>사전 준비</strong><br />
+대상 데이터 테이블에 <strong>태그 컬럼</strong>이 있어야 합니다.
+<code>데이터 &gt; 태그 추가</code> 로 만들고, 태그 값을 미리 두 개 정도 만들어 두세요.</p>
+<p><strong>스크립트 매개변수</strong></p>
+<table>
+<thead>
+<tr>
+<th>이름</th>
+<th>타입</th>
+<th>값</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sourceTable</code></td>
+<td>DataTable</td>
+<td>대상 테이블</td>
+</tr>
+<tr>
+<td><code>tagColumnName</code></td>
+<td>String</td>
+<td>태그 컬럼 이름. 예: <code>"검토결과"</code></td>
+</tr>
+<tr>
+<td><code>tagValue</code></td>
+<td>String</td>
+<td>마킹된 행에 붙일 태그. 예: <code>"확인됨"</code></td>
+</tr>
+</tbody>
+</table>
+<div class="codehilite"><pre><span></span><code><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="c1"># 현재 마킹된 행에 지정한 태그를 붙인다.</span>
+<span class="c1">#</span>
+<span class="c1"># 매개변수:</span>
+<span class="c1">#   sourceTable   (DataTable) 대상 테이블</span>
+<span class="c1">#   tagColumnName (String)    태그 컬럼 이름</span>
+<span class="c1">#   tagValue      (String)    붙일 태그 값</span>
+<span class="c1">#</span>
+<span class="c1"># 사전 준비: 대상 테이블에 태그 컬럼이 이미 있어야 한다.</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Data</span><span class="w"> </span><span class="kn">import</span> <span class="n">TagsColumn</span>
+
+<span class="c1"># 1) 태그 컬럼이 있는지 먼저 확인한다 (없으면 캐스팅이 터진다)</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">sourceTable</span><span class="o">.</span><span class="n">Columns</span><span class="o">.</span><span class="n">Contains</span><span class="p">(</span><span class="n">tagColumnName</span><span class="p">):</span>
+    <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;태그 컬럼 &#39;</span><span class="si">%s</span><span class="s2">&#39; 이 없습니다. 데이터 &gt; 태그 추가로 먼저 만드세요.&quot;</span> <span class="o">%</span> <span class="n">tagColumnName</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">column</span> <span class="o">=</span> <span class="n">sourceTable</span><span class="o">.</span><span class="n">Columns</span><span class="p">[</span><span class="n">tagColumnName</span><span class="p">]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">tagColumn</span> <span class="o">=</span> <span class="n">column</span><span class="o">.</span><span class="n">As</span><span class="p">[</span><span class="n">TagsColumn</span><span class="p">]()</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">tagColumn</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="n">tagColumn</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;&#39;</span><span class="si">%s</span><span class="s2">&#39; 은 태그 컬럼이 아닙니다.&quot;</span> <span class="o">%</span> <span class="n">tagColumnName</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># 2) 마킹 이름을 하드코딩하지 않는다 — 한국어 UI에서는 &quot;마킹&quot; → 7.1 참조</span>
+        <span class="n">marking</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">ActiveMarkingSelectionReference</span>
+        <span class="n">selection</span> <span class="o">=</span> <span class="n">marking</span><span class="o">.</span><span class="n">GetSelection</span><span class="p">(</span><span class="n">sourceTable</span><span class="p">)</span>
+        <span class="n">markedCount</span> <span class="o">=</span> <span class="n">selection</span><span class="o">.</span><span class="n">AsIndexSet</span><span class="p">()</span><span class="o">.</span><span class="n">Count</span>
+
+        <span class="k">if</span> <span class="n">markedCount</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;마킹된 행이 없습니다. 먼저 마킹하세요.&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># 3) 마킹된 행에만 태그를 붙인다</span>
+            <span class="n">tagColumn</span><span class="o">.</span><span class="n">Tag</span><span class="p">(</span><span class="n">tagValue</span><span class="p">,</span> <span class="n">selection</span><span class="p">)</span>
+
+            <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;&#39;</span><span class="si">%s</span><span class="s2">&#39; 태그를 </span><span class="si">%d</span><span class="s2">행에 적용했습니다.&quot;</span> <span class="o">%</span> <span class="p">(</span>
+                <span class="n">tagValue</span><span class="p">,</span> <span class="n">markedCount</span><span class="p">)</span>
+
+<span class="nb">print</span> <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span>
+</code></pre></div>
+
+<h3 id="_4">변형: 나머지 행을 반대 태그로 채우기</h3>
+<p>커뮤니티 예제에서 흔히 보이는 형태입니다. <strong>전체를 No로 칠한 뒤 마킹된 것만 Yes</strong>로
+덮어씁니다. 검토를 처음부터 다시 시작할 때 쓸법합니다.</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Data</span><span class="w"> </span><span class="kn">import</span> <span class="n">IndexSet</span><span class="p">,</span> <span class="n">RowSelection</span><span class="p">,</span> <span class="n">TagsColumn</span>
+
+<span class="n">tagColumn</span> <span class="o">=</span> <span class="n">sourceTable</span><span class="o">.</span><span class="n">Columns</span><span class="p">[</span><span class="n">tagColumnName</span><span class="p">]</span><span class="o">.</span><span class="n">As</span><span class="p">[</span><span class="n">TagsColumn</span><span class="p">]()</span>
+<span class="n">marked</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">ActiveMarkingSelectionReference</span><span class="o">.</span><span class="n">GetSelection</span><span class="p">(</span><span class="n">sourceTable</span><span class="p">)</span>
+
+<span class="n">allRows</span> <span class="o">=</span> <span class="n">IndexSet</span><span class="p">(</span><span class="n">sourceTable</span><span class="o">.</span><span class="n">RowCount</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>      <span class="c1"># 전체 행</span>
+<span class="n">tagColumn</span><span class="o">.</span><span class="n">Tag</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;미확인&quot;</span><span class="p">,</span> <span class="n">RowSelection</span><span class="p">(</span><span class="n">allRows</span><span class="p">))</span>
+<span class="n">tagColumn</span><span class="o">.</span><span class="n">Tag</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;확인됨&quot;</span><span class="p">,</span> <span class="n">marked</span><span class="p">)</span>                     <span class="c1"># 마킹된 행만 덮어쓴다</span>
+</code></pre></div>
+
+<div class="admonition danger">
+<p class="admonition-title">검증 포인트</p>
+<ul>
+<li><strong>이 예제는 실측하지 않았습니다.</strong> <code>TagsColumn.Tag(...)</code> 는 공식 API와
+  커뮤니티 예제 기준입니다. 사본에서 먼저 돌려 보세요.</li>
+<li><strong>태그는 데이터를 바꿉니다.</strong> 실행 취소로 깔끔하게 되돌아지지 않을 수 있으므로
+  위험도를 중간으로 두었습니다.</li>
+<li>태그 컬럼은 <strong>스크립트로 만들지 말고 UI에서 미리 만들어 두세요.</strong> 그쪽이 훨씬 단순합니다.</li>
+<li>데이터를 새로고침하면 태그가 어떻게 되는지 반드시 확인하세요.
+  연결된(linked) 테이블에서는 행 순서가 바뀌면 태그가 엉뚱한 행에 남을 수 있습니다.</li>
+</ul>
+</div>
+<hr />
+<h2 id="27">예제 27. 마킹으로 대시보드 전체 좀혀보기 (포커스 모드)</h2>
+<ul class="meta">
+<li class="badge risk-mid">위험도 중간</li>
+<li class="badge bulk">일괄 적용</li>
+<li class="badge hard">기본 기능으로 어려움</li>
+<li class="badge doc">문서 기반 · 미검증</li>
+</ul>
+
+<p><strong>문제 상황</strong><br />
+한 차트에서 관심 있는 제품군을 마킹한 뒤, <strong>대시보드 전체를 그 범위로만</strong> 보고 싶습니다.
+보고가 끝나면 버튼 하나로 원래대로 되돌리고요.</p>
+<p><strong>기본 기능으로 어려운 이유</strong><br />
+시각화 속성의 <code>데이터 &gt; 마킹으로 표시된 데이터 제한</code> 체크박스를 <strong>시각화마다</strong>
+켜고 끓는 수밖에 없습니다. 20개 시각화면 40번입니다.</p>
+<p><strong>스크립트 매개변수</strong></p>
+<table>
+<thead>
+<tr>
+<th>이름</th>
+<th>타입</th>
+<th>값</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>targetTable</code></td>
+<td>DataTable</td>
+<td>대상 테이블</td>
+</tr>
+<tr>
+<td><code>mode</code></td>
+<td>String</td>
+<td><code>"on"</code> 이면 제한 적용, 그 외에는 해제</td>
+</tr>
+</tbody>
+</table>
+<div class="codehilite"><pre><span></span><code><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="c1"># 현재 활성 마킹을 &quot;데이터 제한&quot; 으로 모든 시각화에 걸거나 해제한다.</span>
+<span class="c1">#</span>
+<span class="c1"># 매개변수:</span>
+<span class="c1">#   targetTable (DataTable) 대상 테이블</span>
+<span class="c1">#   mode        (String)    &quot;on&quot; 이면 적용, 그 외에는 해제</span>
+<span class="c1">#</span>
+<span class="c1"># 주의: 제한을 건 시각화에서는 마킹을 풀면 화면이 비거나 전체로 돌아간다.</span>
+<span class="c1">#       아래에서 LimitingMarkingsEmptyBehavior 로 그 동작을 정한다.</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Visuals</span><span class="w"> </span><span class="kn">import</span> <span class="n">VisualContent</span><span class="p">,</span> <span class="n">LimitingMarkingsEmptyBehavior</span>
+
+<span class="n">turnOn</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">mode</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;on&quot;</span><span class="p">,</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="s2">&quot;yes&quot;</span><span class="p">)</span>
+
+<span class="c1"># 마킹 이름을 하드코딩하지 않는다 → 7.1 참조</span>
+<span class="n">marking</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">ActiveMarkingSelectionReference</span>
+
+<span class="n">changed</span><span class="p">,</span> <span class="n">skipped</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>
+<span class="n">report</span> <span class="o">=</span> <span class="p">[]</span>
+
+<span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">Pages</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">visual</span> <span class="ow">in</span> <span class="n">page</span><span class="o">.</span><span class="n">Visuals</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">vc</span> <span class="o">=</span> <span class="n">visual</span><span class="o">.</span><span class="n">As</span><span class="p">[</span><span class="n">VisualContent</span><span class="p">]()</span>
+            <span class="k">if</span> <span class="n">vc</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">DataTableReference</span> <span class="o">!=</span> <span class="n">targetTable</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">filterings</span> <span class="o">=</span> <span class="n">vc</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Filterings</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">skipped</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">continue</span>
+
+        <span class="c1"># 이 시각화 자신이 마킹을 만드는 곳이면 건드리지 않는다.</span>
+        <span class="c1"># 그렇지 않으면 마킹하는 순간 자기 자신이 사라진다.</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">vc</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">MarkingReference</span> <span class="o">==</span> <span class="n">marking</span><span class="p">:</span>
+                <span class="n">report</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> — 마킹 원본이라 유지&quot;</span> <span class="o">%</span> <span class="n">visual</span><span class="o">.</span><span class="n">Title</span><span class="p">)</span>
+                <span class="k">continue</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">turnOn</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">filterings</span><span class="o">.</span><span class="n">Contains</span><span class="p">(</span><span class="n">marking</span><span class="p">):</span>
+                    <span class="n">filterings</span><span class="o">.</span><span class="n">Add</span><span class="p">(</span><span class="n">marking</span><span class="p">)</span>
+                <span class="c1"># 마킹이 비었을 때 전체를 보여 준다 (빈 화면보다 덜 당황스럽다)</span>
+                <span class="n">vc</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">LimitingMarkingsEmptyBehavior</span> <span class="o">=</span> <span class="n">LimitingMarkingsEmptyBehavior</span><span class="o">.</span><span class="n">ShowAll</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">filterings</span><span class="o">.</span><span class="n">Contains</span><span class="p">(</span><span class="n">marking</span><span class="p">):</span>
+                    <span class="n">filterings</span><span class="o">.</span><span class="n">Remove</span><span class="p">(</span><span class="n">marking</span><span class="p">)</span>
+            <span class="n">changed</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">report</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> — </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">visual</span><span class="o">.</span><span class="n">Title</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;제한 적용&quot;</span> <span class="k">if</span> <span class="n">turnOn</span> <span class="k">else</span> <span class="sa">u</span><span class="s2">&quot;제한 해제&quot;</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">,</span> <span class="n">err</span><span class="p">:</span>
+            <span class="n">skipped</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">report</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;  ! </span><span class="si">%s</span><span class="s2"> : </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">visual</span><span class="o">.</span><span class="n">Title</span><span class="p">,</span> <span class="n">err</span><span class="p">))</span>
+
+<span class="n">summary</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;포커스 모드 </span><span class="si">%s</span><span class="s2">: </span><span class="si">%d</span><span class="s2">개 변경, </span><span class="si">%d</span><span class="s2">개 건너뜀</span><span class="se">\n</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span>
+    <span class="sa">u</span><span class="s2">&quot;켬&quot;</span> <span class="k">if</span> <span class="n">turnOn</span> <span class="k">else</span> <span class="sa">u</span><span class="s2">&quot;끔&quot;</span><span class="p">,</span> <span class="n">changed</span><span class="p">,</span> <span class="n">skipped</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">report</span><span class="p">))</span>
+<span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">summary</span>
+<span class="nb">print</span> <span class="n">summary</span>
+</code></pre></div>
+
+<div class="admonition danger">
+<p class="admonition-title">검증 포인트</p>
+<ul>
+<li><strong>이 예제는 실측하지 않았습니다.</strong> <code>Data.Filterings</code> · <code>LimitingMarkingsEmptyBehavior</code>
+  는 공식 API 레퍼런스와 sf-ref.com 기준입니다.
+  <code>Contains</code> 가 없는 버전이라면 <code>dir(vc.Data.Filterings)</code> 로 멤버를 먼저 확인하세요.</li>
+<li><strong>마킹을 만드는 시각화는 제외해야 합니다.</strong> 자기 자신을 제한하면
+  마킹을 바꿔 끝 수단이 없어집니다. 위 코드의 <code>MarkingReference</code> 비교가 그 장치입니다.</li>
+<li>반드시 <strong>해제 버튼과 쌍으로 배포하세요.</strong> 같은 스크립트에 <code>mode</code> 만 다르게 주면 됩니다.</li>
+<li>이 설정은 <strong>문서에 저장됩니다.</strong> 제한을 걸어 둔 채로 저장하면
+  다음 사람은 "데이터가 안 보인다"고 문의합니다.</li>
+</ul>
+</div>
+<hr />
 <p>다음 장은 <strong>데이터를 읽고 내보내는</strong> 예제입니다.</p>
     <nav class="pager"><a class="pg prev" href="09-examples-visuals.html"><span>이전</span>9. 예제 A · 시각화 일괄 제어</a><a class="pg next" href="11-examples-data.html"><span>다음</span>11. 예제 C · 데이터와 내보내기</a></nav>
     <footer class="foot">
@@ -694,6 +916,11 @@ Spotfire에서 페이지 숨김은 <strong>작성 시점에 고정</strong>되�
 <li><a href="#_3">변형: 로그인 사용자로 자동 판별</a></li>
 </ul>
 </li>
+<li><a href="#26">예제 26. 마킹한 행에 태그 붙이기 (검토 결과 남기기)</a><ul>
+<li><a href="#_4">변형: 나머지 행을 반대 태그로 채우기</a></li>
+</ul>
+</li>
+<li><a href="#27">예제 27. 마킹으로 대시보드 전체 좀혀보기 (포커스 모드)</a></li>
 </ul>
 </div>
 </aside>

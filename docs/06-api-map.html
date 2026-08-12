@@ -588,7 +588,171 @@ First  Last  IsEmpty  IsFull  GetNextIndex  GetPreviousIndex</code></p>
 </tr>
 </tbody>
 </table>
-<h2 id="610-api">6.10 공식 API 레퍼런스에서 클래스 찾기</h2>
+<h2 id="610-ui">6.10 시각화 속성 레시피 — UI 탭과 코드의 대응표</h2>
+<p>시각화 속성 대화상자의 탭 하나하나가 대체로 코드 한 줄에 대응합니다.
+여기서는 그 대응관계를 모아 둡니다. 전부 <code>vc = visual.As[VisualContent]()</code> 로 내려온
+다음을 전제로 합니다.</p>
+<div class="admonition warning">
+<p class="admonition-title">이 절은 문서 · 외부 레퍼런스 기반입니다</p>
+<p>9~12장 예제와 달리, 이 절의 속성 이름은 공식 API 레퍼런스와
+<a href="https://www.sf-ref.com/ironpython/">sf-ref.com</a>을 대조해 정리한 것이며,
+<strong>이 교안의 검증 환경에서 전부 실행해 본 것은 아닙니다.</strong>
+시각화 유형마다 있는 속성이 다르므로, 쓰기 전에 <code>dir(vc)</code> 로 한 번 확인하세요 → <a href="07-pitfalls.html">7.6</a></p>
+</div>
+<h3 id="_9">축 — 범위·줌·눈금·로그 스케일</h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Visuals</span><span class="w"> </span><span class="kn">import</span> <span class="n">AxisRange</span><span class="p">,</span> <span class="n">AxisTransformType</span>
+
+<span class="n">vc</span><span class="o">.</span><span class="n">XAxis</span><span class="o">.</span><span class="n">Expression</span> <span class="o">=</span> <span class="s2">&quot;[Month]&quot;</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">YAxis</span><span class="o">.</span><span class="n">Range</span> <span class="o">=</span> <span class="n">AxisRange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>          <span class="c1"># 고정</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">YAxis</span><span class="o">.</span><span class="n">Range</span> <span class="o">=</span> <span class="n">AxisRange</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>      <span class="c1"># 자동으로 되돌리기</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">YAxis</span><span class="o">.</span><span class="n">IncludeZeroInAutoZoom</span> <span class="o">=</span> <span class="kc">True</span>       <span class="c1"># 원점 포함</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">XAxis</span><span class="o">.</span><span class="n">ManualZoom</span> <span class="o">=</span> <span class="kc">True</span>                  <span class="c1"># 줌 슬라이더 표시</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">XAxis</span><span class="o">.</span><span class="n">Reversed</span> <span class="o">=</span> <span class="kc">True</span>                    <span class="c1"># 축 반전</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">YAxis</span><span class="o">.</span><span class="n">TransformType</span> <span class="o">=</span> <span class="n">AxisTransformType</span><span class="o">.</span><span class="n">Log10</span>   <span class="c1"># 로그 스케일</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">XAxis</span><span class="o">.</span><span class="n">Scale</span><span class="o">.</span><span class="n">ShowGridlines</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">XAxis</span><span class="o">.</span><span class="n">Scale</span><span class="o">.</span><span class="n">ShowLabels</span> <span class="o">=</span> <span class="kc">True</span>
+</code></pre></div>
+
+<p>줌 범위를 초기화할 때는 <code>Range</code> 가 아니라 <code>ZoomRange</code> 입니다 → <a href="09-examples-visuals.html">예제 5</a></p>
+<div class="codehilite"><pre><span></span><code><span class="n">vc</span><span class="o">.</span><span class="n">XAxis</span><span class="o">.</span><span class="n">ZoomRange</span> <span class="o">=</span> <span class="n">AxisRange</span><span class="o">.</span><span class="n">DefaultRange</span>
+</code></pre></div>
+
+<h3 id="_10">눈금 서식 — 데이터 타입별 포매터</h3>
+<p>서식은 <strong>축의 데이터 타입에 따라 받는 포매터 이름이 다릅니다.</strong> 이게 가장 흔한 실수입니다.</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Data</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataType</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Data.Formatters</span><span class="w"> </span><span class="kn">import</span> <span class="n">NumberFormatCategory</span>
+
+<span class="n">fmt</span> <span class="o">=</span> <span class="n">DataType</span><span class="o">.</span><span class="n">Real</span><span class="o">.</span><span class="n">CreateLocalizedFormatter</span><span class="p">()</span>
+<span class="n">fmt</span><span class="o">.</span><span class="n">Category</span> <span class="o">=</span> <span class="n">NumberFormatCategory</span><span class="o">.</span><span class="n">Currency</span>
+<span class="n">fmt</span><span class="o">.</span><span class="n">DecimalDigits</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">fmt</span><span class="o">.</span><span class="n">GroupSeparatorEnabled</span> <span class="o">=</span> <span class="kc">True</span>      <span class="c1"># 천 단위 구분</span>
+<span class="n">fmt</span><span class="o">.</span><span class="n">ShortFormattingEnabled</span> <span class="o">=</span> <span class="kc">True</span>     <span class="c1"># 1200 -&gt; 1.2K</span>
+
+<span class="n">vc</span><span class="o">.</span><span class="n">YAxis</span><span class="o">.</span><span class="n">Scale</span><span class="o">.</span><span class="n">Formatting</span><span class="o">.</span><span class="n">RealFormatter</span> <span class="o">=</span> <span class="n">fmt</span>
+</code></pre></div>
+
+<table>
+<thead>
+<tr>
+<th>컬럼 데이터 타입</th>
+<th>대입할 속성</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Real</td>
+<td><code>Formatting.RealFormatter</code></td>
+</tr>
+<tr>
+<td>SingleReal</td>
+<td><code>Formatting.SingleRealFormatter</code></td>
+</tr>
+<tr>
+<td>Integer</td>
+<td><code>Formatting.IntegerFormatter</code></td>
+</tr>
+<tr>
+<td>LongInteger</td>
+<td><code>Formatting.LongIntegerFormatter</code></td>
+</tr>
+<tr>
+<td>Currency</td>
+<td><code>Formatting.CurrencyFormatter</code></td>
+</tr>
+<tr>
+<td>DateTime / Date / Time</td>
+<td><code>Formatting.DateTimeFormatter</code></td>
+</tr>
+</tbody>
+</table>
+<p>문자열·불리언·범주형·빈 컬럼은 서식을 받지 않습니다.
+UI 서식 탭에 "텍스트"만 보이는 축이라면 코드로도 안 됩니다.</p>
+<h3 id="_11">범례</h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Visuals</span><span class="w"> </span><span class="kn">import</span> <span class="n">LegendDock</span>
+
+<span class="n">vc</span><span class="o">.</span><span class="n">Legend</span><span class="o">.</span><span class="n">Visible</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">Legend</span><span class="o">.</span><span class="n">Dock</span> <span class="o">=</span> <span class="n">LegendDock</span><span class="o">.</span><span class="n">Right</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">Legend</span><span class="o">.</span><span class="n">Width</span> <span class="o">=</span> <span class="mi">150</span>
+
+<span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">vc</span><span class="o">.</span><span class="n">Legend</span><span class="o">.</span><span class="n">Items</span><span class="p">:</span>          <span class="c1"># 항목별로 켜고 끄기</span>
+    <span class="n">item</span><span class="o">.</span><span class="n">Visible</span> <span class="o">=</span> <span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">Title</span> <span class="o">==</span> <span class="s2">&quot;Color by&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="details">툴팁(Details)</h3>
+<div class="codehilite"><pre><span></span><code><span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">vc</span><span class="o">.</span><span class="n">Details</span><span class="o">.</span><span class="n">Items</span><span class="p">:</span>             <span class="c1"># 기본 항목 전부 끄기</span>
+    <span class="n">t</span><span class="o">.</span><span class="n">Visible</span> <span class="o">=</span> <span class="kc">False</span>
+
+<span class="n">vc</span><span class="o">.</span><span class="n">Details</span><span class="o">.</span><span class="n">Items</span><span class="o">.</span><span class="n">AddExpression</span><span class="p">(</span><span class="s2">&quot;Sum([Revenue]) as [매출]&quot;</span><span class="p">)</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">Details</span><span class="o">.</span><span class="n">Items</span><span class="o">.</span><span class="n">InsertExpression</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;[Region] as [지역]&quot;</span><span class="p">)</span>   <span class="c1"># 맨 앞에</span>
+</code></pre></div>
+
+<h3 id="_12">트렉스(분할 보기)</h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Visuals</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrellisMode</span>
+
+<span class="n">vc</span><span class="o">.</span><span class="n">Trellis</span><span class="o">.</span><span class="n">TrellisMode</span> <span class="o">=</span> <span class="n">TrellisMode</span><span class="o">.</span><span class="n">Panels</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">Trellis</span><span class="o">.</span><span class="n">PanelAxis</span><span class="o">.</span><span class="n">Expression</span> <span class="o">=</span> <span class="s2">&quot;&lt;[Region]&gt;&quot;</span>    <span class="c1"># 범주형은 &lt;[ ]&gt;</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">Trellis</span><span class="o">.</span><span class="n">ManualLayout</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">Trellis</span><span class="o">.</span><span class="n">ManualColumnCount</span> <span class="o">=</span> <span class="mi">3</span>
+
+<span class="c1"># 행/열 모드</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">Trellis</span><span class="o">.</span><span class="n">TrellisMode</span> <span class="o">=</span> <span class="n">TrellisMode</span><span class="o">.</span><span class="n">RowsColumns</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">Trellis</span><span class="o">.</span><span class="n">RowAxis</span><span class="o">.</span><span class="n">Expression</span> <span class="o">=</span> <span class="s2">&quot;&lt;[Category]&gt;&quot;</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">Trellis</span><span class="o">.</span><span class="n">ColumnAxis</span><span class="o">.</span><span class="n">Expression</span> <span class="o">=</span> <span class="s2">&quot;&lt;[Year]&gt;&quot;</span>
+</code></pre></div>
+
+<p>트렉스·색상·마커 등 <strong>범주형 축은 <code>&lt;[컬럼]&gt;</code> 처럼 꺠솠 괄호</strong>를 씁니다.
+그냥 <code>[컬럼]</code> 을 넣으면 오류가 나거나 집계로 해석됩니다.</p>
+<h3 id="_13">시각화의 데이터 범위 설정</h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Visuals</span><span class="w"> </span><span class="kn">import</span> <span class="n">LimitingMarkingsEmptyBehavior</span>
+
+<span class="n">vc</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">DataTableReference</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Tables</span><span class="p">[</span><span class="s2">&quot;Sales&quot;</span><span class="p">]</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">MarkingReference</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Markings</span><span class="p">[</span><span class="s2">&quot;Marking&quot;</span><span class="p">]</span>     <span class="c1"># 이 시각화가 쓰는 마킹</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">WhereClauseExpression</span> <span class="o">=</span> <span class="s2">&quot;[Region] = &#39;East&#39;&quot;</span>              <span class="c1"># 데이터 제한 표현식</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">UseActiveFiltering</span> <span class="o">=</span> <span class="kc">False</span>                               <span class="c1"># 페이지 필터링 무시</span>
+
+<span class="c1"># 마킹으로 데이터 제한 (&quot;이 마킹에 속한 행만 보기&quot;)</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Filterings</span><span class="o">.</span><span class="n">Add</span><span class="p">(</span><span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Markings</span><span class="p">[</span><span class="s2">&quot;Marking&quot;</span><span class="p">])</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">LimitingMarkingsEmptyBehavior</span> <span class="o">=</span> <span class="n">LimitingMarkingsEmptyBehavior</span><span class="o">.</span><span class="n">ShowAll</span>
+</code></pre></div>
+
+<p>이 세 가지를 헷갈리지 마세요.</p>
+<table>
+<thead>
+<tr>
+<th>속성</th>
+<th>의미</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Data.MarkingReference</code></td>
+<td>이 시각화에서 <strong>드래그하면 칠해지는</strong> 마킹</td>
+</tr>
+<tr>
+<td><code>Data.Filterings</code></td>
+<td>이 시각화가 <strong>보여 줄 범위를 좁히는</strong> 마킹/필터링</td>
+</tr>
+<tr>
+<td><code>Data.WhereClauseExpression</code></td>
+<td>표현식으로 직접 제한 (예제 1)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_14">표 시각화 정렬</h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Visuals</span><span class="w"> </span><span class="kn">import</span> <span class="n">TablePlot</span><span class="p">,</span> <span class="n">TablePlotColumnSortMode</span>
+
+<span class="n">tp</span> <span class="o">=</span> <span class="n">visual</span><span class="o">.</span><span class="n">As</span><span class="p">[</span><span class="n">TablePlot</span><span class="p">]()</span>
+<span class="n">col</span> <span class="o">=</span> <span class="n">tp</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">DataTableReference</span><span class="o">.</span><span class="n">Columns</span><span class="p">[</span><span class="s2">&quot;Revenue&quot;</span><span class="p">]</span>
+<span class="n">tp</span><span class="o">.</span><span class="n">SortInfos</span><span class="o">.</span><span class="n">Clear</span><span class="p">()</span>
+<span class="n">tp</span><span class="o">.</span><span class="n">SortInfos</span><span class="o">.</span><span class="n">Add</span><span class="p">(</span><span class="n">col</span><span class="p">,</span> <span class="n">TablePlotColumnSortMode</span><span class="o">.</span><span class="n">Descending</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="_15">필터 패널·페이지 단위 토글</h3>
+<div class="codehilite"><pre><span></span><code><span class="n">panel</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">ActivePageReference</span><span class="o">.</span><span class="n">FilterPanel</span>
+<span class="n">panel</span><span class="o">.</span><span class="n">Visible</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">panel</span><span class="o">.</span><span class="n">Visible</span>
+</code></pre></div>
+
+<h2 id="611-api">6.11 공식 API 레퍼런스에서 클래스 찾기</h2>
 <p>Spotfire의 API 레퍼런스는 검색이 불편하지만, <strong>URL 규칙이 단순</strong>해서 주소창에 직접
 쳐 넣는 편이 빠릅니다.</p>
 <div class="codehilite"><pre><span></span><code>https://docs.tibco.com/pub/doc_remote/sfire_dev/area/doc/api/tib_sfire-analyst_api/html/T_&lt;네임스페이스&gt;_&lt;클래스&gt;.htm
@@ -614,7 +778,7 @@ Spotfire.Dxp.Application.Visual.RenderAsync (메서드)
 <div class="admonition warning">
 <p class="admonition-title">문서에 있다고 동작하는 것은 아닙니다</p>
 <p>문서는 <strong>이름과 시그니처</strong>를 확인하는 용도입니다.
-"그 환경에서 실제로 되는가"는 <a href="07-pitfalls.html">7.9의 확인 방법</a>으로 따로 봐야 합니다.</p>
+"그 환경에서 실제로 되는가"는 <a href="07-pitfalls.html">7.10의 확인 방법</a>으로 따로 봐야 합니다.</p>
 </div>
 <hr />
 <p>지도는 여기까지입니다. 다음 <a href="07-pitfalls.html">7장</a>에서는 이 API들이 <strong>실제로는 어떻게
@@ -657,7 +821,18 @@ Spotfire.Dxp.Application.Visual.RenderAsync (메서드)
 </ul>
 </li>
 <li><a href="#69">6.9 자주 쓰는 진입점 요약</a></li>
-<li><a href="#610-api">6.10 공식 API 레퍼런스에서 클래스 찾기</a></li>
+<li><a href="#610-ui">6.10 시각화 속성 레시피 — UI 탭과 코드의 대응표</a><ul>
+<li><a href="#_9">축 — 범위·줌·눈금·로그 스케일</a></li>
+<li><a href="#_10">눈금 서식 — 데이터 타입별 포매터</a></li>
+<li><a href="#_11">범례</a></li>
+<li><a href="#details">툴팁(Details)</a></li>
+<li><a href="#_12">트렉스(분할 보기)</a></li>
+<li><a href="#_13">시각화의 데이터 범위 설정</a></li>
+<li><a href="#_14">표 시각화 정렬</a></li>
+<li><a href="#_15">필터 패널·페이지 단위 토글</a></li>
+</ul>
+</li>
+<li><a href="#611-api">6.11 공식 API 레퍼런스에서 클래스 찾기</a></li>
 </ul>
 </div>
 </aside>

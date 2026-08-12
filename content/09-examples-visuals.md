@@ -745,4 +745,214 @@ Document.Properties["ScriptLog"] = msg
 
 ---
 
+## 예제 24. 모든 시각화의 툴팁 일괄 통일
+
+<ul class="meta">
+<li class="badge risk-mid">위험도 중간</li>
+<li class="badge bulk">일괄 적용</li>
+<li class="badge hard">기본 기능으로 어려움</li>
+<li class="badge doc">문서 기반 · 미검증</li>
+</ul>
+
+**문제 상황**  
+차트에 마우스를 올렸을 때 나오는 툴팁이 시각화마다 제각각입니다.
+어느 차트는 내부 컬럼 이름이 그대로 노출되고, 어느 차트는 보고서에 넣으면 안 되는
+원가 컬럼까지 보입니다. 이걸 40개 시각화에 대해 손으로 맞추는 건 현실적이지 않습니다.
+
+**기본 기능으로 어려운 이유**  
+툴팁 항목은 시각화별 속성 대화상자에서 하나씩 지우고 다시 넣어야 하며,
+복사·붙여넣기가 안 됩니다. 시각화 복제로도 데이터가 다르면 소용이 없습니다.
+
+**스크립트 매개변수**
+
+| 이름 | 타입 | 값 |
+|------|------|-----|
+| `targetTable` | DataTable | 이 테이블을 쓰는 시각화만 대상 |
+| `tooltipList` | String | 툴팁에 넣을 표현식을 `;` 로 구분 |
+
+`tooltipList` 예: `[Region] as [지역];Sum([Revenue]) as [매출];Count() as [건수]`
+
+```python
+# -*- coding: utf-8 -*-
+# 지정한 테이블을 쓰는 모든 시각화의 툴팁(Details) 항목을 동일하게 맞춘다.
+#
+# 매개변수:
+#   targetTable (DataTable) 대상 테이블
+#   tooltipList (String)    ";" 로 구분한 표현식 목록. 빈 문자열이면 기본 항목만 끄긴다
+
+from Spotfire.Dxp.Application.Visuals import VisualContent
+
+expressions = [e.strip() for e in tooltipList.split(";") if e.strip()]
+
+applied, skipped = 0, 0
+report = []
+
+for page in Document.Pages:
+    for visual in page.Visuals:
+        try:
+            vc = visual.As[VisualContent]()
+        except:
+            continue
+
+        # 대상 테이블을 쓰는 시각화만. 텍스트 영역은 Data 자체가 없다
+        try:
+            if vc.Data.DataTableReference != targetTable:
+                continue
+        except:
+            continue
+
+        # Details 가 없는 유형도 있다 (텍스트 영역, 일부 미니어처)
+        try:
+            details = vc.Details
+        except:
+            skipped += 1
+            continue
+
+        # 1) 기존 항목을 전부 숨긴다 (삭제가 아니므로 되돌리기 쉽다)
+        hidden = 0
+        for item in details.Items:
+            try:
+                item.Visible = False
+                hidden += 1
+            except:
+                pass
+
+        # 2) 지정한 표현식을 추가한다
+        added = 0
+        for expression in expressions:
+            try:
+                details.Items.AddExpression(expression)
+                added += 1
+            except Exception, err:
+                report.append(u"  ! %s / %s : %s" % (visual.Title, expression, err))
+
+        applied += 1
+        report.append(u"%s — 숨김 %d, 추가 %d" % (visual.Title, hidden, added))
+
+summary = u"툴팁 통일: 시각화 %d개 적용, %d개 건너뜀\n%s" % (
+    applied, skipped, u"\n".join(report))
+Document.Properties["ScriptLog"] = summary
+print summary
+```
+
+!!! danger "검증 포인트"
+    - **이 예제는 이 교안의 검증 환경에서 실행해 보지 않았습니다.**
+      `Details.Items.AddExpression` 은 공식 API 레퍼런스와 sf-ref.com 기준입니다.
+      먼저 시각화 하나를 매개변수로 받아 시험하세요.
+    - `AddExpression` 은 **누를 때마다 항목을 더합니다.** 멱등하지 않습니다.
+      두 번 누르면 툴팁이 두 배로 늘어나므로, 버튼을 배포할 생각이라면
+      "기본 항목으로 되돌리기" 버튼을 같이 만드세요.
+    - 표현식은 **그 시각화의 데이터 테이블에 있는 컬럼**이어야 합니다.
+      그래서 `targetTable` 로 범위를 좁혔습니다.
+    - 표시 이름을 붙이려면 `표현식 as [이름]` 형식을 씁니다.
+
+---
+
+## 예제 25. 축 눈금 서식 일괄 통일 (통화·천 단위·소수점)
+
+<ul class="meta">
+<li class="badge risk-low">위험도 낮음</li>
+<li class="badge bulk">일괄 적용</li>
+<li class="badge doc">문서 기반 · 미검증</li>
+</ul>
+
+**문제 상황**  
+같은 매출 지표인데 어떤 차트는 `1234567.89`, 어떤 차트는 `1.2M`, 어떤 차트는
+`₩1,234,568` 로 보입니다. 보고서 느낌이 안 납니다.
+
+**기본 기능으로 어려운 이유**  
+서식은 시각화별·축별로 따로 있고, 문서 전체에 한 번에 강제하는 설정이 없습니다.
+
+**스크립트 매개변수**
+
+| 이름 | 타입 | 값 |
+|------|------|-----|
+| `decimals` | String | 소수점 자릿수. 예: `"0"` |
+| `useShort` | String | `"True"` 면 1200 → 1.2K 표기 |
+
+```python
+# -*- coding: utf-8 -*-
+# 모든 차트의 Y축(산점도는 X축도) 숫자 서식을 통일한다.
+#
+# 매개변수:
+#   decimals (String) 소수점 자릿수   예: "0"
+#   useShort (String) "True" / "False"  축약 표기(1.2K) 사용 여부
+
+from Spotfire.Dxp.Application.Visuals import VisualContent
+from Spotfire.Dxp.Data import DataType
+from Spotfire.Dxp.Data.Formatters import NumberFormatCategory
+
+digits = int(decimals) if str(decimals).strip() else 0
+shortForm = str(useShort).strip().lower() in ("true", "1", "y", "yes")
+
+
+def make_formatter(dataType):
+    """데이터 타입에 맞는 포매터를 만든다. 타입마다 별도 객체가 필요하다."""
+    fmt = dataType.CreateLocalizedFormatter()
+    fmt.Category = NumberFormatCategory.Number
+    fmt.DecimalDigits = digits
+    fmt.GroupSeparatorEnabled = True
+    try:
+        fmt.ShortFormattingEnabled = shortForm
+    except:
+        pass          # 버전에 따라 없을 수 있다
+    return fmt
+
+
+# 축의 실제 데이터 타입을 모르므로 숫자형 포매터를 전부 넣어 본다.
+# 맞지 않는 속성은 실패하므로 try 로 감싼다. → 7.9 참조
+FORMATTERS = [
+    ("RealFormatter", DataType.Real),
+    ("IntegerFormatter", DataType.Integer),
+    ("LongIntegerFormatter", DataType.LongInteger),
+    ("SingleRealFormatter", DataType.SingleReal),
+    ("CurrencyFormatter", DataType.Currency),
+]
+AXES = ["YAxis", "XAxis"]
+
+changed = 0
+report = []
+
+for page in Document.Pages:
+    for visual in page.Visuals:
+        try:
+            vc = visual.As[VisualContent]()
+        except:
+            continue
+
+        touched = []
+        for axisName in AXES:
+            try:
+                formatting = getattr(vc, axisName).Scale.Formatting
+            except:
+                continue                      # 그 축이 없는 유형
+
+            for propName, dataType in FORMATTERS:
+                try:
+                    setattr(formatting, propName, make_formatter(dataType))
+                    touched.append(u"%s.%s" % (axisName, propName))
+                except:
+                    pass                      # 그 타입이 아니면 조용히 넘어간다
+
+        if touched:
+            changed += 1
+            report.append(u"%s — %s" % (visual.Title, u", ".join(touched)))
+
+summary = u"서식 통일: 시각화 %d개\n%s" % (changed, u"\n".join(report))
+Document.Properties["ScriptLog"] = summary
+print summary
+```
+
+!!! danger "검증 포인트"
+    - **이 예제도 실측하지 않았습니다.** 포매터 이름과 `CreateLocalizedFormatter()` 는
+      공식 API 레퍼런스와 sf-ref.com 기준입니다.
+    - **포매터 객체를 재사용하지 마세요.** 축마다 새로 만드는 것이 안전합니다.
+      그래서 위에서 `make_formatter()` 를 매번 호출합니다.
+    - 문자열·불리언·범주형·빈 컬럼 축은 서식을 받지 않습니다.
+      UI 서식 탭에 "텍스트"만 보이는 축이 그렇습니다.
+    - 통화 표기가 필요하면 `NumberFormatCategory.Currency` 로 바꾸세요.
+      통화 기호는 클라이언트 로케일을 따릅니다.
+
+---
+
 다음 장은 **필터·마킹·페이지 상태**를 다루는 예제입니다.

@@ -80,7 +80,9 @@
 |-----------|------|------|
 | `pandas`, `numpy`, `scikit-learn` 사용 | IronPython은 C 확장 모듈을 못 읽음 | **Python 데이터 함수** (1.4) |
 | 통계 모델링, 머신러닝 | 위와 같음 | Python/R 데이터 함수 |
-| 새로운 차트 종류 만들기 | Spotfire가 제공하는 유형만 가능 | Spotfire Mods |
+| 새로운 차트 종류 만들기 | Spotfire가 제공하는 유형만 가능 | Spotfire Mods, C# 확장 (아래 참조) |
+| Spotfire의 코어 동작 자체를 바꾸기 | 스크립트는 격리 실행되는 자동화 도구 | C# 확장 |
+| 외부 파이썬 패키지 설치 | 표준 IronPython 배포 외 모듈 적재가 사실상 불가 | 데이터 함수, C# 확장 |
 | 접근 권한 제어 | 스크립트는 보안 장치가 아님 | 라이브러리 권한, 정보 링크 |
 | 브라우저에서 로컬 파일 쓰기 | Web Player 제약 | 라이브러리 저장 |
 | 마킹 변경 시 자동 실행 | 직접적인 이벤트 훅 없음 | 버튼, 문서 속성 트리거 |
@@ -89,6 +91,37 @@
 
 뒤의 두 줄은 처음 보면 이해가 안 되는 제약입니다.
 [7.4 · 스크립트는 트랜잭션 안에서 통째로 실행된다](07-pitfalls.html)에서 자세히 다룹니다.
+
+### 스크립트와 C# 확장의 경계선
+
+공식 문서는 스크립트를 **"Spotfire를 자동화하는 것"** 으로 못 박습니다.
+스크립트는 나머지 Spotfire 코드와 **격리되어 실행**되고(그래서 잘못된 스크립트가
+클라이언트를 죽이지 못합니다), **코어 기능 자체는 바꿀 수 없습니다.**
+
+경계선이 가장 뚜렷하게 보이는 예가 **커스텀 시각화**입니다.
+Spotfire에는 시각화를 새로 만들기 위한
+[`CustomVisualView`](https://docs.tibco.com/pub/doc_remote/sfire_dev/area/doc/api/tib_sfire-analyst_api/index.aspx?topic=html/t_spotfire_dxp_application_extension_customvisualview.htm)
+라는 API가 있습니다. `Spotfire.Dxp.Application.Extension` 네임스페이스의 **추상 클래스**로,
+대략 이런 멤버를 가집니다.
+
+| 멤버 | 하는 일 |
+|------|---------|
+| `IsEditing` | 지금 Spotfire UI가 편집 모드인지 (축 선택기 같은 작성용 컨트롤을 이때만 노출) |
+| `IsStatic` | 인쇄·내보내기·미리보기용 정적 뷰인지 (애니메이션을 꺼야 하는 상황) |
+| `Invalidate()` | 뷰를 무효화해 다시 그리게 함 |
+| `AddEventHandler(...)` | 트리거가 발생할 때 호출될 핸들러 등록 |
+| `InvokeClientEventHandler(...)` | `Spotfire.addEventHandler(...)` 로 등록해 둔 JavaScript 함수 호출 |
+| `OnUpdateRequiredCore()` | 오버라이드해서 HTML/JS 쪽 UI를 다시 렌더링시킴 |
+
+중요한 건 이름이 아니라 **이 클래스를 IronPython에서 쓸 수 없다는 사실**입니다.
+`CustomVisualView`는 **상속해서 구현하는** 클래스라, Visual Studio에서 C# 확장(add-in)을
+빌드해 배포해야만 의미가 있습니다. 스크립트는 이미 존재하는 시각화를 **설정**할 뿐,
+새로운 시각화 **종류**를 만들지 못합니다.
+
+!!! tip "판단 기준 한 줄"
+    **"UI에서 마우스로 할 수 있는 일"** 이면 IronPython으로 됩니다.
+    **"UI에 그런 기능 자체가 없는 일"** 이면 Mods나 C# 확장 영역입니다.
+    → [스크립팅과 C# 확장 중 무엇을 고를까 (Spotfire Community)](https://community.spotfire.com/s/article/How-to-choose-between-using-IronPython-scripting-and-creating-a-C-Extension-when-developing-for-TIBCO-Spotfire)
 
 ## 1.4 Python 데이터 함수와 무엇이 다른가
 

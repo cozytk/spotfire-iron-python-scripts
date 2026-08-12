@@ -11,10 +11,10 @@
 
 ---
 
-## 먼저 이것부터 — 예제 23종 일괄 검증
+## 먼저 이것부터 — 예제 27종 일괄 검증
 
 예제를 하나씩 실제로 돌리는 것은 현실적이지 않으므로,
-**예제 23개가 쓰는 API를 한 번에 확인하는 하네스**를 만들었습니다.
+**예제 27개가 쓰는 API를 한 번에 확인하는 하네스**를 만들었습니다.
 
 ### [`00_verify_all_examples.py`](00_verify_all_examples.py)
 
@@ -46,7 +46,7 @@
 **예제 1~21은 전부 실제 Spotfire에서 확인했습니다.** (Spotfire 14.x / IronPython 2.7.12)
 
 교안을 고친 뒤 회귀 확인이 필요하면 `00_verify_all_examples.py` 를 다시 돌리세요.
-하네스에는 **아직 실측하지 않은 예제 22·23의 API 존재 확인**도 넣어 두었으므로,
+하네스에는 **아직 실측하지 않은 예제 22~27의 API 존재 확인**도 넣어 두었으므로,
 한 번 돌리면 아래 표의 상당 부분이 채워집니다.
 
 ### 아직 확인하지 않은 것
@@ -58,6 +58,10 @@
 |------|-----------|
 | 예제 22 (스크립트 인벤토리) | `Document.ScriptManager.GetScripts()` 가 14.x에 있는지. `ScriptDefinition` 의 `Name`·`Language.Language`·`ScriptCode`·`Parameters` 접근 |
 | 예제 23 (환경 진단) | `Application.GetType().ToString()` 의 실제 반환 문자열. `scheme.FilteringSelectionReference.Name` 접근 |
+| 예제 24 (툴팁 통일) | `vc.Details.Items` 순회·`AddExpression`·`InsertExpression`·항목의 `Visible` |
+| 예제 25 (축 서식) | `DataType.<T>.CreateLocalizedFormatter()` 와 `Scale.Formatting.<T>Formatter` 속성명, `ShortFormattingEnabled` 유무 |
+| 예제 26 (마킹 행 태그) | `column.As[TagsColumn]()` 캐스팅과 `Tag(value, RowSelection)` 시그니처 |
+| 예제 27 (포커스 모드) | `vc.Data.Filterings` 의 `Contains`·`Add`·`Remove`, `LimitingMarkingsEmptyBehavior` 쓰기 |
 | 7.4 ③ 스냅샷 우회 | `Document.GetService(ApplicationThread)` 와 `InvokeAsynchronously` 로 텍스트 영역까지 렌더링되는지 |
 | 예제 14 RenderAsync | `RenderResultSettings(Size)` · `VisualRenderSettings()` · `task.Result` · `result.WriteTo(stream)` |
 | 13.2 진행 표시 | `ProgressService.ExecuteWithProgress` + 트랜잭션 래핑 해제 |

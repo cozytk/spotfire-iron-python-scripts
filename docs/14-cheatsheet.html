@@ -154,7 +154,47 @@
 <span class="n">scatter</span><span class="o">.</span><span class="n">MarkerSize</span> <span class="o">=</span> <span class="n">scatter</span><span class="o">.</span><span class="n">MarkerSize</span> <span class="o">+</span> <span class="mi">1</span>
 </code></pre></div>
 
-<h3 id="_1">유형 판별 두 가지 방식</h3>
+<h3 id="_1">더 있는 속성들 (문서 기반)</h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 툴팁(Details)</span>
+<span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">vc</span><span class="o">.</span><span class="n">Details</span><span class="o">.</span><span class="n">Items</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">Visible</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">Details</span><span class="o">.</span><span class="n">Items</span><span class="o">.</span><span class="n">AddExpression</span><span class="p">(</span><span class="s2">&quot;Sum([Revenue]) as [매출]&quot;</span><span class="p">)</span>
+
+<span class="c1"># 트렉스 — 범주형 축은 &lt;[ ]&gt;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Visuals</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrellisMode</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">Trellis</span><span class="o">.</span><span class="n">TrellisMode</span> <span class="o">=</span> <span class="n">TrellisMode</span><span class="o">.</span><span class="n">Panels</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">Trellis</span><span class="o">.</span><span class="n">PanelAxis</span><span class="o">.</span><span class="n">Expression</span> <span class="o">=</span> <span class="s2">&quot;&lt;[Region]&gt;&quot;</span>
+
+<span class="c1"># 눈금 서식 — 컴럼 데이터 타입에 맞는 포매터 속성에 넣는다</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Data</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataType</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Data.Formatters</span><span class="w"> </span><span class="kn">import</span> <span class="n">NumberFormatCategory</span>
+<span class="n">fmt</span> <span class="o">=</span> <span class="n">DataType</span><span class="o">.</span><span class="n">Real</span><span class="o">.</span><span class="n">CreateLocalizedFormatter</span><span class="p">()</span>
+<span class="n">fmt</span><span class="o">.</span><span class="n">Category</span> <span class="o">=</span> <span class="n">NumberFormatCategory</span><span class="o">.</span><span class="n">Number</span>
+<span class="n">fmt</span><span class="o">.</span><span class="n">GroupSeparatorEnabled</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">YAxis</span><span class="o">.</span><span class="n">Scale</span><span class="o">.</span><span class="n">Formatting</span><span class="o">.</span><span class="n">RealFormatter</span> <span class="o">=</span> <span class="n">fmt</span>
+
+<span class="c1"># 마킹으로 데이터 제한 (포커스 모드)</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Filterings</span><span class="o">.</span><span class="n">Add</span><span class="p">(</span><span class="n">Document</span><span class="o">.</span><span class="n">ActiveMarkingSelectionReference</span><span class="p">)</span>
+
+<span class="c1"># 표 시각화 정렬</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Visuals</span><span class="w"> </span><span class="kn">import</span> <span class="n">TablePlot</span><span class="p">,</span> <span class="n">TablePlotColumnSortMode</span>
+<span class="n">tp</span> <span class="o">=</span> <span class="n">visual</span><span class="o">.</span><span class="n">As</span><span class="p">[</span><span class="n">TablePlot</span><span class="p">]()</span>
+<span class="n">tp</span><span class="o">.</span><span class="n">SortInfos</span><span class="o">.</span><span class="n">Clear</span><span class="p">()</span>
+<span class="n">tp</span><span class="o">.</span><span class="n">SortInfos</span><span class="o">.</span><span class="n">Add</span><span class="p">(</span><span class="n">tp</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">DataTableReference</span><span class="o">.</span><span class="n">Columns</span><span class="p">[</span><span class="s2">&quot;Revenue&quot;</span><span class="p">],</span>
+                 <span class="n">TablePlotColumnSortMode</span><span class="o">.</span><span class="n">Descending</span><span class="p">)</span>
+
+<span class="c1"># 필터 패널 토글</span>
+<span class="n">panel</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">ActivePageReference</span><span class="o">.</span><span class="n">FilterPanel</span>
+<span class="n">panel</span><span class="o">.</span><span class="n">Visible</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">panel</span><span class="o">.</span><span class="n">Visible</span>
+
+<span class="c1"># 마킹된 행에 태그 붙이기 (태그 컴럼은 미리 만들어 둘 것)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Data</span><span class="w"> </span><span class="kn">import</span> <span class="n">TagsColumn</span>
+<span class="n">tag</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">Columns</span><span class="p">[</span><span class="s2">&quot;검토결과&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">As</span><span class="p">[</span><span class="n">TagsColumn</span><span class="p">]()</span>
+<span class="n">tag</span><span class="o">.</span><span class="n">Tag</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;확인됨&quot;</span><span class="p">,</span> <span class="n">Document</span><span class="o">.</span><span class="n">ActiveMarkingSelectionReference</span><span class="o">.</span><span class="n">GetSelection</span><span class="p">(</span><span class="n">table</span><span class="p">))</span>
+</code></pre></div>
+
+<p>이 블록은 <strong>이 교안의 검증 환경에서 실행해 본 것이 아닙니다.</strong>
+자세한 설명과 주의사항은 <a href="06-api-map.html">6.10</a>과 예제 24~27에 있습니다.</p>
+<h3 id="_2">유형 판별 두 가지 방식</h3>
 <div class="codehilite"><pre><span></span><code><span class="c1"># 방식 1: 열거형 비교 — 오타에 안전</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Visuals</span><span class="w"> </span><span class="kn">import</span> <span class="n">VisualTypeIdentifiers</span>
 <span class="k">if</span> <span class="n">visual</span><span class="o">.</span><span class="n">TypeId</span> <span class="o">==</span> <span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">BarChart</span><span class="p">:</span>
@@ -481,7 +521,7 @@
 <ol>
 <li><strong><a href="https://docs.tibco.com/pub/doc_remote/sfire_dev/area/doc/api/tib_sfire-analyst_api/index.aspx">공식 API 레퍼런스</a></strong>
    — 이름·시그니처·폐기 여부의 최종 근거. URL 규칙이 단순해서 주소창에 직접 치는 편이 빠릅니다
-   → <a href="06-api-map.html">6.10 참조</a></li>
+   → <a href="06-api-map.html">6.11 참조</a></li>
 </ol>
 <p><code>text
    .../html/T_Spotfire_Dxp_Application_Visuals_BarChart.htm</code></p>
@@ -505,18 +545,64 @@
 있습니다. <code>Context.Value</code>, <code>Context.HierarchyPathValues[0]</code>, <code>Context.Visualization</code>
 → <a href="02-getting-started.html">2.3 참조</a></p>
 <hr />
-<h2 id="_2">참고한 자료</h2>
-<h3 id="_3">시작점</h3>
-<ul>
-<li><a href="https://community.spotfire.com/articles/spotfire/ironpython-scripting-in-spotfire/">IronPython Scripting in Spotfire® – Overview (Spotfire Community)</a>
-  — 수백 개 예제의 분류 색인. 하고 싶은 일이 있으면 여기부터</li>
-<li><a href="https://docs.tibco.com/pub/doc_remote/sfire_dev/area/doc/api/tib_sfire-analyst_api/index.aspx">Spotfire Analyst API Reference</a>
-  — 이름·시그니처·폐기 여부의 최종 근거 → <a href="06-api-map.html">6.10</a></li>
-<li><a href="https://www.sf-ref.com/ironpython/">The Spotfire IronPython Quick Reference (sf-ref.com)</a>
-  — 시각화 유형별 속성 훑어보기</li>
-<li><a href="https://docs.tibco.com/pub/sfire-analyst/12.0.6/doc/html/en-US/TIB_sfire-analyst_UsersGuide/text/text_ironpython_example_scripts.htm">IronPython Example Scripts (Spotfire 제품 문서)</a></li>
-</ul>
-<h3 id="_4">이 교안이 근거로 삼은 공식 문서</h3>
+<h2 id="_3">참고한 자료</h2>
+<h3 id="_4">다섯 가지 자료, 언제 무엇을 보나</h3>
+<p>자료마다 <strong>잘하는 것이 다릅니다.</strong> 뭐를 모르는지에 따라 골라 쓰세요.</p>
+<table>
+<thead>
+<tr>
+<th>막힌 지점</th>
+<th>볼 자료</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>"이런 것도 스크립트로 되나?"</td>
+<td><a href="https://community.spotfire.com/articles/spotfire/ironpython-scripting-in-spotfire/">Community 예제 색인</a> — 데이터·시각화·필터/마킹·레이아웃·지도·문서·연동으로 분류된 수백 개 링크</td>
+</tr>
+<tr>
+<td>"이 속성 이름이 맞나?"</td>
+<td><a href="https://docs.tibco.com/pub/doc_remote/sfire_dev/area/doc/api/tib_sfire-analyst_api/index.aspx">Analyst API Reference</a> — 최종 근거 → <a href="06-api-map.html">6.11</a></td>
+</tr>
+<tr>
+<td>"UI의 이 체크박스는 코드로 뭐지?"</td>
+<td><a href="https://www.sf-ref.com/ironpython/">sf-ref.com</a> — 속성 대화상자 탭 ↔ 코드 대응 → <a href="06-api-map.html">6.10</a></td>
+</tr>
+<tr>
+<td>"매개변수를 어떻게 쓰는 거지?"</td>
+<td><a href="https://docs.tibco.com/pub/sfire-cloud/14.6.2/doc/html/en-US/TIB_sfire_client/client/topics/en-US/iron_python_example_scripts.html">IronPython Example Scripts (제품 문서)</a> — 공식 예제 3개</td>
+</tr>
+<tr>
+<td>"비슷한 걸 짠 사람이 있을 텐데"</td>
+<td><a href="https://github.com/essejhsif/spotfire">essejhsif/spotfire</a> · <a href="https://github.com/Gurudutt-Goswami/Spotfire-Ironpython">Gurudutt-Goswami/Spotfire-Ironpython</a> — 짧은 스니펫 모음</td>
+</tr>
+<tr>
+<td>"이건 스크립트로 안 되는 건가?"</td>
+<td><a href="https://docs.tibco.com/pub/doc_remote/sfire_dev/area/doc/api/tib_sfire-analyst_api/index.aspx?topic=html/t_spotfire_dxp_application_extension_customvisualview.htm"><code>CustomVisualView</code> API</a> · <a href="https://community.spotfire.com/s/article/How-to-choose-between-using-IronPython-scripting-and-creating-a-C-Extension-when-developing-for-TIBCO-Spotfire">스크립팅 vs C# 확장</a> → <a href="01-what-you-can-do.html">1.3</a></td>
+</tr>
+</tbody>
+</table>
+<p>제품 문서의 공식 예제 3개는 이런 것들입니다. <strong>전부 매개변수를 받는 형태</strong>라,
+매개변수 쓰는 습관을 익히기에 좋습니다 → <a href="02-getting-started.html">2.4</a></p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 1) 새로고침이 필요한 테이블만 새로고침 — 매개변수 table (DataTable)</span>
+<span class="k">if</span> <span class="n">table</span><span class="o">.</span><span class="n">IsRefreshable</span> <span class="ow">and</span> <span class="n">table</span><span class="o">.</span><span class="n">NeedsRefresh</span><span class="p">:</span>
+    <span class="n">table</span><span class="o">.</span><span class="n">Refresh</span><span class="p">()</span>
+
+<span class="c1"># 2) 시각화의 X축 표현식 바꾸기 — 매개변수 visual (Visualization), expression (String)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Visuals</span><span class="w"> </span><span class="kn">import</span> <span class="n">VisualContent</span>
+<span class="n">visual</span><span class="o">.</span><span class="n">As</span><span class="p">[</span><span class="n">VisualContent</span><span class="p">]()</span><span class="o">.</span><span class="n">XAxis</span><span class="o">.</span><span class="n">Expression</span> <span class="o">=</span> <span class="n">expression</span>
+</code></pre></div>
+
+<p>나머지 하나는 SBDF 파일에서 열을 붙이는 예제입니다
+(<code>SbdfFileDataSource</code> + <code>AddColumnsSettings</code> + <code>JoinType</code>).</p>
+<div class="admonition warning">
+<p class="admonition-title">sf-ref.com을 볼 때</p>
+<p>시각화 속성 정리는 가장 잘 되어 있지만, <strong>산점도 중심</strong>으로 쓰여 있고
+페이지·데이터 테이블·북마크 섹션은 아직 비어 있습니다.
+또 사이트의 변수명 관례가 이 교안과 달라서, 캐스팅 부분은
+이 교안의 <code>visual.As[VisualContent]()</code> 을 기준으로 읽으세요 → <a href="05-dotnet-interop.html">5.2</a></p>
+</div>
+<h3 id="_5">이 교안이 근거로 삼은 공식 문서</h3>
 <table>
 <thead>
 <tr>
@@ -542,6 +628,22 @@
 <td><a href="https://community.spotfire.com/s/article/How-to-use-Miniature-Visualization-Action-Scripts-using-IronPython-in-TIBCO-Spotfire">Miniature Visualization Action Scripts</a></td>
 </tr>
 <tr>
+<td>2.2 문서 로드 시 실행·에디터 제약·버전 선택기</td>
+<td><a href="https://community.spotfire.com/s/article/How-to-trigger-an-IronPython-script-on-report-load-via-a-JavaScript-in-TIBCO-Spotfire">Trigger on report load via JavaScript</a> · <a href="https://community.spotfire.com/s/article/How-to-use-an-external-editor-to-edit-IronPython-scripts-with-autocomplete-and-syntax-checking">외부 편집기 연동</a> · <a href="https://docs.tibco.com/pub/sfire-cloud/14.6.2/doc/html/en-US/TIB_sfire_client/client/topics/en-US/iron_python_example_scripts.html">IronPython Example Scripts</a></td>
+</tr>
+<tr>
+<td>1.3 C# 확장과의 경계·<code>CustomVisualView</code></td>
+<td><a href="https://docs.tibco.com/pub/doc_remote/sfire_dev/area/doc/api/tib_sfire-analyst_api/index.aspx?topic=html/t_spotfire_dxp_application_extension_customvisualview.htm">CustomVisualView API</a></td>
+</tr>
+<tr>
+<td>6.10 시각화 속성 레시피 · 예제 24·25·27</td>
+<td><a href="https://www.sf-ref.com/ironpython/">sf-ref.com</a> + Analyst API Reference</td>
+</tr>
+<tr>
+<td>7.9 문서가 예고하는 함정 · 예제 26</td>
+<td><a href="https://community.spotfire.com/s/article/How-to-develop-IronPython-scripts-in-TIBCO-Spotfire-and-their-limitations">스크립트 개발과 한계</a> · <a href="https://github.com/essejhsif/spotfire">essejhsif/spotfire</a></td>
+</tr>
+<tr>
 <td>2.5 TRACE 로깅·알림</td>
 <td><a href="https://community.spotfire.com/s/article/Debugging-IronPython-Scripts-TIBCO-Spotfire">Debugging IronPython Scripts in Spotfire®</a></td>
 </tr>
@@ -555,7 +657,7 @@
 </tr>
 </tbody>
 </table>
-<h3 id="_5">커뮤니티 예제 모음</h3>
+<h3 id="_6">커뮤니티 예제 모음</h3>
 <ul>
 <li><a href="https://github.com/essejhsif/spotfire">essejhsif/spotfire — IronPython scripts for Spotfire</a></li>
 <li><a href="https://github.com/Gurudutt-Goswami/Spotfire-Ironpython">Gurudutt-Goswami/Spotfire-Ironpython</a></li>
@@ -581,7 +683,8 @@
 <li><a href="#141-import">14.1 import 모음</a></li>
 <li><a href="#142">14.2 페이지와 시각화</a></li>
 <li><a href="#143">14.3 시각화 속성</a><ul>
-<li><a href="#_1">유형 판별 두 가지 방식</a></li>
+<li><a href="#_1">더 있는 속성들 (문서 기반)</a></li>
+<li><a href="#_2">유형 판별 두 가지 방식</a></li>
 </ul>
 </li>
 <li><a href="#144">14.4 데이터</a></li>
@@ -611,10 +714,10 @@
 <li><a href="#q_7">Q. 그래픽 표에서 클릭한 값을 어떻게 받나요?</a></li>
 </ul>
 </li>
-<li><a href="#_2">참고한 자료</a><ul>
-<li><a href="#_3">시작점</a></li>
-<li><a href="#_4">이 교안이 근거로 삼은 공식 문서</a></li>
-<li><a href="#_5">커뮤니티 예제 모음</a></li>
+<li><a href="#_3">참고한 자료</a><ul>
+<li><a href="#_4">다섯 가지 자료, 언제 무엇을 보나</a></li>
+<li><a href="#_5">이 교안이 근거로 삼은 공식 문서</a></li>
+<li><a href="#_6">커뮤니티 예제 모음</a></li>
 </ul>
 </li>
 </ul>
