@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # 예제 3. 축 표현식 동시 전환 (측정지표 스위처)
 #
-# 설명과 검증 포인트: https://cozytk.github.io/spotfire-iron-python-scripts/05-examples-bulk.html
-# 이 파일은 content/05-examples-bulk.md 에서 자동 생성됩니다. 직접 수정하지 마세요.
+# 설명과 검증 포인트: https://cozytk.github.io/spotfire-iron-python-scripts/08-examples-bulk.html
+# 이 파일은 content/08-examples-bulk.md 에서 자동 생성됩니다. 직접 수정하지 마세요.
 
 # 모든 페이지의 차트 Y축(교차 표는 측정 축)을 지정한 측정지표로 한 번에 바꾼다.
 #

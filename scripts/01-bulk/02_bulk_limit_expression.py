@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # 예제 2. 모든 시각화에 데이터 제한 표현식 일괄 적용
 #
-# 설명과 검증 포인트: https://cozytk.github.io/spotfire-iron-python-scripts/05-examples-bulk.html
-# 이 파일은 content/05-examples-bulk.md 에서 자동 생성됩니다. 직접 수정하지 마세요.
+# 설명과 검증 포인트: https://cozytk.github.io/spotfire-iron-python-scripts/08-examples-bulk.html
+# 이 파일은 content/08-examples-bulk.md 에서 자동 생성됩니다. 직접 수정하지 마세요.
 
 # 지정한 데이터 테이블을 참조하는 모든 시각화에 데이터 제한 표현식을 적용한다.
 #

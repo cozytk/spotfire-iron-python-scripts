@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # 예제 1. 문서 전체 시각화 인벤토리 만들기
 #
-# 설명과 검증 포인트: https://cozytk.github.io/spotfire-iron-python-scripts/05-examples-bulk.html
-# 이 파일은 content/05-examples-bulk.md 에서 자동 생성됩니다. 직접 수정하지 마세요.
+# 설명과 검증 포인트: https://cozytk.github.io/spotfire-iron-python-scripts/08-examples-bulk.html
+# 이 파일은 content/08-examples-bulk.md 에서 자동 생성됩니다. 직접 수정하지 마세요.
 
 # 문서 전체의 페이지/시각화/데이터 테이블 목록을 문서 속성에 HTML로 기록한다.
 # 결과를 보려면 텍스트 영역에 문서 속성 "InventoryReport" 를 삽입하세요.

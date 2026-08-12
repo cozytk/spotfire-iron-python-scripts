@@ -1,7 +1,9 @@
 # Spotfire IronPython 2.7 교안
 
-Spotfire의 IronPython 2.7 스크립팅을 **문법부터 실전 예제까지** 다루는 한국어 교안과,
-바로 실행할 수 있는 예제 스크립트 18종입니다.
+Spotfire의 IronPython 2.7 스크립팅 한국어 교안과, 바로 실행할 수 있는 예제 스크립트 21종입니다.
+
+**프로그래밍을 해 본 적 없어도** 따라올 수 있도록 개념부터 시작하고,
+**생성형 AI로 원하는 스크립트를 얻어내는 절차**까지 다룹니다.
 
 📖 **교안 사이트: https://cozytk.github.io/spotfire-iron-python-scripts/**
 
@@ -9,17 +11,28 @@ Spotfire의 IronPython 2.7 스크립팅을 **문법부터 실전 예제까지** 
 
 ## 구성
 
-교안은 문법을 먼저 훑고, 그다음 예제를 봅니다.
-
 | 장 | 내용 |
 |----|------|
-| 1 | 스크립트 실행 환경 — 어디에 넣고, 어떻게 실행하고, 어떻게 디버깅하는지 |
-| 2 | IronPython 2.7 문법 — Python 2.7 전반, Python 3와의 차이 |
-| 3 | .NET 상호운용 문법 — `clr`, `As[T]()`, 제네릭, .NET 타입 |
-| 4 | Spotfire API 객체 모델 — `Document` 아래로 내려가는 지도 |
-| 5~8 | 예제 18선 |
-| 9 | 실무 팁과 함정 — 성능, Undo, Web Player 호환성 |
-| 10 | 치트시트 & FAQ |
+| 1 | **무엇을 할 수 있나** — 가능/불가능한 일, **Python 데이터 함수와의 차이** |
+| 2 | 스크립트 실행 환경 — 어디에 넣고, 어떻게 실행하고, 디버깅하는지 |
+| 3 | **프로그래밍 기초 개념** — 변수·자료형·객체·속성·메서드·라이브러리·함수·반복 |
+| 4 | IronPython 2.7 문법 — Python 2.7 전반, Python 3와의 차이 |
+| 5 | .NET 상호운용 문법 — `clr`, `As[T]()`, 제네릭, .NET 타입 |
+| 6 | Spotfire API 객체 모델 — `Document` 아래로 내려가는 지도 |
+| 7 | **생성형 AI로 스크립트 만들기** — 5단계 틀, 프롬프트 템플릿, 검증 체크리스트 |
+| 8~11 | 예제 21선 |
+| 12 | 실무 팁과 함정 — 성능, Undo, Web Player 호환성 |
+| 13 | 치트시트 & FAQ |
+
+코딩 경험이 있으면 3장은 건너뛰고, 1 → 2 → 4.1 → 5 → 6 → 7 순으로 보면 됩니다.
+
+## 이 교안의 목표
+
+파이썬 개발자를 만드는 것이 아니라, 다음 세 가지를 할 수 있게 하는 것입니다.
+
+1. **코드를 읽을 수 있게** — 남이 준 스크립트가 뭘 하는지 알아보기
+2. **뭐가 가능한지 알게** — "이건 스크립트로 되겠다"를 판단하기
+3. **AI에게 제대로 시킬 수 있게** — 원하는 코드를 받아내고, 검증하고, 고치기
 
 ## 예제 선정 기준
 
@@ -31,28 +44,31 @@ Spotfire의 IronPython 2.7 스크립팅을 **문법부터 실전 예제까지** 
 여기에 더해, Spotfire 관련 Q&A에서 반복적으로 올라오는 주제(필터 초기화, 마킹 제어,
 이미지·데이터 내보내기, 문서 속성 조작, 시각화 순회)를 우선 반영했습니다.
 
-## 예제 목록
+## 예제 21선
 
 | # | 예제 | 스크립트 |
 |---|------|----------|
 | 1 | 문서 전체 시각화 인벤토리 만들기 | [`01_visual_inventory.py`](scripts/01-bulk/01_visual_inventory.py) |
 | 2 | 모든 시각화에 데이터 제한 표현식 일괄 적용 | [`02_bulk_limit_expression.py`](scripts/01-bulk/02_bulk_limit_expression.py) |
 | 3 | 축 표현식 동시 전환 (측정지표 스위처) | [`03_switch_measure_axis.py`](scripts/01-bulk/03_switch_measure_axis.py) |
-| 4 | 범례·제목·서식 일괄 통일 | [`04_unify_legend_and_title.py`](scripts/01-bulk/04_unify_legend_and_title.py) |
+| 4 | 범례·제목·서식 일괄 통일 (+마커 크기) | [`04_unify_legend_and_title.py`](scripts/01-bulk/04_unify_legend_and_title.py) |
 | 5 | 모든 시각화의 데이터 테이블 일괄 교체 | [`05_swap_data_table.py`](scripts/01-bulk/05_swap_data_table.py) |
-| 6 | 모든 차트의 줌·축 범위 초기화 | [`06_reset_zoom_all_charts.py`](scripts/01-bulk/06_reset_zoom_all_charts.py) |
-| 7 | 모든 페이지의 시각화를 PNG로 일괄 내보내기 | [`07_export_all_visuals_to_png.py`](scripts/02-data/07_export_all_visuals_to_png.py) |
-| 8 | 여러 데이터 테이블을 한 번에 파일로 내보내기 | [`08_export_all_tables_to_file.py`](scripts/02-data/08_export_all_tables_to_file.py) |
-| 9 | 마킹한 행을 새 데이터 테이블로 스냅샷 | [`09_snapshot_marked_rows.py`](scripts/02-data/09_snapshot_marked_rows.py) |
-| 10 | 마킹 결과를 문서 속성으로 넘기기 | [`10_marking_to_document_property.py`](scripts/02-data/10_marking_to_document_property.py) |
-| 11 | 키 컬럼으로 다른 테이블에 마킹 전파 | [`11_propagate_marking_by_key.py`](scripts/02-data/11_propagate_marking_by_key.py) |
-| 12 | 모든 데이터 테이블 일괄 새로고침 | [`12_refresh_all_data_tables.py`](scripts/02-data/12_refresh_all_data_tables.py) |
-| 13 | 대시보드 전체 상태 초기화 | [`13_reset_dashboard_state.py`](scripts/03-ui/13_reset_dashboard_state.py) |
-| 14 | 문서 속성 값으로 페이지 표시/숨김 | [`14_toggle_pages_by_role.py`](scripts/03-ui/14_toggle_pages_by_role.py) |
-| 15 | 역할별 필터 패널 구성 | [`15_configure_filter_panel.py`](scripts/03-ui/15_configure_filter_panel.py) |
-| 16 | 시각화 유형 일괄 토글 | [`16_bulk_switch_visual_type.py`](scripts/03-ui/16_bulk_switch_visual_type.py) |
-| 17 | 마킹한 값별로 시각화 자동 생성 | [`17_generate_visuals_from_marking.py`](scripts/04-advanced/17_generate_visuals_from_marking.py) |
-| 18 | 표현식 전수 검사 (문서 감사 리포트) | [`18_audit_expressions.py`](scripts/04-advanced/18_audit_expressions.py) |
+| 6 | 모든 차트의 줌 초기화 | [`06_reset_zoom_all_charts.py`](scripts/01-bulk/06_reset_zoom_all_charts.py) |
+| 7 | 여러 차트의 축 범위 동시 고정 | [`07_fix_axis_range.py`](scripts/01-bulk/07_fix_axis_range.py) |
+| 8 | 모든 페이지의 시각화를 PNG로 일괄 내보내기 | [`08_export_all_visuals_to_png.py`](scripts/02-data/08_export_all_visuals_to_png.py) |
+| 9 | 여러 데이터 테이블을 한 번에 파일로 내보내기 | [`09_export_all_tables_to_file.py`](scripts/02-data/09_export_all_tables_to_file.py) |
+| 10 | 마킹한 행을 새 데이터 테이블로 스냅샷 | [`10_snapshot_marked_rows.py`](scripts/02-data/10_snapshot_marked_rows.py) |
+| 11 | 마킹 결과를 문서 속성으로 넘기기 | [`11_marking_to_document_property.py`](scripts/02-data/11_marking_to_document_property.py) |
+| 12 | 키 컬럼으로 다른 테이블에 마킹 전파 | [`12_propagate_marking_by_key.py`](scripts/02-data/12_propagate_marking_by_key.py) |
+| 13 | 모든 데이터 테이블 일괄 새로고침 | [`13_refresh_all_data_tables.py`](scripts/02-data/13_refresh_all_data_tables.py) |
+| 14 | 대시보드 전체 상태 초기화 | [`14_reset_dashboard_state.py`](scripts/03-ui/14_reset_dashboard_state.py) |
+| 15 | 문서 속성 값으로 페이지 표시/숨김 | [`15_toggle_pages_by_role.py`](scripts/03-ui/15_toggle_pages_by_role.py) |
+| 16 | 역할별 필터 패널 구성 | [`16_configure_filter_panel.py`](scripts/03-ui/16_configure_filter_panel.py) |
+| 17 | 시각화 유형 일괄 토글 | [`17_bulk_switch_visual_type.py`](scripts/03-ui/17_bulk_switch_visual_type.py) |
+| 18 | 원하는 컬럼의 필터만 선택적으로 초기화 | [`18_reset_selected_column_filters.py`](scripts/03-ui/18_reset_selected_column_filters.py) |
+| 19 | 마킹한 값별로 시각화 자동 생성 | [`19_generate_visuals_from_marking.py`](scripts/04-advanced/19_generate_visuals_from_marking.py) |
+| 20 | 표현식 전수 검사 (문서 감사 리포트) | [`20_audit_expressions.py`](scripts/04-advanced/20_audit_expressions.py) |
+| 21 | 산점도 매트릭스 자동 생성 (NxN) | [`21_scatter_plot_matrix.py`](scripts/04-advanced/21_scatter_plot_matrix.py) |
 
 각 스크립트의 **문제 상황, 매개변수 설정법, 검증 포인트**는 교안 사이트의 해당 장에 있습니다.
 
@@ -62,6 +78,10 @@ Spotfire의 IronPython 2.7 스크립팅을 **문법부터 실전 예제까지** 
 2. `scripts/` 의 `.py` 내용을 붙여 넣기
 3. 파일 상단 주석의 **매개변수** 항목대로 스크립트 매개변수를 설정
 4. **실행(Execute)** 으로 시험
+
+이 파일들은 **생성형 AI에게 줄 재료**이기도 합니다.
+하고 싶은 일과 가장 비슷한 스크립트를 프롬프트에 붙여 넣으면 결과 품질이 크게 올라갑니다.
+자세한 절차는 교안 7장을 참고하세요.
 
 > [!WARNING]
 > 스크립트는 되돌리기(Undo)가 되지 않는 변경을 만들 수 있습니다.

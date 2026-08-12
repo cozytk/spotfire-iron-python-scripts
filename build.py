@@ -26,17 +26,20 @@ REPO_URL = "https://github.com/cozytk/spotfire-iron-python-scripts"
 
 # (파일명, 메뉴 라벨, 섹션 그룹)
 PAGES = [
-    ("index",            "교안 소개",                    "시작하기"),
-    ("01-getting-started", "1. 스크립트 실행 환경",       "시작하기"),
-    ("02-python-syntax",   "2. IronPython 2.7 문법",     "문법"),
-    ("03-dotnet-interop",  "3. .NET 상호운용 문법",       "문법"),
-    ("04-api-map",         "4. Spotfire API 객체 모델",   "문법"),
-    ("05-examples-bulk",   "5. 예제 A · 일괄 적용",       "예제"),
-    ("06-examples-data",   "6. 예제 B · 데이터와 내보내기", "예제"),
-    ("07-examples-ui",     "7. 예제 C · 동적 UI 제어",     "예제"),
-    ("08-examples-advanced", "8. 예제 D · 심화 자동화",    "예제"),
-    ("09-tips",            "9. 실무 팁과 함정",           "레퍼런스"),
-    ("10-cheatsheet",      "10. 치트시트 & FAQ",          "레퍼런스"),
+    ("index",                "교안 소개",                     "시작하기"),
+    ("01-what-you-can-do",   "1. 무엇을 할 수 있나",           "시작하기"),
+    ("02-getting-started",   "2. 스크립트 실행 환경",          "시작하기"),
+    ("03-programming-basics","3. 프로그래밍 기초 개념",         "문법"),
+    ("04-python-syntax",     "4. IronPython 2.7 문법",        "문법"),
+    ("05-dotnet-interop",    "5. .NET 상호운용 문법",          "문법"),
+    ("06-api-map",           "6. Spotfire API 객체 모델",      "문법"),
+    ("07-ai-workflow",       "7. 생성형 AI로 스크립트 만들기",   "AI 활용"),
+    ("08-examples-bulk",     "8. 예제 A · 일괄 적용",          "예제"),
+    ("09-examples-data",     "9. 예제 B · 데이터와 내보내기",   "예제"),
+    ("10-examples-ui",       "10. 예제 C · 동적 UI 제어",      "예제"),
+    ("11-examples-advanced", "11. 예제 D · 심화 자동화",       "예제"),
+    ("12-tips",              "12. 실무 팁과 함정",             "레퍼런스"),
+    ("13-cheatsheet",        "13. 치트시트 & FAQ",             "레퍼런스"),
 ]
 
 TEMPLATE = u"""<!DOCTYPE html>

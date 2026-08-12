@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>6. Spotfire API 객체 모델 · Spotfire IronPython 2.7 교안</title>
+<meta name="description" content="문법을 알아도 "이 기능이 어느 객체에 매달려 있는지" 를 모르면 코드를 못 씁니다.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#128220;</text></svg>">
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="topbar">
+  <button id="navToggle" class="icon-btn" aria-label="목차 열기">&#9776;</button>
+  <a class="brand" href="index.html">Spotfire IronPython 2.7 교안</a>
+  <div class="spacer"></div>
+  <input id="search" type="search" placeholder="이 교안에서 검색 (/)" aria-label="검색">
+  <button id="themeToggle" class="icon-btn" aria-label="라이트/다크 전환"><svg width="15" height="15" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 2a8 8 0 0 1 0 16z" fill="currentColor"/></svg></button>
+  <a class="icon-btn gh" href="https://github.com/cozytk/spotfire-iron-python-scripts" target="_blank" rel="noopener" aria-label="GitHub 저장소">&lt;/&gt;</a>
+</header>
+<div class="layout">
+  <nav id="sidebar" class="sidebar" aria-label="교안 목차">
+    <p class="nav-group">시작하기</p><ul class="nav-list">
+<li><a href="index.html">교안 소개</a></li>
+<li><a href="01-what-you-can-do.html">1. 무엇을 할 수 있나</a></li>
+<li><a href="02-getting-started.html">2. 스크립트 실행 환경</a></li>
+</ul>
+<p class="nav-group">문법</p><ul class="nav-list">
+<li><a href="03-programming-basics.html">3. 프로그래밍 기초 개념</a></li>
+<li><a href="04-python-syntax.html">4. IronPython 2.7 문법</a></li>
+<li><a href="05-dotnet-interop.html">5. .NET 상호운용 문법</a></li>
+<li><a href="06-api-map.html" class="active">6. Spotfire API 객체 모델</a></li>
+</ul>
+<p class="nav-group">AI 활용</p><ul class="nav-list">
+<li><a href="07-ai-workflow.html">7. 생성형 AI로 스크립트 만들기</a></li>
+</ul>
+<p class="nav-group">예제</p><ul class="nav-list">
+<li><a href="08-examples-bulk.html">8. 예제 A · 일괄 적용</a></li>
+<li><a href="09-examples-data.html">9. 예제 B · 데이터와 내보내기</a></li>
+<li><a href="10-examples-ui.html">10. 예제 C · 동적 UI 제어</a></li>
+<li><a href="11-examples-advanced.html">11. 예제 D · 심화 자동화</a></li>
+</ul>
+<p class="nav-group">레퍼런스</p><ul class="nav-list">
+<li><a href="12-tips.html">12. 실무 팁과 함정</a></li>
+<li><a href="13-cheatsheet.html">13. 치트시트 & FAQ</a></li>
+</ul>
+  </nav>
+  <main id="main" class="content">
+    <h1 id="6-spotfire-api">6. Spotfire API 객체 모델</h1>
+<p>문법을 알아도 <strong>"이 기능이 어느 객체에 매달려 있는지"</strong> 를 모르면 코드를 못 씁니다.
+이 장은 <code>Document</code>에서 출발해 아래로 내려가는 지도입니다. 8장 이후 예제는 전부 이 지도 위에서 움직입니다.</p>
+<h2 id="61">6.1 전체 구조</h2>
+<div class="codehilite"><pre><span></span><code>Application  (AnalysisApplication)
+└── Document  (Spotfire.Dxp.Application.Document)
+    │
+    ├── Pages ─────────────── 페이지 컬렉션
+    │   └── Page
+    │       ├── Title / Visible
+    │       ├── Visuals ───── 시각화 컬렉션
+    │       │   └── Visual
+    │       │       ├── Title / TypeId
+    │       │       └── As[VisualContent]()
+    │       │           ├── Data ──── DataTableReference / MarkingReference
+    │       │           │             WhereClauseExpression
+    │       │           ├── XAxis / YAxis / ColorAxis ── Expression
+    │       │           ├── Legend ── Visible / Items
+    │       │           └── Trellis
+    │       ├── FilterPanel ─ TableGroups → FilterHandles → FilterReference
+    │       └── Panels ────── 세부 정보 패널, 협업 패널 등
+    │
+    ├── Data  (DataManager)
+    │   ├── Tables ────────── DataTable
+    │   │   ├── Columns ──── DataColumn (Name / DataType / Properties)
+    │   │   ├── RowCount
+    │   │   ├── Select() / GetRows() / GetDistinctRows()
+    │   │   └── Refresh() / ReplaceData() / AddRows()
+    │   ├── Markings ──────── DataMarkingSelection
+    │   ├── Filterings
+    │   └── Properties ───── 데이터/컬럼/문서 속성 정의
+    │
+    ├── Properties ────────── 문서 속성 값 (읽기/쓰기)
+    ├── FilteringSchemes ──── 필터링 스킴 (필터 초기화의 열쇠)
+    ├── ActivePageReference
+    ├── ActiveDataTableReference
+    ├── ActiveMarkingSelectionReference
+    └── ActiveFilteringSelectionReference
+</code></pre></div>
+
+<h2 id="62">6.2 문서와 페이지</h2>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 현재 활성 페이지</span>
+<span class="n">page</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">ActivePageReference</span>
+<span class="nb">print</span> <span class="n">page</span><span class="o">.</span><span class="n">Title</span>
+
+<span class="c1"># 페이지 이동</span>
+<span class="n">Document</span><span class="o">.</span><span class="n">ActivePageReference</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">Pages</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>        <span class="c1"># 인덱스는 0부터</span>
+
+<span class="c1"># 이름으로 페이지 찾기</span>
+<span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">Pages</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">Title</span> <span class="o">==</span> <span class="sa">u</span><span class="s2">&quot;요약&quot;</span><span class="p">:</span>
+        <span class="n">Document</span><span class="o">.</span><span class="n">ActivePageReference</span> <span class="o">=</span> <span class="n">p</span>
+        <span class="k">break</span>
+
+<span class="c1"># 페이지 숨기기 / 보이기</span>
+<span class="n">Document</span><span class="o">.</span><span class="n">Pages</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">Visible</span> <span class="o">=</span> <span class="kc">False</span>
+
+<span class="c1"># 페이지 추가 / 삭제</span>
+<span class="n">newPage</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">Pages</span><span class="o">.</span><span class="n">AddNew</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;새 페이지&quot;</span><span class="p">)</span>
+<span class="n">Document</span><span class="o">.</span><span class="n">Pages</span><span class="o">.</span><span class="n">Remove</span><span class="p">(</span><span class="n">newPage</span><span class="p">)</span>
+</code></pre></div>
+
+<h2 id="63">6.3 시각화</h2>
+<p><code>Visual</code>(껍데기)과 <code>VisualContent</code>(알맹이)의 구분이 핵심입니다 → <a href="05-dotnet-interop.html#52-ast">3.2 참조</a></p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Visuals</span><span class="w"> </span><span class="kn">import</span> <span class="n">VisualContent</span><span class="p">,</span> <span class="n">VisualTypeIdentifiers</span>
+
+<span class="k">for</span> <span class="n">visual</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">ActivePageReference</span><span class="o">.</span><span class="n">Visuals</span><span class="p">:</span>
+    <span class="c1"># Visual 수준</span>
+    <span class="nb">print</span> <span class="n">visual</span><span class="o">.</span><span class="n">Title</span><span class="p">,</span> <span class="n">visual</span><span class="o">.</span><span class="n">TypeId</span>
+
+    <span class="c1"># VisualContent 수준</span>
+    <span class="n">vc</span> <span class="o">=</span> <span class="n">visual</span><span class="o">.</span><span class="n">As</span><span class="p">[</span><span class="n">VisualContent</span><span class="p">]()</span>
+    <span class="nb">print</span> <span class="n">vc</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">DataTableReference</span><span class="o">.</span><span class="n">Name</span>
+</code></pre></div>
+
+<h3 id="_1">주요 시각화 유형 식별자</h3>
+<div class="codehilite"><pre><span></span><code><span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">BarChart</span>
+<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">LineChart</span>
+<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">ScatterPlot</span>
+<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">PieChart</span>
+<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">CrossTable</span>
+<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">Table</span>
+<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">HeatMap</span>
+<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">CombinationChart</span>
+<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">TreemapChart</span>
+<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">GraphicalTable</span>
+<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">HtmlTextArea</span>       <span class="c1"># 텍스트 영역</span>
+<span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">KpiChart</span>
+</code></pre></div>
+
+<h3 id="_2">시각화의 데이터 설정</h3>
+<div class="codehilite"><pre><span></span><code><span class="n">vc</span> <span class="o">=</span> <span class="n">visual</span><span class="o">.</span><span class="n">As</span><span class="p">[</span><span class="n">VisualContent</span><span class="p">]()</span>
+
+<span class="n">vc</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">DataTableReference</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Tables</span><span class="p">[</span><span class="s2">&quot;Sales&quot;</span><span class="p">]</span>   <span class="c1"># 데이터 테이블 지정</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">WhereClauseExpression</span> <span class="o">=</span> <span class="s2">&quot;[Year] &gt; 2020&quot;</span>              <span class="c1"># 데이터 제한 표현식</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">MarkingReference</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Markings</span><span class="p">[</span><span class="s2">&quot;Marking&quot;</span><span class="p">]</span> <span class="c1"># 마킹 연결</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">LimitingMarkingsEmptyMessage</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;항목을 선택하세요&quot;</span>     <span class="c1"># 마킹 대기 문구</span>
+</code></pre></div>
+
+<h3 id="_3">축</h3>
+<div class="codehilite"><pre><span></span><code><span class="n">vc</span><span class="o">.</span><span class="n">XAxis</span><span class="o">.</span><span class="n">Expression</span> <span class="o">=</span> <span class="s2">&quot;[Region]&quot;</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">YAxis</span><span class="o">.</span><span class="n">Expression</span> <span class="o">=</span> <span class="s2">&quot;Sum([Revenue])&quot;</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">ColorAxis</span><span class="o">.</span><span class="n">Expression</span> <span class="o">=</span> <span class="s2">&quot;[Category]&quot;</span>
+
+<span class="c1"># 축 서식</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">XAxis</span><span class="o">.</span><span class="n">ShowAxisSelector</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="n">vc</span><span class="o">.</span><span class="n">YAxis</span><span class="o">.</span><span class="n">Scale</span><span class="o">.</span><span class="n">ShowGridlines</span> <span class="o">=</span> <span class="kc">True</span>
+</code></pre></div>
+
+<p>시각화 유형마다 축 이름이 다릅니다.</p>
+<table>
+<thead>
+<tr>
+<th>유형</th>
+<th>축</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>막대/선/산점도</td>
+<td><code>XAxis</code>, <code>YAxis</code>, <code>ColorAxis</code>, <code>SizeAxis</code>, <code>ShapeAxis</code></td>
+</tr>
+<tr>
+<td>원형 차트</td>
+<td><code>SectorSizeAxis</code>, <code>ColorAxis</code></td>
+</tr>
+<tr>
+<td>교차 표</td>
+<td><code>HorizontalAxis</code>, <code>VerticalAxis</code>, <code>MeasureAxis</code></td>
+</tr>
+<tr>
+<td>히트 맵</td>
+<td><code>XAxis</code>, <code>YAxis</code>, <code>CellValueAxis</code></td>
+</tr>
+<tr>
+<td>KPI 차트</td>
+<td>KPI 항목별 <code>ValueAxis</code></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition tip">
+<p class="admonition-title">축이 없는 시각화를 만나면</p>
+<p>표(<code>Table</code>)나 텍스트 영역에는 <code>XAxis</code>가 없습니다. 일괄 처리 루프에서는 반드시
+<code>try/except</code>로 감싸거나 <code>TypeId</code>로 걸러 내세요.</p>
+</div>
+<h2 id="64">6.4 데이터 테이블과 컬럼</h2>
+<div class="codehilite"><pre><span></span><code><span class="n">tables</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Tables</span>
+
+<span class="n">table</span> <span class="o">=</span> <span class="n">tables</span><span class="p">[</span><span class="s2">&quot;Sales&quot;</span><span class="p">]</span>                       <span class="c1"># 이름으로</span>
+<span class="n">table</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">ActiveDataTableReference</span>     <span class="c1"># 현재 활성 테이블</span>
+<span class="nb">print</span> <span class="n">table</span><span class="o">.</span><span class="n">RowCount</span>
+
+<span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">table</span><span class="o">.</span><span class="n">Columns</span><span class="p">:</span>
+    <span class="nb">print</span> <span class="n">col</span><span class="o">.</span><span class="n">Name</span><span class="p">,</span> <span class="n">col</span><span class="o">.</span><span class="n">DataType</span>
+
+<span class="n">col</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">Columns</span><span class="p">[</span><span class="s2">&quot;Revenue&quot;</span><span class="p">]</span>
+<span class="nb">print</span> <span class="n">col</span><span class="o">.</span><span class="n">DataType</span><span class="o">.</span><span class="n">IsNumeric</span>
+</code></pre></div>
+
+<h3 id="datavaluecursor">값 읽기 — DataValueCursor</h3>
+<p>행 값을 읽는 표준 방법입니다. <strong>커서를 만들고 → 행을 순회하며 → 현재 값을 읽습니다.</strong></p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Data</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataValueCursor</span><span class="p">,</span> <span class="n">IndexSet</span>
+
+<span class="n">table</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Tables</span><span class="p">[</span><span class="s2">&quot;Sales&quot;</span><span class="p">]</span>
+<span class="n">cursor</span> <span class="o">=</span> <span class="n">DataValueCursor</span><span class="o">.</span><span class="n">CreateFormatted</span><span class="p">(</span><span class="n">table</span><span class="o">.</span><span class="n">Columns</span><span class="p">[</span><span class="s2">&quot;Region&quot;</span><span class="p">])</span>
+
+<span class="n">rows</span> <span class="o">=</span> <span class="n">IndexSet</span><span class="p">(</span><span class="n">table</span><span class="o">.</span><span class="n">RowCount</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>          <span class="c1"># 전체 행</span>
+<span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">table</span><span class="o">.</span><span class="n">GetRows</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">cursor</span><span class="p">):</span>
+    <span class="nb">print</span> <span class="n">cursor</span><span class="o">.</span><span class="n">CurrentValue</span>
+</code></pre></div>
+
+<p>커서를 여러 개 넘기면 여러 컬럼을 동시에 읽습니다.</p>
+<div class="codehilite"><pre><span></span><code><span class="n">c1</span> <span class="o">=</span> <span class="n">DataValueCursor</span><span class="o">.</span><span class="n">CreateFormatted</span><span class="p">(</span><span class="n">table</span><span class="o">.</span><span class="n">Columns</span><span class="p">[</span><span class="s2">&quot;Region&quot;</span><span class="p">])</span>
+<span class="n">c2</span> <span class="o">=</span> <span class="n">DataValueCursor</span><span class="o">.</span><span class="n">Create</span><span class="p">[</span><span class="nb">float</span><span class="p">](</span><span class="n">table</span><span class="o">.</span><span class="n">Columns</span><span class="p">[</span><span class="s2">&quot;Revenue&quot;</span><span class="p">])</span>
+
+<span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">table</span><span class="o">.</span><span class="n">GetRows</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">c1</span><span class="p">,</span> <span class="n">c2</span><span class="p">):</span>
+    <span class="nb">print</span> <span class="n">c1</span><span class="o">.</span><span class="n">CurrentValue</span><span class="p">,</span> <span class="n">c2</span><span class="o">.</span><span class="n">CurrentValue</span>
+</code></pre></div>
+
+<h3 id="_4">고유값 읽기</h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Data</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataValueCursor</span>
+
+<span class="n">cursor</span> <span class="o">=</span> <span class="n">DataValueCursor</span><span class="o">.</span><span class="n">CreateFormatted</span><span class="p">(</span><span class="n">table</span><span class="o">.</span><span class="n">Columns</span><span class="p">[</span><span class="s2">&quot;Region&quot;</span><span class="p">])</span>
+<span class="n">values</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">distinct</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">GetDistinctRows</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">cursor</span><span class="p">)</span>     <span class="c1"># None = 전체 행</span>
+<span class="n">distinct</span><span class="o">.</span><span class="n">Reset</span><span class="p">()</span>
+<span class="k">while</span> <span class="n">distinct</span><span class="o">.</span><span class="n">MoveNext</span><span class="p">():</span>
+    <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cursor</span><span class="o">.</span><span class="n">CurrentValue</span><span class="p">)</span>
+<span class="nb">print</span> <span class="n">values</span>
+</code></pre></div>
+
+<h3 id="indexset-rowselection">IndexSet과 RowSelection</h3>
+<p>Spotfire에서 "어떤 행들"을 표현하는 두 타입입니다.</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Data</span><span class="w"> </span><span class="kn">import</span> <span class="n">IndexSet</span><span class="p">,</span> <span class="n">RowSelection</span>
+
+<span class="n">allRows</span> <span class="o">=</span> <span class="n">IndexSet</span><span class="p">(</span><span class="n">table</span><span class="o">.</span><span class="n">RowCount</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>      <span class="c1"># 전부 선택된 상태</span>
+<span class="n">noRows</span> <span class="o">=</span> <span class="n">IndexSet</span><span class="p">(</span><span class="n">table</span><span class="o">.</span><span class="n">RowCount</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>      <span class="c1"># 전부 해제된 상태</span>
+<span class="n">noRows</span><span class="o">.</span><span class="n">Add</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>                                 <span class="c1"># 6번째 행만 추가</span>
+
+<span class="n">selection</span> <span class="o">=</span> <span class="n">RowSelection</span><span class="p">(</span><span class="n">noRows</span><span class="p">)</span>              <span class="c1"># 마킹 API에 넘길 형태</span>
+</code></pre></div>
+
+<ul>
+<li><strong><code>IndexSet</code></strong>: 행 인덱스의 비트 집합. <code>And</code>, <code>Or</code>, <code>Not</code> 연산 가능</li>
+<li><strong><code>RowSelection</code></strong>: 마킹/필터 API가 요구하는 래퍼</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="n">combined</span> <span class="o">=</span> <span class="n">IndexSet</span><span class="o">.</span><span class="n">And</span><span class="p">(</span><span class="n">setA</span><span class="p">,</span> <span class="n">setB</span><span class="p">)</span>     <span class="c1"># 교집합</span>
+</code></pre></div>
+
+<h3 id="_5">표현식으로 행 선택</h3>
+<div class="codehilite"><pre><span></span><code><span class="n">selection</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">Select</span><span class="p">(</span><span class="s2">&quot;[Region] = &#39;East&#39; and [Revenue] &gt; 1000&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h2 id="65">6.5 마킹</h2>
+<div class="codehilite"><pre><span></span><code><span class="n">marking</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Markings</span><span class="p">[</span><span class="s2">&quot;Marking&quot;</span><span class="p">]</span>
+
+<span class="c1"># 마킹된 행 읽기</span>
+<span class="n">marked</span> <span class="o">=</span> <span class="n">marking</span><span class="o">.</span><span class="n">GetSelection</span><span class="p">(</span><span class="n">table</span><span class="p">)</span><span class="o">.</span><span class="n">AsIndexSet</span><span class="p">()</span>
+<span class="nb">print</span> <span class="n">marked</span><span class="o">.</span><span class="n">Count</span>
+
+<span class="c1"># 마킹 설정 (표현식으로)</span>
+<span class="n">selection</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">Select</span><span class="p">(</span><span class="s2">&quot;[Region] = &#39;East&#39;&quot;</span><span class="p">)</span>
+<span class="n">marking</span><span class="o">.</span><span class="n">SetSelection</span><span class="p">(</span><span class="n">selection</span><span class="p">,</span> <span class="n">table</span><span class="p">)</span>
+
+<span class="c1"># 마킹 해제</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Data</span><span class="w"> </span><span class="kn">import</span> <span class="n">IndexSet</span><span class="p">,</span> <span class="n">RowSelection</span>
+<span class="n">marking</span><span class="o">.</span><span class="n">SetSelection</span><span class="p">(</span><span class="n">RowSelection</span><span class="p">(</span><span class="n">IndexSet</span><span class="p">(</span><span class="n">table</span><span class="o">.</span><span class="n">RowCount</span><span class="p">,</span> <span class="kc">False</span><span class="p">)),</span> <span class="n">table</span><span class="p">)</span>
+
+<span class="c1"># 현재 활성 마킹</span>
+<span class="n">activeMarking</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">ActiveMarkingSelectionReference</span>
+</code></pre></div>
+
+<h2 id="66">6.6 필터와 필터링 스킴</h2>
+<p><strong>필터링 스킴(FilteringScheme)</strong> 은 필터 설정 묶음입니다. 페이지마다 다른 스킴을 쓸 수 있고,
+"모든 필터 초기화" 버튼은 <strong>현재 스킴 하나만</strong> 초기화합니다. 이것이 <a href="10-examples-ui.html">예제 14</a>의 출발점입니다.</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 모든 필터링 스킴 초기화</span>
+<span class="k">for</span> <span class="n">scheme</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">FilteringSchemes</span><span class="p">:</span>
+    <span class="n">scheme</span><span class="o">.</span><span class="n">ResetAllFilters</span><span class="p">()</span>
+
+<span class="c1"># 현재 페이지의 필터 패널</span>
+<span class="n">filterPanel</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">ActivePageReference</span><span class="o">.</span><span class="n">FilterPanel</span>
+
+<span class="k">for</span> <span class="n">tableGroup</span> <span class="ow">in</span> <span class="n">filterPanel</span><span class="o">.</span><span class="n">TableGroups</span><span class="p">:</span>
+    <span class="nb">print</span> <span class="n">tableGroup</span><span class="o">.</span><span class="n">FilterCollectionReference</span><span class="o">.</span><span class="n">DataTableReference</span><span class="o">.</span><span class="n">Name</span>
+    <span class="k">for</span> <span class="n">fh</span> <span class="ow">in</span> <span class="n">tableGroup</span><span class="o">.</span><span class="n">FilterHandles</span><span class="p">:</span>
+        <span class="nb">print</span> <span class="n">fh</span><span class="o">.</span><span class="n">FilterReference</span><span class="o">.</span><span class="n">Name</span><span class="p">,</span> <span class="n">fh</span><span class="o">.</span><span class="n">Visible</span>
+        <span class="n">fh</span><span class="o">.</span><span class="n">Visible</span> <span class="o">=</span> <span class="kc">True</span>                 <span class="c1"># 필터 표시/숨김</span>
+</code></pre></div>
+
+<h3 id="_6">특정 필터 조작</h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Filters</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">filters</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Filters</span><span class="w"> </span><span class="kn">import</span> <span class="n">FilterTypeIdentifiers</span>
+
+<span class="n">filterPanel</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">ActivePageReference</span><span class="o">.</span><span class="n">FilterPanel</span>
+<span class="n">handle</span> <span class="o">=</span> <span class="n">filterPanel</span><span class="o">.</span><span class="n">TableGroups</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">GetFilter</span><span class="p">(</span><span class="s2">&quot;Region&quot;</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">handle</span><span class="o">.</span><span class="n">FilterReference</span><span class="o">.</span><span class="n">TypeId</span> <span class="o">==</span> <span class="n">FilterTypeIdentifiers</span><span class="o">.</span><span class="n">CheckBoxFilter</span><span class="p">:</span>
+    <span class="n">cb</span> <span class="o">=</span> <span class="n">handle</span><span class="o">.</span><span class="n">FilterReference</span><span class="o">.</span><span class="n">As</span><span class="p">[</span><span class="n">filters</span><span class="o">.</span><span class="n">CheckBoxFilter</span><span class="p">]()</span>
+    <span class="n">cb</span><span class="o">.</span><span class="n">Reset</span><span class="p">()</span>                    <span class="c1"># 전체 선택</span>
+    <span class="n">cb</span><span class="o">.</span><span class="n">Uncheck</span><span class="p">(</span><span class="s2">&quot;East&quot;</span><span class="p">)</span>            <span class="c1"># 특정 값 해제</span>
+    <span class="n">cb</span><span class="o">.</span><span class="n">Check</span><span class="p">(</span><span class="s2">&quot;West&quot;</span><span class="p">)</span>
+    <span class="n">cb</span><span class="o">.</span><span class="n">IncludeEmpty</span> <span class="o">=</span> <span class="kc">False</span>
+
+<span class="k">if</span> <span class="n">handle</span><span class="o">.</span><span class="n">FilterReference</span><span class="o">.</span><span class="n">TypeId</span> <span class="o">==</span> <span class="n">FilterTypeIdentifiers</span><span class="o">.</span><span class="n">RangeFilter</span><span class="p">:</span>
+    <span class="n">rf</span> <span class="o">=</span> <span class="n">handle</span><span class="o">.</span><span class="n">FilterReference</span><span class="o">.</span><span class="n">As</span><span class="p">[</span><span class="n">filters</span><span class="o">.</span><span class="n">RangeFilter</span><span class="p">]()</span>
+    <span class="n">rf</span><span class="o">.</span><span class="n">Reset</span><span class="p">()</span>
+</code></pre></div>
+
+<p>주요 필터 유형: <code>CheckBoxFilter</code>, <code>ListBoxFilter</code>, <code>RangeFilter</code>, <code>ItemFilter</code>,
+<code>RadioButtonFilter</code>, <code>TextFilter</code>, <code>CheckBoxHierarchyFilter</code></p>
+<h2 id="67">6.7 문서 속성</h2>
+<p>스크립트와 UI 사이의 <strong>다리</strong>입니다. 텍스트 영역의 속성 컨트롤(드롭다운, 입력 상자)이
+문서 속성에 묶이고, 스크립트가 그 값을 읽거나 씁니다.</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 읽기 / 쓰기</span>
+<span class="n">value</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;SelectedRegion&quot;</span><span class="p">]</span>
+<span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;SelectedRegion&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;East&quot;</span>
+<span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;완료&quot;</span>
+</code></pre></div>
+
+<h3 id="_7">새 문서 속성 만들기</h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Data</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataProperty</span><span class="p">,</span> <span class="n">DataType</span><span class="p">,</span> <span class="n">DataPropertyClass</span>
+
+<span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;MyProperty&quot;</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Properties</span><span class="o">.</span><span class="n">Contains</span><span class="p">(</span><span class="n">DataPropertyClass</span><span class="o">.</span><span class="n">Document</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+    <span class="n">attr</span> <span class="o">=</span> <span class="n">DataProperty</span><span class="o">.</span><span class="n">DefaultAttributes</span>
+    <span class="n">prop</span> <span class="o">=</span> <span class="n">DataProperty</span><span class="o">.</span><span class="n">CreateCustomPrototype</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">DataType</span><span class="o">.</span><span class="n">String</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>
+    <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Properties</span><span class="o">.</span><span class="n">AddProperty</span><span class="p">(</span><span class="n">DataPropertyClass</span><span class="o">.</span><span class="n">Document</span><span class="p">,</span> <span class="n">prop</span><span class="p">)</span>
+
+<span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;초기값&quot;</span>
+</code></pre></div>
+
+<p><code>DataPropertyClass</code>는 <code>Document</code>, <code>Table</code>, <code>Column</code> 세 가지입니다.</p>
+<h2 id="68">6.8 자주 쓰는 진입점 요약</h2>
+<table>
+<thead>
+<tr>
+<th>하고 싶은 것</th>
+<th>시작 지점</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>모든 시각화 순회</td>
+<td><code>Document.Pages</code> → <code>page.Visuals</code></td>
+</tr>
+<tr>
+<td>시각화의 축·데이터 바꾸기</td>
+<td><code>visual.As[VisualContent]()</code></td>
+</tr>
+<tr>
+<td>데이터 값 읽기</td>
+<td><code>Document.Data.Tables[...]</code> + <code>DataValueCursor</code></td>
+</tr>
+<tr>
+<td>마킹 읽기/설정</td>
+<td><code>Document.Data.Markings["Marking"]</code></td>
+</tr>
+<tr>
+<td>필터 초기화</td>
+<td><code>Document.FilteringSchemes</code></td>
+</tr>
+<tr>
+<td>필터 표시/숨김</td>
+<td><code>page.FilterPanel.TableGroups</code></td>
+</tr>
+<tr>
+<td>UI와 값 주고받기</td>
+<td><code>Document.Properties[...]</code></td>
+</tr>
+<tr>
+<td>알림 띄우기</td>
+<td><code>Application.GetService[NotificationService]()</code></td>
+</tr>
+<tr>
+<td>파일 내보내기</td>
+<td><code>Document.Data.CreateDataWriter(...)</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p>지도는 여기까지입니다. 다음 <a href="07-ai-workflow.html">7장</a>에서 이 지도를 생성형 AI에게 넘겨
+원하는 스크립트를 얻어내는 방법을 익힙니다.</p>
+    <nav class="pager"><a class="pg prev" href="05-dotnet-interop.html"><span>이전</span>5. .NET 상호운용 문법</a><a class="pg next" href="07-ai-workflow.html"><span>다음</span>7. 생성형 AI로 스크립트 만들기</a></nav>
+    <footer class="foot">
+      <p>이 교안의 모든 예제 스크립트는 <a href="https://github.com/cozytk/spotfire-iron-python-scripts/tree/HEAD/scripts">scripts/ 폴더</a>에 실행 가능한 <code>.py</code> 파일로도 들어 있습니다.</p>
+      <p>Spotfire는 Cloud Software Group, Inc.의 상표입니다. 본 교안은 비공식 학습 자료입니다.</p>
+    </footer>
+  </main>
+  <aside class="toc-side" aria-label="현재 문서 목차"><div class="toc">
+<ul>
+<li><a href="#61">6.1 전체 구조</a></li>
+<li><a href="#62">6.2 문서와 페이지</a></li>
+<li><a href="#63">6.3 시각화</a><ul>
+<li><a href="#_1">주요 시각화 유형 식별자</a></li>
+<li><a href="#_2">시각화의 데이터 설정</a></li>
+<li><a href="#_3">축</a></li>
+</ul>
+</li>
+<li><a href="#64">6.4 데이터 테이블과 컬럼</a><ul>
+<li><a href="#datavaluecursor">값 읽기 — DataValueCursor</a></li>
+<li><a href="#_4">고유값 읽기</a></li>
+<li><a href="#indexset-rowselection">IndexSet과 RowSelection</a></li>
+<li><a href="#_5">표현식으로 행 선택</a></li>
+</ul>
+</li>
+<li><a href="#65">6.5 마킹</a></li>
+<li><a href="#66">6.6 필터와 필터링 스킴</a><ul>
+<li><a href="#_6">특정 필터 조작</a></li>
+</ul>
+</li>
+<li><a href="#67">6.7 문서 속성</a><ul>
+<li><a href="#_7">새 문서 속성 만들기</a></li>
+</ul>
+</li>
+<li><a href="#68">6.8 자주 쓰는 진입점 요약</a></li>
+</ul>
+</div>
+</aside>
+</div>
+<div id="searchResults" class="search-results" hidden></div>
+<script src="assets/app.js"></script>
+</body>
+</html>

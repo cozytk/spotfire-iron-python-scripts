@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # 예제 6. 모든 차트의 줌·축 범위 초기화
 #
-# 설명과 검증 포인트: https://cozytk.github.io/spotfire-iron-python-scripts/05-examples-bulk.html
-# 이 파일은 content/05-examples-bulk.md 에서 자동 생성됩니다. 직접 수정하지 마세요.
+# 설명과 검증 포인트: https://cozytk.github.io/spotfire-iron-python-scripts/08-examples-bulk.html
+# 이 파일은 content/08-examples-bulk.md 에서 자동 생성됩니다. 직접 수정하지 마세요.
 
 # 모든 페이지의 모든 차트에서 축 줌 범위를 기본값으로 되돌린다.
 

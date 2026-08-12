@@ -20,10 +20,10 @@ DOC_BASE = "https://cozytk.github.io/spotfire-iron-python-scripts"
 
 # 교안 파일 -> (출력 폴더, 교안 페이지 파일명)
 CHAPTERS = [
-    ("05-examples-bulk.md", "01-bulk", "05-examples-bulk.html"),
-    ("06-examples-data.md", "02-data", "06-examples-data.html"),
-    ("07-examples-ui.md", "03-ui", "07-examples-ui.html"),
-    ("08-examples-advanced.md", "04-advanced", "08-examples-advanced.html"),
+    ("08-examples-bulk.md", "01-bulk", "08-examples-bulk.html"),
+    ("09-examples-data.md", "02-data", "09-examples-data.html"),
+    ("10-examples-ui.md", "03-ui", "10-examples-ui.html"),
+    ("11-examples-advanced.md", "04-advanced", "11-examples-advanced.html"),
 ]
 
 # 예제 번호 -> 파일명 (한글 제목 대신 영문 슬러그 사용)
@@ -34,18 +34,21 @@ FILENAMES = {
     4: "unify_legend_and_title",
     5: "swap_data_table",
     6: "reset_zoom_all_charts",
-    7: "export_all_visuals_to_png",
-    8: "export_all_tables_to_file",
-    9: "snapshot_marked_rows",
-    10: "marking_to_document_property",
-    11: "propagate_marking_by_key",
-    12: "refresh_all_data_tables",
-    13: "reset_dashboard_state",
-    14: "toggle_pages_by_role",
-    15: "configure_filter_panel",
-    16: "bulk_switch_visual_type",
-    17: "generate_visuals_from_marking",
-    18: "audit_expressions",
+    7: "fix_axis_range",
+    8: "export_all_visuals_to_png",
+    9: "export_all_tables_to_file",
+    10: "snapshot_marked_rows",
+    11: "marking_to_document_property",
+    12: "propagate_marking_by_key",
+    13: "refresh_all_data_tables",
+    14: "reset_dashboard_state",
+    15: "toggle_pages_by_role",
+    16: "configure_filter_panel",
+    17: "bulk_switch_visual_type",
+    18: "reset_selected_column_filters",
+    19: "generate_visuals_from_marking",
+    20: "audit_expressions",
+    21: "scatter_plot_matrix",
 }
 
 HEADING = re.compile(r"^## 예제 (\d+)\.\s*(.+?)\s*$", re.M)

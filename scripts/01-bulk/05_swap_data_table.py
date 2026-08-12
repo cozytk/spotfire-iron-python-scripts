@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # 예제 5. 모든 시각화의 데이터 테이블 일괄 교체
 #
-# 설명과 검증 포인트: https://cozytk.github.io/spotfire-iron-python-scripts/05-examples-bulk.html
-# 이 파일은 content/05-examples-bulk.md 에서 자동 생성됩니다. 직접 수정하지 마세요.
+# 설명과 검증 포인트: https://cozytk.github.io/spotfire-iron-python-scripts/08-examples-bulk.html
+# 이 파일은 content/08-examples-bulk.md 에서 자동 생성됩니다. 직접 수정하지 마세요.
 
 # 특정 데이터 테이블을 참조하는 모든 시각화를 다른 테이블로 교체한다.
 # 축 표현식은 최대한 보존한다 (컬럼 이름이 같다는 전제).
