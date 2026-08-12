@@ -49,9 +49,40 @@
   <main id="main" class="content">
     <h1 id="12-d">12. 예제 D · 문서 생성과 진단</h1>
 <p><strong>문서에 없던 것을 만들어 내거나, 문서 전체를 조사하는</strong> 예제입니다.</p>
-<p>진단 예제(18·19)는 읽기 전용이라 완전히 안전하고,
+<p>진단 예제(18·19·22·23)는 읽기 전용이라 완전히 안전하고,
 <strong>위험한 스크립트를 돌리기 전에 현재 상태를 기록해 두는 용도</strong>로 쓰면 좋습니다.
 생성 예제(20·21)는 페이지를 만들고 지우므로 사본에서 시험하세요.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>무엇을 조사하나</th>
+<th>언제</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>18</td>
+<td>시각화가 어떤 데이터 테이블을 쓰는지</td>
+<td>테이블을 교체하기 전</td>
+</tr>
+<tr>
+<td>19</td>
+<td>어떤 표현식이 어느 컬럼을 쓰는지</td>
+<td>컬럼 이름을 바꾸기 전</td>
+</tr>
+<tr>
+<td>22</td>
+<td>문서에 스크립트가 몇 개, 무엇이 들어 있는지</td>
+<td>남의 분석 파일을 넘겨받았을 때</td>
+</tr>
+<tr>
+<td>23</td>
+<td>이 환경에서 무엇이 되고 무엇이 안 되는지</td>
+<td><strong>새 환경에서 제일 먼저</strong></td>
+</tr>
+</tbody>
+</table>
 <hr />
 <h2 id="18">예제 18. 문서 전체 시각화 인벤토리 만들기</h2>
 <ul class="meta">
@@ -655,6 +686,43 @@ Spotfire에는 산점도 매트릭스(SPLOM) 시각화가 없습니다.
 </tr>
 </tbody>
 </table>
+<div class="admonition tip">
+<p class="admonition-title">격자만 필요하면 TileMode 한 줄로 끝납니다</p>
+<p><code>ApplyLayout</code> 에는 <code>TileMode</code> 를 받는 오버로드도 있습니다.
+"그냥 바둑판으로 깔아 줘" 라면 <code>LayoutDefinition</code> 을 조립할 필요가 없습니다.</p>
+<p><code>python
+from Spotfire.Dxp.Application.Layout import TileMode
+page.ApplyLayout(TileMode.Evenly)</code></p>
+<table>
+<thead>
+<tr>
+<th>값</th>
+<th>배치</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TileMode.Horizontally</code></td>
+<td>가로 공간을 최대한 주며 나열</td>
+</tr>
+<tr>
+<td><code>TileMode.Vertically</code></td>
+<td>세로 공간을 최대한 주며 나열</td>
+</tr>
+<tr>
+<td><code>TileMode.Evenly</code></td>
+<td>크기를 최대한 균등하게 (격자에 가장 가까움)</td>
+</tr>
+<tr>
+<td><code>TileMode.Maximize</code></td>
+<td>활성 시각화만 크게, 나머지는 최소로</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>Grid</code> 라는 값은 없습니다.</strong> 이름이 있을 법한데 없는 대표적인 예입니다
+→ <a href="07-pitfalls.html">7.6 참조</a>. 왼쪽에 텍스트 영역을 고정하는 식의 <strong>비대칭 배치</strong>가
+필요할 때만 아래의 <code>LayoutDefinition</code> 방식을 쓰면 됩니다.</p>
+</div>
 <p>구역을 중첩해서 원하는 격자를 만듭니다.</p>
 <div class="codehilite"><pre><span></span><code>BeginSideBySideSection()          가로 분할
 ├─ Add(텍스트영역, 10)             왼쪽 10%
@@ -687,7 +755,323 @@ Spotfire에는 산점도 매트릭스(SPLOM) 시각화가 없습니다.
 - 재실행하면 기존 산점도를 지우고 다시 만듭니다. <strong>그 페이지를 손으로 편집했다면 사라집니다.</strong></p>
 </div>
 <hr />
-<p>예제 21종은 여기까지입니다. 다음 장에서 <strong>실무 팁과 성능</strong>을 정리합니다.</p>
+<h2 id="22">예제 22. 문서 안의 스크립트 전수 조사</h2>
+<ul class="meta">
+<li class="badge risk-none">읽기 전용</li>
+<li class="badge hard">기본 기능으로 어려움</li>
+<li class="badge env">Spotfire 12.0 이상</li>
+</ul>
+
+<p><strong>문제 상황</strong><br />
+넘겨받은 분석 파일에 버튼이 열댓 개 있습니다. <strong>어떤 스크립트가 몇 개 들어 있고,
+그 안에 무엇이 하드코딩되어 있는지</strong> 알아야 하는데, 확인하려면 버튼을 하나씩
+편집 모드로 열어 보는 수밖에 없습니다.</p>
+<p><strong>기본 기능으로 어려운 이유</strong><br />
+Spotfire UI에는 <strong>문서에 저장된 스크립트 목록을 보여 주는 화면이 없습니다.</strong>
+액션 컨트롤을 하나씩 열어야 하고, 어디에도 연결되지 않은 채 남아 있는 스크립트는
+아예 찾을 방법이 없습니다.</p>
+<p><code>Document.ScriptManager</code> 는 <strong>Spotfire 12.0에서 추가된 API</strong>입니다.
+그보다 낮은 버전에서는 이 예제가 동작하지 않습니다.</p>
+<p><strong>스크립트 매개변수</strong><br />
+없음.</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="c1"># 문서에 저장된 모든 스크립트(IronPython/JavaScript)의 목록과 요약을 만든다.</span>
+<span class="c1"># 결과를 보려면 텍스트 영역에 문서 속성 &quot;InventoryReport&quot; 를 삽입하세요.</span>
+<span class="c1">#</span>
+<span class="c1"># 필요 버전: Spotfire 12.0 이상 (Document.ScriptManager)</span>
+
+<span class="c1"># 스크립트 안에서 눈여겨봐야 할 흔적들</span>
+<span class="n">SUSPICIOUS</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">(</span><span class="s2">&quot;C:/&quot;</span><span class="p">,</span>           <span class="sa">u</span><span class="s2">&quot;로컬 경로 (Web Player에서 실패)&quot;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s2">&quot;C:</span><span class="se">\\</span><span class="s2">&quot;</span><span class="p">,</span>          <span class="sa">u</span><span class="s2">&quot;로컬 경로 (Web Player에서 실패)&quot;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s2">&quot;MessageBox&quot;</span><span class="p">,</span>    <span class="sa">u</span><span class="s2">&quot;Analyst 전용 UI&quot;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s2">&quot;Windows.Forms&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;Analyst 전용 UI&quot;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;[&quot;Marking&quot;]&#39;</span><span class="p">,</span>   <span class="sa">u</span><span class="s2">&quot;마킹 이름 하드코딩 (한국어 UI에서 실패)&quot;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s2">&quot;CreateDataWriter&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;라이선스에 막힐 수 있음&quot;</span><span class="p">),</span>
+<span class="p">]</span>
+
+<span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">total</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">byLanguage</span> <span class="o">=</span> <span class="p">{}</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">scripts</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">Document</span><span class="o">.</span><span class="n">ScriptManager</span><span class="o">.</span><span class="n">GetScripts</span><span class="p">())</span>
+<span class="k">except</span><span class="p">:</span>
+    <span class="n">scripts</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">report</span><span class="p">(</span><span class="n">html</span><span class="p">,</span> <span class="n">summary</span><span class="p">):</span>
+    <span class="c1"># 문서 속성이 아직 없으면 편집 창 출력으로 떨어뜨린다</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;InventoryReport&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">html</span>
+        <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">summary</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="nb">print</span> <span class="n">summary</span>
+        <span class="nb">print</span> <span class="n">html</span>
+
+
+<span class="k">if</span> <span class="n">scripts</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">report</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;&lt;p&gt;이 Spotfire 버전에는 ScriptManager API가 없습니다. (12.0 이상 필요)&lt;/p&gt;&quot;</span><span class="p">,</span>
+           <span class="sa">u</span><span class="s2">&quot;ScriptManager를 사용할 수 없습니다.&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">script</span> <span class="ow">in</span> <span class="n">scripts</span><span class="p">:</span>
+        <span class="n">total</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">language</span> <span class="o">=</span> <span class="n">script</span><span class="o">.</span><span class="n">Language</span><span class="o">.</span><span class="n">Language</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">language</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;(알 수 없음)&quot;</span>
+        <span class="n">byLanguage</span><span class="p">[</span><span class="n">language</span><span class="p">]</span> <span class="o">=</span> <span class="n">byLanguage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">language</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+
+        <span class="n">code</span> <span class="o">=</span> <span class="n">script</span><span class="o">.</span><span class="n">ScriptCode</span> <span class="ow">or</span> <span class="sa">u</span><span class="s2">&quot;&quot;</span>
+        <span class="n">lineCount</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">code</span><span class="o">.</span><span class="n">splitlines</span><span class="p">())</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">paramNames</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">Name</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">script</span><span class="o">.</span><span class="n">Parameters</span><span class="p">]</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">paramNames</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="n">flags</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">needle</span><span class="p">,</span> <span class="n">why</span> <span class="ow">in</span> <span class="n">SUSPICIOUS</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">needle</span> <span class="ow">in</span> <span class="n">code</span> <span class="ow">and</span> <span class="n">why</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">flags</span><span class="p">:</span>
+                <span class="n">flags</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">why</span><span class="p">)</span>
+
+        <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;&lt;tr&gt;&lt;td&gt;</span><span class="si">%s</span><span class="s2">&lt;/td&gt;&lt;td&gt;</span><span class="si">%s</span><span class="s2">&lt;/td&gt;&lt;td&gt;</span><span class="si">%d</span><span class="s2">&lt;/td&gt;&lt;td&gt;</span><span class="si">%s</span><span class="s2">&lt;/td&gt;&lt;td&gt;</span><span class="si">%s</span><span class="s2">&lt;/td&gt;&lt;/tr&gt;&quot;</span> <span class="o">%</span> <span class="p">(</span>
+            <span class="n">script</span><span class="o">.</span><span class="n">Name</span><span class="p">,</span>
+            <span class="n">language</span><span class="p">,</span>
+            <span class="n">lineCount</span><span class="p">,</span>
+            <span class="sa">u</span><span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">paramNames</span><span class="p">)</span> <span class="ow">or</span> <span class="sa">u</span><span class="s2">&quot;—&quot;</span><span class="p">,</span>
+            <span class="sa">u</span><span class="s2">&quot;&lt;br&gt;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">flags</span><span class="p">)</span> <span class="ow">or</span> <span class="sa">u</span><span class="s2">&quot;—&quot;</span><span class="p">,</span>
+        <span class="p">))</span>
+
+    <span class="c1"># 이름이 겹치는 스크립트 찾기 — 실수로 복제된 것을 잡아낸다</span>
+    <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">Name</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">scripts</span><span class="p">]</span>
+    <span class="n">duplicated</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">([</span><span class="n">n</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">names</span> <span class="k">if</span> <span class="n">names</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">]))</span>
+
+    <span class="n">summary</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> </span><span class="si">%d</span><span class="s2">개&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">lang</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span> <span class="k">for</span> <span class="n">lang</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">byLanguage</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+
+    <span class="n">html</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">&lt;table border=&quot;1&quot; cellpadding=&quot;4&quot; cellspacing=&quot;0&quot;&gt;</span>
+<span class="s2">&lt;tr&gt;&lt;th&gt;스크립트&lt;/th&gt;&lt;th&gt;언어&lt;/th&gt;&lt;th&gt;줄 수&lt;/th&gt;&lt;th&gt;매개변수&lt;/th&gt;&lt;th&gt;확인 필요&lt;/th&gt;&lt;/tr&gt;</span>
+<span class="si">%s</span>
+<span class="s2">&lt;/table&gt;</span>
+<span class="s2">&lt;p&gt;총 </span><span class="si">%d</span><span class="s2">개 (</span><span class="si">%s</span><span class="s2">)&lt;/p&gt;</span>
+<span class="s2">&quot;&quot;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="sa">u</span><span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">rows</span><span class="p">),</span> <span class="n">total</span><span class="p">,</span> <span class="n">summary</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">duplicated</span><span class="p">:</span>
+        <span class="n">html</span> <span class="o">+=</span> <span class="sa">u</span><span class="s2">&quot;&lt;p&gt;&lt;b&gt;이름이 겹치는 스크립트:&lt;/b&gt; </span><span class="si">%s</span><span class="s2">&lt;/p&gt;&quot;</span> <span class="o">%</span> <span class="sa">u</span><span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">duplicated</span><span class="p">)</span>
+
+    <span class="n">report</span><span class="p">(</span><span class="n">html</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;스크립트 </span><span class="si">%d</span><span class="s2">개를 조사했습니다.&quot;</span> <span class="o">%</span> <span class="n">total</span><span class="p">)</span>
+</code></pre></div>
+
+<p><strong>사용법</strong></p>
+<ol>
+<li>문서 속성 <code>InventoryReport</code> 를 만들어 두고(사전 준비 스크립트에 포함되어 있습니다)
+   텍스트 영역에 삽입합니다 — <a href="12-examples-create.html">예제 18</a>과 같은 방식입니다</li>
+<li>버튼을 눌러 실행하면 스크립트 목록이 표로 나옵니다</li>
+</ol>
+<p><strong>"확인 필요" 열이 알려 주는 것</strong></p>
+<table>
+<thead>
+<tr>
+<th>흔적</th>
+<th>왜 문제인가</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>로컬 경로 (<code>C:/</code>)</td>
+<td>Web Player에서 실행하면 실패 → <a href="07-pitfalls.html">7.7</a></td>
+</tr>
+<tr>
+<td><code>MessageBox</code>, <code>Windows.Forms</code></td>
+<td>Analyst 전용. 브라우저에서 실패</td>
+</tr>
+<tr>
+<td><code>Markings["Marking"]</code></td>
+<td>한국어 UI에서는 이름이 <code>"마킹"</code> → <a href="07-pitfalls.html">7.1</a></td>
+</tr>
+<tr>
+<td><code>CreateDataWriter</code></td>
+<td>라이선스가 없으면 <code>None</code> 반환 → <a href="07-pitfalls.html">7.5</a></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">검증 포인트</p>
+<ul>
+<li><strong>문서를 변경하지 않습니다.</strong> 안전하게 여러 번 실행해도 됩니다.</li>
+<li><code>TryGetScript(name)</code> 는 <code>(찾음여부, 정의)</code> <strong>튜플</strong>을 반환합니다.
+  <code>clr.Reference</code> 로 out 매개변수를 흉내 내지 마세요 → <a href="05-dotnet-interop.html#58-api">5.8 참조</a></li>
+<li><code>ScriptDefinition</code> 은 불변입니다. 코드를 고치려면 <code>WithScriptCode(...)</code> 로 복사본을
+  만들어 <code>ScriptManager.Replace(old, new)</code> 를 부릅니다.</li>
+<li><strong>스크립트를 지우거나 교체하는 것은 위험합니다.</strong> 액션 컨트롤에 연결된 스크립트를
+  <code>Remove</code> 하면 그 버튼을 손으로 다시 설정해야 합니다. 이 예제는 읽기만 합니다.</li>
+<li>이 예제는 이 교안의 검증 환경(14.x)에서 <strong>실행해 보지 않았습니다.</strong>
+  근거는 Spotfire 15.0 API 레퍼런스의 <code>ScriptManager</code> · <code>ScriptDefinition</code> 문서와
+  <a href="https://community.spotfire.com/articles/spotfire/introducing-the-spotfire-script-management-apis/">Introducing the Spotfire Script Management APIs</a>
+  입니다. <code>GetScripts()</code> 호출을 <code>try</code> 로 감싼 것은 그래서입니다.</li>
+</ul>
+</div>
+<hr />
+<h2 id="23">예제 23. 실행 환경 진단 리포트</h2>
+<ul class="meta">
+<li class="badge risk-none">읽기 전용</li>
+<li class="badge">자주 묻는 질문</li>
+</ul>
+
+<p><strong>문제 상황</strong><br />
+남의 스크립트를 받아 왔는데 <strong>실행하기 전에</strong> 알고 싶은 것이 있습니다.
+지금 이 환경이 Analyst인가 Web Player인가, 마킹의 실제 이름은 무엇인가,
+내보내기가 라이선스에 막혀 있는가.</p>
+<p><strong>기본 기능으로 어려운 이유</strong><br />
+이 정보는 UI 여기저기에 흩어져 있고, 일부(내보내기 라이선스, 마킹의 정확한 이름)는
+<strong>실제로 코드를 돌려 보기 전에는 알 수 없습니다.</strong></p>
+<p>7장에서 다룬 함정들이 <strong>"내 환경에서는 어느 것이 해당되는지"</strong> 를 한 번에 답해 주는
+스크립트입니다. <strong>새 환경에 이 교안의 예제를 적용하기 전에 이것부터 실행하세요.</strong></p>
+<p><strong>스크립트 매개변수</strong><br />
+없음.</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="c1"># 이 환경에서 무엇이 되고 무엇이 안 되는지 한 번에 진단한다.</span>
+<span class="c1"># 문서를 전혀 변경하지 않는다.</span>
+<span class="c1">#</span>
+<span class="c1"># 결과를 보려면 텍스트 영역에 문서 속성 &quot;InventoryReport&quot; 를 삽입하세요.</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Data.Export</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataWriterTypeIdentifiers</span>
+
+<span class="n">lines</span> <span class="o">=</span> <span class="p">[]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;&lt;tr&gt;&lt;td&gt;</span><span class="si">%s</span><span class="s2">&lt;/td&gt;&lt;td&gt;</span><span class="si">%s</span><span class="s2">&lt;/td&gt;&lt;/tr&gt;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+
+
+<span class="c1"># 1) 클라이언트 종류 — 파일 쓰기·MessageBox 가능 여부를 가른다</span>
+<span class="n">appType</span> <span class="o">=</span> <span class="n">Application</span><span class="o">.</span><span class="n">GetType</span><span class="p">()</span><span class="o">.</span><span class="n">ToString</span><span class="p">()</span>
+<span class="n">isAnalyst</span> <span class="o">=</span> <span class="s2">&quot;RichAnalysisApplication&quot;</span> <span class="ow">in</span> <span class="n">appType</span>
+<span class="n">add</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;클라이언트&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">&lt;br&gt;&lt;code&gt;</span><span class="si">%s</span><span class="s2">&lt;/code&gt;&quot;</span> <span class="o">%</span> <span class="p">(</span>
+    <span class="sa">u</span><span class="s2">&quot;Analyst (데스크톱)&quot;</span> <span class="k">if</span> <span class="n">isAnalyst</span> <span class="k">else</span> <span class="sa">u</span><span class="s2">&quot;Web Player (브라우저)&quot;</span><span class="p">,</span> <span class="n">appType</span><span class="p">))</span>
+<span class="n">add</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;로컬 파일 쓰기&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;가능&quot;</span> <span class="k">if</span> <span class="n">isAnalyst</span> <span class="k">else</span> <span class="sa">u</span><span class="s2">&quot;&lt;b&gt;불가&lt;/b&gt;&quot;</span><span class="p">)</span>
+<span class="n">add</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;MessageBox / 파일 대화상자&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;가능&quot;</span> <span class="k">if</span> <span class="n">isAnalyst</span> <span class="k">else</span> <span class="sa">u</span><span class="s2">&quot;&lt;b&gt;불가&lt;/b&gt;&quot;</span><span class="p">)</span>
+
+<span class="c1"># 2) 마킹 이름 — 하드코딩된 &quot;Marking&quot; 이 통하는지</span>
+<span class="n">markingNames</span> <span class="o">=</span> <span class="p">[</span><span class="n">m</span><span class="o">.</span><span class="n">Name</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Markings</span><span class="p">]</span>
+<span class="n">add</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;마킹 이름&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">markingNames</span><span class="p">)</span> <span class="ow">or</span> <span class="sa">u</span><span class="s2">&quot;(없음)&quot;</span><span class="p">)</span>
+<span class="n">add</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;`Markings[&quot;Marking&quot;]` 사용 가능&#39;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;예&quot;</span> <span class="k">if</span> <span class="s2">&quot;Marking&quot;</span> <span class="ow">in</span> <span class="n">markingNames</span> <span class="k">else</span> <span class="sa">u</span><span class="s2">&quot;&lt;b&gt;아니오&lt;/b&gt;&quot;</span><span class="p">)</span>
+
+<span class="c1"># 3) 필터링 스킴 이름</span>
+<span class="n">schemeNames</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">scheme</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">FilteringSchemes</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">schemeNames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">scheme</span><span class="o">.</span><span class="n">FilteringSelectionReference</span><span class="o">.</span><span class="n">Name</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">schemeNames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;(이름 없음)&quot;</span><span class="p">)</span>
+<span class="n">add</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;필터링 스킴&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;</span><span class="si">%d</span><span class="s2">개 — </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">schemeNames</span><span class="p">),</span> <span class="sa">u</span><span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">schemeNames</span><span class="p">)))</span>
+
+<span class="c1"># 4) 내보내기 라이선스 — CreateDataWriter 가 None 을 돌려주는지 확인만 한다</span>
+<span class="c1">#    writer 객체를 만들 뿐 파일을 쓰지 않으므로 안전하다.</span>
+<span class="n">DOTNET_BASE</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Equals&quot;</span><span class="p">,</span> <span class="s2">&quot;GetHashCode&quot;</span><span class="p">,</span> <span class="s2">&quot;GetType&quot;</span><span class="p">,</span> <span class="s2">&quot;MemberwiseClone&quot;</span><span class="p">,</span>
+               <span class="s2">&quot;ReferenceEquals&quot;</span><span class="p">,</span> <span class="s2">&quot;ToString&quot;</span><span class="p">]</span>
+
+<span class="n">writable</span><span class="p">,</span> <span class="n">blocked</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">(</span><span class="n">DataWriterTypeIdentifiers</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">DOTNET_BASE</span><span class="p">:</span>
+        <span class="k">continue</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">identifier</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">DataWriterTypeIdentifiers</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="n">writer</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">CreateDataWriter</span><span class="p">(</span><span class="n">identifier</span><span class="p">)</span>
+        <span class="p">(</span><span class="n">writable</span> <span class="k">if</span> <span class="n">writer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">blocked</span><span class="p">)</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">blocked</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+<span class="n">add</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;내보내기 가능한 형식&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">writable</span><span class="p">)</span> <span class="ow">or</span> <span class="sa">u</span><span class="s2">&quot;&lt;b&gt;없음 (라이선스 확인 필요)&lt;/b&gt;&quot;</span><span class="p">)</span>
+
+<span class="c1"># 5) 문서 규모와 구성</span>
+<span class="n">typeCounts</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">Pages</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">visual</span> <span class="ow">in</span> <span class="n">page</span><span class="o">.</span><span class="n">Visuals</span><span class="p">:</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">visual</span><span class="o">.</span><span class="n">TypeId</span><span class="o">.</span><span class="n">Name</span>
+        <span class="n">typeCounts</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">typeCounts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+<span class="n">add</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;페이지 / 시각화&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;</span><span class="si">%d</span><span class="s2">개 / </span><span class="si">%d</span><span class="s2">개&quot;</span> <span class="o">%</span> <span class="p">(</span>
+    <span class="n">Document</span><span class="o">.</span><span class="n">Pages</span><span class="o">.</span><span class="n">Count</span><span class="p">,</span> <span class="nb">sum</span><span class="p">(</span><span class="n">typeCounts</span><span class="o">.</span><span class="n">values</span><span class="p">())))</span>
+<span class="n">add</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;시각화 구성&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+    <span class="sa">u</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">typeCounts</span><span class="o">.</span><span class="n">items</span><span class="p">()))</span> <span class="ow">or</span> <span class="sa">u</span><span class="s2">&quot;(없음)&quot;</span><span class="p">)</span>
+
+<span class="c1"># 6) 데이터 테이블과 새로고침 가능 여부</span>
+<span class="n">tableRows</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">table</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Tables</span><span class="p">:</span>
+    <span class="n">tableRows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> (</span><span class="si">%d</span><span class="s2">행, 새로고침 </span><span class="si">%s</span><span class="s2">)&quot;</span> <span class="o">%</span> <span class="p">(</span>
+        <span class="n">table</span><span class="o">.</span><span class="n">Name</span><span class="p">,</span> <span class="n">table</span><span class="o">.</span><span class="n">RowCount</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;가능&quot;</span> <span class="k">if</span> <span class="n">table</span><span class="o">.</span><span class="n">IsRefreshable</span> <span class="k">else</span> <span class="sa">u</span><span class="s2">&quot;불가&quot;</span><span class="p">))</span>
+<span class="n">add</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;데이터 테이블&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;&lt;br&gt;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tableRows</span><span class="p">)</span> <span class="ow">or</span> <span class="sa">u</span><span class="s2">&quot;(없음)&quot;</span><span class="p">)</span>
+
+<span class="c1"># 7) 교안 예제가 쓰는 문서 속성이 준비되어 있는지</span>
+<span class="n">NEEDED</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">,</span> <span class="s2">&quot;InventoryReport&quot;</span><span class="p">,</span> <span class="s2">&quot;LimitExpression&quot;</span><span class="p">,</span> <span class="s2">&quot;SelectedMeasure&quot;</span><span class="p">]</span>
+<span class="n">existing</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">NEEDED</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+        <span class="n">existing</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span>
+<span class="n">missing</span> <span class="o">=</span> <span class="p">[</span><span class="n">n</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">NEEDED</span> <span class="k">if</span> <span class="n">n</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">existing</span><span class="p">]</span>
+<span class="n">add</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;예제용 문서 속성&quot;</span><span class="p">,</span>
+    <span class="p">(</span><span class="sa">u</span><span class="s2">&quot;없음: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="sa">u</span><span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">missing</span><span class="p">))</span> <span class="k">if</span> <span class="n">missing</span> <span class="k">else</span> <span class="sa">u</span><span class="s2">&quot;모두 준비됨&quot;</span><span class="p">)</span>
+
+<span class="n">report</span> <span class="o">=</span> <span class="p">(</span><span class="sa">u</span><span class="s1">&#39;&lt;table border=&quot;1&quot; cellpadding=&quot;4&quot; cellspacing=&quot;0&quot;&gt;&#39;</span>
+          <span class="sa">u</span><span class="s2">&quot;&lt;tr&gt;&lt;th&gt;항목&lt;/th&gt;&lt;th&gt;결과&lt;/th&gt;&lt;/tr&gt;</span><span class="si">%s</span><span class="s2">&lt;/table&gt;&quot;</span> <span class="o">%</span> <span class="sa">u</span><span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">))</span>
+<span class="n">summary</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;환경 진단 완료 — </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="sa">u</span><span class="s2">&quot;Analyst&quot;</span> <span class="k">if</span> <span class="n">isAnalyst</span> <span class="k">else</span> <span class="sa">u</span><span class="s2">&quot;Web Player&quot;</span><span class="p">)</span>
+
+<span class="c1"># 결과를 담을 문서 속성 자체가 없을 수도 있다. 그게 진단 대상 중 하나이므로</span>
+<span class="c1"># 여기서 실패하면 안 된다. 없으면 편집 창 출력으로 떨어뜨린다.</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;InventoryReport&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">report</span>
+    <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">summary</span>
+<span class="k">except</span><span class="p">:</span>
+    <span class="nb">print</span> <span class="n">summary</span>
+    <span class="nb">print</span> <span class="n">report</span>
+</code></pre></div>
+
+<p><strong>읽는 법</strong></p>
+<table>
+<thead>
+<tr>
+<th>결과</th>
+<th>무엇을 뜻하나</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>클라이언트가 Web Player</td>
+<td>예제 14·15는 쓸 수 없습니다. 나머지는 전부 동작합니다</td>
+</tr>
+<tr>
+<td><code>Markings["Marking"]</code> 사용 불가</td>
+<td>인터넷에서 복사한 스크립트 대부분이 그대로는 실패합니다 → <a href="07-pitfalls.html">7.1</a></td>
+</tr>
+<tr>
+<td>내보내기 가능한 형식 없음</td>
+<td><code>CreateDataWriter</code> 방식을 포기하고 <code>ExportText</code> 를 쓰세요 → <a href="11-examples-data.html">예제 15</a></td>
+</tr>
+<tr>
+<td>예제용 문서 속성 없음</td>
+<td><a href="09-examples-visuals.html">9장 맨 앞의 사전 준비 스크립트</a>를 먼저 실행하세요</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">검증 포인트</p>
+<ul>
+<li><strong>문서를 전혀 변경하지 않습니다.</strong> 값을 읽기만 하고, 쓰는 것은
+  결과를 담을 문서 속성 두 개뿐입니다.</li>
+<li><code>CreateDataWriter</code> 는 <strong>writer 객체를 만들 뿐 파일을 쓰지 않습니다.</strong>
+  그래서 이 진단은 안전합니다 → <a href="07-pitfalls.html">7.5 참조</a></li>
+<li>문서 속성 존재 확인에 <code>Document.Properties[name]</code> 접근을 <code>try</code> 로 감쌌습니다.
+  없는 속성을 읽으면 예외가 나기 때문입니다.</li>
+<li>이 예제는 <a href="07-pitfalls.html">7장</a>의 함정들을 코드로 옮긴 것입니다.
+  각 항목이 어느 절에 대응하는지는 위 표에 링크해 두었습니다.</li>
+</ul>
+</div>
+<hr />
+<p>예제 23종은 여기까지입니다. 다음 장에서 <strong>실무 팁과 성능</strong>을 정리합니다.</p>
     <nav class="pager"><a class="pg prev" href="11-examples-data.html"><span>이전</span>11. 예제 C · 데이터와 내보내기</a><a class="pg next" href="13-tips.html"><span>다음</span>13. 실무 팁과 성능</a></nav>
     <footer class="foot">
       <p>이 교안의 모든 예제 스크립트는 <a href="https://github.com/cozytk/spotfire-iron-python-scripts/tree/HEAD/scripts">scripts/ 폴더</a>에 실행 가능한 <code>.py</code> 파일로도 들어 있습니다.</p>
@@ -706,6 +1090,8 @@ Spotfire에는 산점도 매트릭스(SPLOM) 시각화가 없습니다.
 <li><a href="#api">레이아웃 API 정리</a></li>
 </ul>
 </li>
+<li><a href="#22">예제 22. 문서 안의 스크립트 전수 조사</a></li>
+<li><a href="#23">예제 23. 실행 환경 진단 리포트</a></li>
 </ul>
 </div>
 </aside>

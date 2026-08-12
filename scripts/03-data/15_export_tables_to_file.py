@@ -17,7 +17,15 @@ PATH = "C:/temp/export.txt"
 
 plot = vTable.As[TablePlot]()
 
-if not plot.ExportDataEnabled:
+# 실행 전 두 가지를 확인한다 → 7.7 참조
+#   1) 지금 Analyst인가 (Web Player는 로컬 경로에 못 쓴다)
+#   2) 이 시각화에서 내보내기가 켜져 있나
+isAnalyst = "RichAnalysisApplication" in Application.GetType().ToString()
+
+if not isAnalyst:
+    Document.Properties["ScriptLog"] = (
+        u"파일 내보내기는 Spotfire Analyst(데스크톱)에서만 동작합니다.")
+elif not plot.ExportDataEnabled:
     Document.Properties["ScriptLog"] = u"이 시각화는 데이터 내보내기가 비활성화되어 있습니다."
 else:
     # 한글이 있으면 UTF-8 로 명시한다

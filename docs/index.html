@@ -53,10 +53,12 @@
 <strong>생성형 AI로 원하는 스크립트를 얻어내는 절차</strong>까지 다룹니다.</p>
 <div class="admonition success">
 <p class="admonition-title">예제 21종은 실제 Spotfire에서 검증했습니다</p>
-<p>모든 예제가 사용하는 API를 <strong>Spotfire 14.x / IronPython 2.7.12 환경에서 여덟 차례
+<p>예제 1~21이 사용하는 API를 <strong>Spotfire 14.x / IronPython 2.7.12 환경에서 여덟 차례
 실행해 확인</strong>했습니다. 그 과정에서 이 교안 초안의 오류 8건이 나왔고, 전부 고쳤습니다.</p>
 <p>그때 배운 것을 <a href="07-pitfalls.html">7장 · 스크립팅의 현실</a>에 모아 두었습니다.
 <strong>다른 자료에서 보기 어려운 내용</strong>이니 예제를 쓰기 전에 한 번 읽어 보세요.</p>
+<p>나중에 추가한 <strong>예제 22·23은 Spotfire 공식 문서를 근거로 작성했고 아직 실측하지
+않았습니다.</strong> 둘 다 읽기 전용이라 안전하지만, 해당 절에 그 사실을 표시해 두었습니다.</p>
 </div>
 <hr />
 <h2 id="_1">이 교안이 목표로 하는 것</h2>
@@ -93,7 +95,7 @@ AI는 그럴듯하지만 존재하지 않는 Spotfire API를 자신 있게 만�
 <p>목표 정의 → 재료 제공 → 요청 → 검증 → 수정. 프롬프트 템플릿과 실행 전 체크리스트.</p>
 </div>
 <div class="card">
-<h3>9~12장 · 예제 21선</h3>
+<h3>9~12장 · 예제 23선</h3>
 <p>예제마다 <b>위험도 배지</b>가 붙습니다. 문제 상황, 코드, 매개변수 설정, 실행 전 확인 사항.</p>
 </div>
 <div class="card">
@@ -108,8 +110,14 @@ AI는 그럴듯하지만 존재하지 않는 Spotfire API를 자신 있게 만�
 3장은 건너뛰어도 됩니다. 7장은 건너뛰지 마세요.</p>
 </div>
 <hr />
-<h2 id="21">예제 21선</h2>
+<h2 id="23">예제 23선</h2>
 <p>예제는 <strong>무엇을 다루는지</strong>로 묶었고, 각 예제에 <strong>위험도</strong>를 표시했습니다.</p>
+<div class="admonition tip">
+<p class="admonition-title">새 환경이라면 예제 23부터</p>
+<p><a href="12-examples-create.html">예제 23 · 실행 환경 진단 리포트</a>는 읽기 전용이면서,
+<strong>이 환경에서 무엇이 되고 무엇이 안 되는지</strong>(Analyst인가 Web Player인가,
+마킹의 실제 이름, 내보내기 가능 여부)를 한 번에 알려 줍니다.</p>
+</div>
 <ul class="meta">
 <li class="badge risk-none">읽기 전용</li>
 <li class="badge risk-low">위험도 낮음</li>
@@ -275,6 +283,16 @@ AI는 그럴듯하지만 존재하지 않는 Spotfire API를 자신 있게 만�
 <td>산점도 매트릭스 자동 생성 (NxN)</td>
 <td><strong>높음</strong></td>
 </tr>
+<tr>
+<td>22</td>
+<td>문서 안의 스크립트 전수 조사</td>
+<td><strong>읽기 전용</strong> · 12.0+</td>
+</tr>
+<tr>
+<td>23</td>
+<td>실행 환경 진단 리포트</td>
+<td><strong>읽기 전용</strong></td>
+</tr>
 </tbody>
 </table>
 <hr />
@@ -317,7 +335,10 @@ Spotfire의 실행 취소는 스크립트 변경을 온전히 되돌리지 못�
   — 동작 확인 환경: <strong>IronPython 2.7.12 / .NET Framework 4.8 (64-bit)</strong></li>
 <li>문법 기준: <strong>Python 2.7</strong> — f-string 등 Python 3 전용 문법은 동작하지 않습니다
   (단 <code>print("a")</code> 는 동작하고, <code>from __future__ import print_function</code> 도 사용 가능 → <a href="04-python-syntax.html">4.1</a>)</li>
-<li>API 기준: <strong>Spotfire 14.x / 15.x</strong></li>
+<li>API 기준: <strong>Spotfire 14.x / 15.x</strong>
+  — 실행 확인은 14.x에서, API 이름·시그니처·폐기 여부 대조는
+  <a href="https://docs.tibco.com/pub/doc_remote/sfire_dev/area/doc/api/tib_sfire-analyst_api/index.aspx">Spotfire 15.0 API 레퍼런스</a>로 했습니다</li>
+<li>일부 기능은 최소 버전이 있습니다: <code>Document.ScriptManager</code> 는 <strong>12.0 이상</strong>(예제 22)</li>
 </ul>
 <p><strong>환경마다 다를 수 있습니다.</strong> 특히 데이터 내보내기(예제 15)는 라이선스 설정에 따라
 동작이 갈립니다. 검증 과정과 결과는 저장소의
@@ -334,7 +355,7 @@ Spotfire의 실행 취소는 스크립트 변경을 온전히 되돌리지 못�
 <ul>
 <li><a href="#_1">이 교안이 목표로 하는 것</a></li>
 <li><a href="#_2">읽는 순서</a></li>
-<li><a href="#21">예제 21선</a><ul>
+<li><a href="#23">예제 23선</a><ul>
 <li><a href="#9">9장 · 시각화 일괄 제어</a></li>
 <li><a href="#10">10장 · 필터·마킹·페이지 상태</a></li>
 <li><a href="#11">11장 · 데이터와 내보내기</a></li>

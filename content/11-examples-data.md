@@ -5,7 +5,7 @@
 !!! warning "이 장은 환경을 가장 많이 탑니다"
     파일 내보내기는 **Analyst 데스크톱 전용**이고, 일부는 **라이선스**에 막힙니다.
     실행했는데 안 된다면 코드가 아니라 환경 문제일 수 있습니다 →
-    [7.6 참조](07-pitfalls.html)
+    [7.7 참조](07-pitfalls.html)
 
 ---
 
@@ -50,6 +50,7 @@ from System import DateTime
 
 WIDTH, HEIGHT = 1400, 900
 
+
 # 파일명에 쓸 수 없는 문자 제거
 def safe_name(text):
     result = []
@@ -57,59 +58,166 @@ def safe_name(text):
         result.append(ch if ch not in u'\\/:*?"<>|\r\n\t' else u"_")
     return u"".join(result).strip()[:80] or u"untitled"
 
-stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss")
-folder = Path.Combine(outDir, "spotfire_" + stamp)
-Directory.CreateDirectory(folder)
 
-saved = 0
-failed = []
+# Web Player에서는 로컬 폴더에 쓸 수 없다.
+# 알 수 없는 .NET 예외 대신 사람이 읽을 수 있는 안내를 남긴다. → 7.7 참조
+isAnalyst = "RichAnalysisApplication" in Application.GetType().ToString()
 
-for pageIndex, page in enumerate(Document.Pages):
-    for vizIndex, visual in enumerate(page.Visuals):
-        try:
-            vc = visual.As[VisualContent]()
+if not isAnalyst:
+    Document.Properties["ScriptLog"] = (
+        u"이미지 내보내기는 Spotfire Analyst(데스크톱)에서만 동작합니다.")
+else:
+    stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss")
+    folder = Path.Combine(outDir, "spotfire_" + stamp)
+    Directory.CreateDirectory(folder)
 
-            bitmap = Bitmap(WIDTH, HEIGHT)
-            graphics = Graphics.FromImage(bitmap)
-            vc.Render(graphics, Rectangle(0, 0, WIDTH, HEIGHT))
+    saved = 0
+    failed = []
 
-            fileName = u"%02d_%s__%02d_%s.png" % (
-                pageIndex + 1, safe_name(page.Title),
-                vizIndex + 1, safe_name(visual.Title))
+    for pageIndex, page in enumerate(Document.Pages):
+        for vizIndex, visual in enumerate(page.Visuals):
+            try:
+                vc = visual.As[VisualContent]()
 
-            bitmap.Save(Path.Combine(folder, fileName))
+                bitmap = Bitmap(WIDTH, HEIGHT)
+                graphics = Graphics.FromImage(bitmap)
+                vc.Render(graphics, Rectangle(0, 0, WIDTH, HEIGHT))
 
-            graphics.Dispose()
-            bitmap.Dispose()
-            saved += 1
-        except:
-            failed.append(u"%s / %s" % (page.Title, visual.Title))
+                fileName = u"%02d_%s__%02d_%s.png" % (
+                    pageIndex + 1, safe_name(page.Title),
+                    vizIndex + 1, safe_name(visual.Title))
 
-msg = u"%d개 이미지를 저장했습니다: %s" % (saved, folder)
-if failed:
-    msg += u" (건너뜀 %d개: %s)" % (len(failed), u", ".join(failed))
+                bitmap.Save(Path.Combine(folder, fileName))
 
-Document.Properties["ScriptLog"] = msg
+                graphics.Dispose()
+                bitmap.Dispose()
+                saved += 1
+            except:
+                # 텍스트 영역·Mod 시각화는 여기로 빠진다 (아래 "왜 실패하나" 참조)
+                failed.append(u"%s / %s" % (page.Title, visual.Title))
+
+    msg = u"%d개 이미지를 저장했습니다: %s" % (saved, folder)
+    if failed:
+        msg += u" (건너뜀 %d개: %s)" % (len(failed), u", ".join(failed))
+
+    Document.Properties["ScriptLog"] = msg
 ```
 
 !!! danger "검증 포인트 — Analyst 전용입니다"
     - **Web Player에서는 동작하지 않습니다.** 로컬 파일 시스템에 쓰기 때문입니다.
+      맨 앞의 클라이언트 판별로 미리 걸러 냅니다 → [7.7 참조](07-pitfalls.html)
     - `VisualContent.Render(Graphics, Rectangle)` 방식은 **동작을 확인했습니다.**(14.x)
-    - **텍스트 영역은 실패합니다.** 실측 오류 메시지는 다음과 같습니다.
-
-      ```text
-      Attempt take snapshot on application thread in state 'Executing'.
-      ```
-
-      위 코드처럼 `try/except` 로 감싸고 실패 목록을 보고하는 구조가 필요한 이유입니다.
-      Mod 시각화도 같은 이유로 실패할 수 있습니다.
+      다만 `Visual.Render` 는 공식 API 문서에서 **폐기 예정(Obsolete)** 으로 표시되어
+      있습니다. 지금은 동작하지만, 장기적으로는 아래 `RenderAsync` 쪽이 정식 경로입니다.
     - **`RenderSync` 는 존재하지 않습니다.** 실측 결과 `Visual` 객체에는
-      `RenderAsync` 만 있습니다(`hasattr(visual, "RenderSync")` → `False`,
-      `RenderAsync` → `True`). 현재 테마를 적용한 이미지가 필요하면 `RenderAsync` 쪽을
-      알아보세요. 위 방식으로 충분하면 굳이 바꿀 필요는 없습니다.
-    - 해상도를 키우면 텍스트가 상대적으로 작아집니다. 보고서용이면 `WIDTH/HEIGHT` 비율을
-      실제 시각화 배치 비율과 비슷하게 맞추세요.
+      `RenderAsync` 만 있습니다(`hasattr(visual, "RenderSync")` → `False`).
     - 폴더가 없으면 `Directory.CreateDirectory`가 만들어 줍니다. 쓰기 권한은 확인하세요.
+
+### 왜 텍스트 영역에서 실패하나 — 그리고 어떻게 살리나
+
+실측 오류 메시지는 이것이었습니다.
+
+```text
+System.InvalidOperationException:
+Attempt take snapshot on application thread in state 'Executing'.
+```
+
+원인은 시각화 종류가 아니라 **스크립트가 트랜잭션 안에서 돌고 있다는 것**입니다.
+렌더링은 문서의 정지 화면(snapshot)을 필요로 하는데, 트랜잭션 실행 중인 스레드에서는
+스냅샷을 뜰 수 없습니다 → [7.4 참조](07-pitfalls.html)
+
+공식 해법은 **작업을 함수로 감싸 애플리케이션 스레드에 넘기는 것**입니다.
+이때 함수 안에서 바깥 변수를 참조하면 안 되고, **필요한 것을 전부 기본 인자로 받아야**
+합니다. 스레드가 바뀐 뒤에도 값이 살아 있어야 하기 때문입니다.
+
+```python
+# -*- coding: utf-8 -*-
+# 트랜잭션 밖(애플리케이션 스레드)에서 렌더링해 텍스트 영역까지 내보낸다.
+#
+# 매개변수:
+#   visual (Visualization) 내보낼 시각화
+#   outDir (String)        저장 폴더
+
+import clr
+clr.AddReference("System.Drawing")
+
+from System.Drawing import Bitmap, Graphics, Rectangle
+from System.IO import Path
+from Spotfire.Dxp.Framework.ApplicationModel import ApplicationThread
+
+app = Document.GetService(ApplicationThread)
+image = Bitmap(1400, 900)
+target = Path.Combine(outDir, "visual.png")
+
+
+def render(visual=visual, document=Document, image=image, target=target,
+           Graphics=Graphics, Rectangle=Rectangle):
+    # 바깥 변수를 직접 쓰지 않는다. 전부 인자로 받은 것만 쓴다.
+    try:
+        gfx = Graphics.FromImage(image)
+        rect = Rectangle(0, 0, image.Width, image.Height)
+        # 페이지 배치상의 실제 비율에 맞춘 영역을 얻는다
+        bounds = document.ActivePageReference.GetVisualBounds(visual, rect)
+        visual.Render(gfx, bounds)
+    except:
+        return
+    image.Save(target)
+
+
+app.InvokeAsynchronously(render)
+```
+
+`Page.GetVisualBounds(visual, rect)` 는 **페이지에서 그 시각화가 차지하는 비율**에 맞는
+사각형을 돌려줍니다. 고정 크기로 그릴 때 생기는 "글자만 작아 보이는" 문제를 줄여 줍니다.
+
+!!! warning "이 변형은 이 교안의 검증 환경에서 실행해 보지 않았습니다"
+    출처는 Spotfire 공식 문서
+    ([Attempt take snapshot 오류 해결](https://community.spotfire.com/s/article/how-troubleshoot-exception-thrown-when-executing-ironpython-script-error-attempt-take-snapshot))
+    입니다. `InvokeAsynchronously` 는 이름 그대로 **비동기**라, 스크립트가 끝난 뒤에
+    파일이 만들어집니다. "저장했습니다" 메시지를 스크립트 끝에서 쓰면 거짓말이 됩니다.
+
+### 참고 — RenderAsync (Spotfire 15.x 정식 경로)
+
+`Visual.Render` 를 대체하는 API입니다. PNG 바이트를 바로 스트림에 씁니다.
+
+```python
+from Spotfire.Dxp.Application.Visuals import RenderResultSettings, VisualRenderSettings
+from System.Drawing import Size
+from System.Threading import CancellationToken
+from System.IO import FileStream, FileMode
+
+resultSettings = RenderResultSettings(Size(1400, 900))
+
+visualSettings = VisualRenderSettings()
+visualSettings.ShowTitle = True
+visualSettings.ShowLegend = True
+visualSettings.ShowAxisLabels = True
+
+# CancellationToken.None 은 파이썬 문법 오류다 → 기본 생성자를 쓴다 (5.5 참조)
+task = visual.RenderAsync(resultSettings, visualSettings, CancellationToken())
+result = task.Result                     # 완료까지 대기
+
+if result.IsValid:
+    stream = FileStream("C:/temp/visual.png", FileMode.Create)
+    try:
+        result.WriteTo(stream)           # AsImage() 는 폐기 예정
+    finally:
+        stream.Close()
+```
+
+| API | 상태 | 비고 |
+|-----|------|------|
+| `Visual.Render(gfx, rect)` | **폐기 예정** | 이 교안 검증 환경에서 동작 확인 |
+| `Visual.RenderAsync(...)` | 현행 | `Task<RenderResult>` 반환 → `.Result` 로 대기 |
+| `RenderResult.WriteTo(stream)` | 현행 | PNG 바이트를 스트림에 기록 |
+| `RenderResult.AsImage()` | **폐기 예정** | |
+| `Page.RenderAsync(...)` | 현행 | **페이지 하나를 통째로** 이미지로. 시각화별로 도는 대신 |
+
+"보고서에 페이지 스크린샷 한 장"이 필요한 경우라면 시각화를 하나씩 도는 대신
+`Page.RenderAsync` 쪽이 훨씬 간단합니다. 두 번째 인자만 `PageRenderSettings` 로 바뀝니다.
+
+**이 절의 코드도 검증 환경에서 실행해 보지 않았습니다.** 공식 API 문서의 시그니처를
+그대로 옮긴 것이니, 쓰기 전에 [7.9의 확인 방법](07-pitfalls.html)으로 한 번 걸러 보세요.
 
 ---
 
@@ -174,7 +282,15 @@ PATH = "C:/temp/export.txt"
 
 plot = vTable.As[TablePlot]()
 
-if not plot.ExportDataEnabled:
+# 실행 전 두 가지를 확인한다 → 7.7 참조
+#   1) 지금 Analyst인가 (Web Player는 로컬 경로에 못 쓴다)
+#   2) 이 시각화에서 내보내기가 켜져 있나
+isAnalyst = "RichAnalysisApplication" in Application.GetType().ToString()
+
+if not isAnalyst:
+    Document.Properties["ScriptLog"] = (
+        u"파일 내보내기는 Spotfire Analyst(데스크톱)에서만 동작합니다.")
+elif not plot.ExportDataEnabled:
     Document.Properties["ScriptLog"] = u"이 시각화는 데이터 내보내기가 비활성화되어 있습니다."
 else:
     # 한글이 있으면 UTF-8 로 명시한다
@@ -517,10 +633,6 @@ for table in Document.Data.Tables:
     - `NotificationService` 는 `AddInformationNotification` ·
       `AddWarningNotification` · `AddErrorNotification` 세 가지와, 각각의
       `...WithActions` 변형을 제공합니다.
-
----
-
-다음 장은 **UI를 동적으로 제어**하는 예제입니다.
 
 ---
 

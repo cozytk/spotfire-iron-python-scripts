@@ -36,6 +36,8 @@ Application  (AnalysisApplication)
     │
     ├── Properties ────────── 문서 속성 값 (읽기/쓰기)
     ├── FilteringSchemes ──── 필터링 스킴 (필터 초기화의 열쇠)
+    ├── Bookmarks ─────────── 북마크 (상태 저장/복원)
+    ├── ScriptManager ─────── 이 문서에 저장된 스크립트들 (12.0+)
     ├── ActivePageReference
     ├── ActiveDataTableReference
     ├── ActiveMarkingSelectionReference
@@ -81,6 +83,45 @@ for visual in Document.ActivePageReference.Visuals:
     vc = visual.As[VisualContent]()
     print vc.Data.DataTableReference.Name
 ```
+
+`Visual`(껍데기)이 가진 것은 이게 전부입니다. 짧으니 외워 두면 편합니다.
+
+| 멤버 | 의미 |
+|------|------|
+| `Title` | 제목 문자열 |
+| `ShowTitle` | 제목 표시 여부 (제목 문자열과 별개) |
+| `TypeId` | 유형. **쓰면 그 유형으로 변환된다** |
+| `Id` | 이 시각화의 **고유 ID**. 제목이 바뀌어도 그대로 |
+| `As[T]()` | 알맹이로 캐스팅 |
+| `AutoConfigure()` | 새로 만든 시각화를 현재 데이터에 맞게 기본 설정 |
+| `ApplyUserPreferences()` | 사용자 기본 서식 적용 |
+| `RenderAsync(...)` | 이미지로 렌더링 (`Render` 는 폐기 예정) |
+
+!!! tip "제목 대신 Id를 키로 쓰세요"
+    "이 시각화만 건드리지 마라" 같은 규칙을 제목 문자열로 만들면 사용자가 제목을 바꾸는 순간
+    깨집니다 → [7.1 참조](07-pitfalls.html). `Visual.Id` 는 바뀌지 않습니다.
+
+    ```python
+    # 한 번 실행해서 Id를 알아낸다
+    for page in Document.Pages:
+        for visual in page.Visuals:
+            print visual.Id, "|", visual.Title
+
+    # 그 Id를 스크립트에 박아 둔다
+    SKIP_IDS = ["...붙여 넣기..."]
+    if str(visual.Id) in SKIP_IDS:
+        continue
+    ```
+
+!!! note "공식 문서가 못 박아 둔 것"
+    `Visual` 클래스 문서에는 이렇게 적혀 있습니다.
+
+    - 사용자가 언제든 UI에서 유형을 바꿀 수 있으므로 **`As<T>()` 를 부르기 전에 반드시
+      `TypeId` 를 먼저 확인**할 것
+    - `TablePlotBase` · `TrellisVisualization` 같은 **추상 기반 클래스 말고
+      `BarChart` 같은 구체 클래스**로 캐스팅할 것
+
+    이 교안의 예제가 전부 `TypeId` 로 먼저 거르는 이유입니다.
 
 ### 주요 시각화 유형 식별자
 
@@ -360,19 +401,115 @@ Document.Properties[name] = "초기값"
 
 `DataPropertyClass`는 `Document`, `Table`, `Column` 세 가지입니다.
 
-## 6.8 자주 쓰는 진입점 요약
+## 6.8 북마크와 스크립트 관리
+
+두 가지는 잘 알려져 있지 않지만 알아 두면 쓸 데가 많습니다.
+
+### 북마크 — 상태를 통째로 저장·복원
+
+필터·마킹·페이지·시각화 설정을 **한 덩어리로** 저장했다 되돌립니다.
+
+```python
+# 목록 보기 / 적용
+for bookmark in Document.Bookmarks:
+    print bookmark.DisplayName, bookmark.IsBroken
+
+Document.Bookmarks[0].Apply()
+```
+
+이름 속성이 `Name` 이 아니라 **`DisplayName`** 입니다. 여기서 자주 틀립니다.
+`IsBroken` 이 `True` 면 북마크가 참조하던 대상이 사라진 것이고,
+`Apply()` 는 **깨지지 않은 부분만** 적용합니다.
+
+"보기 초기화"를 직접 짜는 대신([예제 10](10-examples-state.html)) 기준 상태를 북마크로
+저장해 두고 적용하는 방법도 있습니다. 다만 북마크는 **저장한 것 전부**를 되돌리므로
+"필터만 초기화" 같은 선택적 제어에는 맞지 않습니다.
+`BookmarkCollection.AddNew(...)` 는 **폐기 예정(Obsolete)** 이므로 새 북마크는 UI에서
+만들고, 스크립트는 적용만 하는 쪽이 안전합니다.
+
+### ScriptManager — 문서 안의 스크립트 목록 (Spotfire 12.0+)
+
+분석 파일에 스크립트가 20개씩 쌓이면 **뭐가 어디서 쓰이는지** 알 수 없게 됩니다.
+`Document.ScriptManager` 가 그 목록을 코드로 보여 줍니다.
+
+```python
+for script in Document.ScriptManager.GetScripts():
+    print script.Name, "|", script.Language.Language
+    print script.ScriptCode
+```
+
+| 멤버 | 하는 일 |
+|------|---------|
+| `GetScripts()` | 문서의 모든 스크립트 정의 열거 |
+| `TryGetScript(name)` | `(찾음여부, 정의)` 튜플 반환 → [5.8 참조](05-dotnet-interop.html#58-api) |
+| `GetAllScriptsWithName(name)` | 같은 이름의 스크립트 전부 (중복 정리용) |
+| `AddScriptDefinition(def)` / `Replace(old, new)` / `Remove(def)` | 추가·교체·삭제 |
+| `ExecuteScript(...)` | 스크립트 안에서 다른 스크립트 실행 |
+
+`ScriptDefinition` 은 **불변(immutable)** 입니다. 고치려면 `WithScriptCode(...)` ·
+`WithName(...)` 로 복사본을 만들어 `Replace` 합니다.
+
+```python
+found, old = Document.ScriptManager.TryGetScript(u"대시보드 초기화")
+if found:
+    new = old.WithScriptCode(old.ScriptCode.replace("0.5", "0.9"))
+    Document.ScriptManager.Replace(old, new)
+```
+
+읽기만 하는 사용법은 [예제 22](12-examples-create.html)에 있습니다.
+
+!!! danger "쓰기는 조심하세요"
+    `Remove` 로 지운 스크립트가 액션 컨트롤에 연결되어 있었다면 **그 버튼을 손으로 다시
+    설정해야** 합니다. `Replace` 도 매개변수 구성이 달라지면 연결된 액션이 비활성화됩니다.
+    (공식 API 문서의 경고입니다.)
+
+## 6.9 자주 쓰는 진입점 요약
 
 | 하고 싶은 것 | 시작 지점 |
 |--------------|-----------|
 | 모든 시각화 순회 | `Document.Pages` → `page.Visuals` |
 | 시각화의 축·데이터 바꾸기 | `visual.As[VisualContent]()` |
 | 데이터 값 읽기 | `Document.Data.Tables[...]` + `DataValueCursor` |
-| 마킹 읽기/설정 | `Document.Data.Markings["Marking"]` |
+| 마킹 읽기/설정 | `Document.ActiveMarkingSelectionReference` |
 | 필터 초기화 | `Document.FilteringSchemes` |
 | 필터 표시/숨김 | `page.FilterPanel.TableGroups` |
 | UI와 값 주고받기 | `Document.Properties[...]` |
 | 알림 띄우기 | `Application.GetService[NotificationService]()` |
-| 파일 내보내기 | `Document.Data.CreateDataWriter(...)` |
+| 진행률 표시 | `Application.GetService[ProgressService]()` |
+| 파일 내보내기 | `TablePlot.ExportText(...)` / `Document.Data.CreateDataWriter(...)` |
+| 상태 저장·복원 | `Document.Bookmarks` |
+| 스크립트 목록 | `Document.ScriptManager` |
+| 클라이언트 종류 판별 | `Application.GetType().ToString()` |
+
+## 6.10 공식 API 레퍼런스에서 클래스 찾기
+
+Spotfire의 API 레퍼런스는 검색이 불편하지만, **URL 규칙이 단순**해서 주소창에 직접
+쳐 넣는 편이 빠릅니다.
+
+```text
+https://docs.tibco.com/pub/doc_remote/sfire_dev/area/doc/api/tib_sfire-analyst_api/html/T_<네임스페이스>_<클래스>.htm
+```
+
+- 점(`.`)을 **밑줄(`_`)** 로 바꾸고
+- 타입은 `T_`, 네임스페이스는 `N_`, 메서드는 `M_`, 속성은 `P_` 를 앞에 붙입니다
+
+```text
+Spotfire.Dxp.Application.Visuals.BarChart
+→ .../html/T_Spotfire_Dxp_Application_Visuals_BarChart.htm
+
+Spotfire.Dxp.Application.Visual.RenderAsync (메서드)
+→ .../html/M_Spotfire_Dxp_Application_Visual_RenderAsync.htm
+```
+
+문서에서 확인해야 할 것은 세 가지입니다.
+
+1. **Obsolete 표시** — 폐기 예정인 멤버인지 (예: `Visual.Render`)
+2. **생성자 시그니처** — `RenderResultSettings(Size)` 처럼 인자가 필요한지
+3. **Remarks** — "이 순서로 불러야 한다" 같은 제약이 여기 적혀 있습니다
+
+!!! warning "문서에 있다고 동작하는 것은 아닙니다"
+    문서는 **이름과 시그니처**를 확인하는 용도입니다.
+    "그 환경에서 실제로 되는가"는 [7.9의 확인 방법](07-pitfalls.html)으로 따로 봐야 합니다.
 
 ---
 

@@ -29,12 +29,17 @@ import Spotfire.Dxp.Application.Filters as filters
 from Spotfire.Dxp.Application.Filters import FilterTypeIdentifiers
 
 # 서비스
-from Spotfire.Dxp.Framework.ApplicationModel import NotificationService
+from Spotfire.Dxp.Framework.ApplicationModel import (
+    NotificationService, ProgressService, ApplicationThread)
+
+# 스크립트 관리 (12.0+)
+from Spotfire.Dxp.Application.Scripting import (
+    ScriptDefinition, ScriptLanguage, ScriptParameter, ScriptParameterCollection)
 
 # .NET
 from System import Array, String, Guid, DateTime
 from System.IO import File, Path, Directory, MemoryStream, StreamWriter, SeekOrigin
-from System.Threading import Thread
+from System.Threading import Thread, CancellationToken
 
 import clr
 clr.AddReference("System.Drawing")
@@ -64,6 +69,19 @@ chart = page.Visuals.AddNew[BarChart]()
 # 유형 확인 / 변경
 if visual.TypeId == VisualTypeIdentifiers.BarChart:
     visual.TypeId = VisualTypeIdentifiers.LineChart
+
+# Visual(껍데기) 수준 속성 — 캐스팅 없이 바로 된다
+visual.Title = u"제목"
+visual.ShowTitle = False        # 제목 문자열과 별개. 자리까지 없앤다
+print visual.Id                 # 이름이 바뀌어도 변하지 않는 고유 ID
+
+# 새로 만든 시각화 기본 설정
+visual.AutoConfigure()
+visual.ApplyUserPreferences()
+
+# 배치 — 격자만 필요하면 한 줄
+from Spotfire.Dxp.Application.Layout import TileMode
+page.ApplyLayout(TileMode.Evenly)   # Horizontally / Vertically / Evenly / Maximize
 ```
 
 ## 14.3 시각화 속성
@@ -245,21 +263,39 @@ def get_visual_by_title(page, title):
 ## 14.9 내보내기
 
 ```python
-# 데이터
+# 데이터 — 표 시각화 경유. 이 교안 검증 환경에서 확인된 방법
+from Spotfire.Dxp.Application.Visuals import TablePlot
+from System.IO import StreamWriter
+from System.Text import Encoding
+
+plot = vTable.As[TablePlot]()           # 매개변수로 받은 표 시각화
+if plot.ExportDataEnabled:
+    writer = StreamWriter("C:/out/data.txt", False, Encoding.UTF8)
+    try:
+        plot.ExportText(writer)         # 탭 구분 텍스트
+    finally:
+        writer.Close()
+```
+
+```python
+# 데이터 — CreateDataWriter 방식. 라이선스에 막히면 None 을 반환한다
 from Spotfire.Dxp.Data.Export import DataWriterTypeIdentifiers
 from System.IO import File
 
 writer = Document.Data.CreateDataWriter(DataWriterTypeIdentifiers.ExcelXlsDataWriter)
-filtered = Document.ActiveFilteringSelectionReference.GetSelection(table).AsIndexSet()
-names = [c.Name for c in table.Columns]
+if writer is not None:                  # 반드시 확인할 것 (7.5)
+    filtered = Document.ActiveFilteringSelectionReference.GetSelection(table).AsIndexSet()
+    names = [c.Name for c in table.Columns]
 
-stream = File.OpenWrite("C:/out/data.xls")
-writer.Write(stream, table, filtered, names)
-stream.Close()
+    stream = File.OpenWrite("C:/out/data.xls")
+    try:
+        writer.Write(stream, table, filtered, names)
+    finally:
+        stream.Close()
 ```
 
 ```python
-# 이미지
+# 이미지 — Render 방식 (검증 환경에서 동작 확인. 단 API 문서상 폐기 예정)
 import clr
 clr.AddReference("System.Drawing")
 from System.Drawing import Bitmap, Graphics, Rectangle
@@ -272,16 +308,92 @@ graphics.Dispose()
 bitmap.Dispose()
 ```
 
-## 14.10 사용자 알림
+```python
+# 이미지 — RenderAsync 방식 (15.x 정식 경로. 이 교안에서는 미검증)
+from Spotfire.Dxp.Application.Visuals import RenderResultSettings, VisualRenderSettings
+from System.Drawing import Size
+from System.Threading import CancellationToken
+from System.IO import FileStream, FileMode
+
+task = visual.RenderAsync(RenderResultSettings(Size(1200, 800)),
+                          VisualRenderSettings(),
+                          CancellationToken())     # .None 은 파이썬 문법 오류
+result = task.Result
+if result.IsValid:
+    stream = FileStream("C:/out/chart.png", FileMode.Create)
+    try:
+        result.WriteTo(stream)
+    finally:
+        stream.Close()
+```
+
+## 14.10 사용자 알림과 진행 표시
 
 ```python
 from Spotfire.Dxp.Framework.ApplicationModel import NotificationService
 ns = Application.GetService[NotificationService]()
 ns.AddInformationNotification(u"제목", u"설명", u"상세")
 ns.AddWarningNotification(u"제목", u"설명", u"상세")
+ns.AddErrorNotification(u"제목", u"설명", u"상세")
 ```
 
-## 14.11 탐색용 스니펫
+```python
+# 진행 표시 + 취소 — 스크립트의 "트랜잭션으로 감싸기"를 꺼야 동작한다 (7.4)
+from Spotfire.Dxp.Framework.ApplicationModel import ProgressService
+ps = Application.GetService[ProgressService]()
+
+def work():
+    try:
+        with ps.CurrentProgress.BeginSubtask(u"처리", 10, u"{0} / {1}"):
+            for i in range(10):
+                ps.CurrentProgress.CheckCancel()
+                ps.CurrentProgress.TryReportProgress()
+    except:
+        pass
+
+ps.ExecuteWithProgress(u"제목", u"설명", work)
+```
+
+## 14.11 환경 판별과 스크립트 관리
+
+```python
+# 지금 Analyst인가 Web Player인가 (직접 알려 주는 API는 없다)
+isAnalyst = "RichAnalysisApplication" in Application.GetType().ToString()
+
+# 로그인 사용자 이름
+from System.Threading import Thread
+print Thread.CurrentPrincipal.Identity.Name
+```
+
+```python
+# 문서에 저장된 스크립트 목록 (Spotfire 12.0+)
+for script in Document.ScriptManager.GetScripts():
+    print script.Name, "|", script.Language.Language
+
+# 이름으로 찾기 — out 매개변수는 튜플로 돌아온다
+found, definition = Document.ScriptManager.TryGetScript(u"대시보드 초기화")
+
+# 고치기 — ScriptDefinition 은 불변이라 복사본을 만들어 교체한다
+if found:
+    updated = definition.WithScriptCode(definition.ScriptCode.replace("0.5", "0.9"))
+    Document.ScriptManager.Replace(definition, updated)
+```
+
+```python
+# 북마크 — 이름 속성이 Name 이 아니라 DisplayName
+for bookmark in Document.Bookmarks:
+    print bookmark.DisplayName, bookmark.IsBroken
+Document.Bookmarks[0].Apply()
+```
+
+```python
+# 그래픽 표·KPI 차트의 클릭 액션 스크립트에서만 쓸 수 있는 객체
+Context.Value                   # 클릭한 셀 값
+Context.HierarchyPathValues[0]  # 같은 행의 기준 값
+Context.Visualization           # 클릭된 미니어처 시각화
+```
+
+## 14.12 탐색용 스니펫
 
 ```python
 # 객체의 멤버 보기
@@ -350,7 +462,7 @@ for m in Document.Data.Markings:
 ### Q. 시각화를 이름으로 찾는 게 왜 나쁜가요?
 
 사용자가 제목을 바꾸면 스크립트가 조용히 실패합니다.
-**스크립트 매개변수**로 시각화 객체를 직접 넘기세요 → [1.4 참조](02-getting-started.html#24)
+**스크립트 매개변수**로 시각화 객체를 직접 넘기세요 → [2.4 참조](02-getting-started.html)
 
 ### Q. `As[VisualContent]()`가 자꾸 실패합니다
 
@@ -366,12 +478,12 @@ for m in Document.Data.Markings:
 ### Q. 스크립트를 되돌릴 수 있나요?
 
 **믿지 마세요.** 데이터 테이블 교체, 페이지·시각화 삭제, 축 일괄 변경은 복구가 어렵습니다.
-반드시 사본에서 먼저 시험하세요 → [9.3 참조](13-tips.html#133-undo)
+반드시 사본에서 먼저 시험하세요 → [13.3 참조](13-tips.html)
 
 ### Q. Web Player에서 스크립트가 실패합니다
 
 `MessageBox`, 파일 대화상자, 로컬 파일 쓰기는 브라우저에서 동작하지 않습니다.
-→ [9.1 참조](13-tips.html#131-analyst-web-player)
+→ [13.1 참조](13-tips.html)
 
 ### Q. 한글이 깨집니다
 
@@ -379,19 +491,77 @@ for m in Document.Data.Markings:
 
 ### Q. API 문서는 어디서 보나요?
 
-Spotfire 공식 API 레퍼런스(`Spotfire.Dxp.*`)를 보세요. C# 시그니처로 되어 있는데,
-IronPython으로 옮기는 규칙은 [3.8](05-dotnet-interop.html#58-api)에 정리해 두었습니다.
-문서를 못 찾겠으면 `dir()`로 직접 탐색하는 편이 빠릅니다.
+세 군데를 순서대로 쓰면 됩니다.
+
+1. **[공식 API 레퍼런스](https://docs.tibco.com/pub/doc_remote/sfire_dev/area/doc/api/tib_sfire-analyst_api/index.aspx)**
+   — 이름·시그니처·폐기 여부의 최종 근거. URL 규칙이 단순해서 주소창에 직접 치는 편이 빠릅니다
+   → [6.10 참조](06-api-map.html)
+
+   ```text
+   .../html/T_Spotfire_Dxp_Application_Visuals_BarChart.htm
+   ```
+
+2. **[IronPython 예제 색인 (Spotfire Community)](https://community.spotfire.com/articles/spotfire/ironpython-scripting-in-spotfire/)**
+   — "이런 걸 하고 싶다"에서 출발할 때. 데이터·시각화·필터/마킹·레이아웃·지도·문서·연동으로
+   분류된 수백 개의 예제 링크가 있습니다
+3. **[sf-ref.com](https://www.sf-ref.com/ironpython/)** — 시각화 유형별로 어떤 속성이
+   있는지 훑을 때
+
+셋 다 못 찾겠으면 `dir()`로 직접 탐색하는 편이 빠릅니다 → [7.6 참조](07-pitfalls.html)
+
+### Q. 진행 표시줄을 띄우고 싶습니다
+
+`ProgressService.ExecuteWithProgress(...)` 를 쓰고, 스크립트 편집 대화상자에서
+**"트랜잭션으로 감싸기" 체크를 해제**하세요. 체크가 켜져 있으면 진행 표시가 뜨지 않습니다
+→ [13.2 참조](13-tips.html)
+
+### Q. 스크립트 중간에 문서 속성을 써도 화면에 안 나옵니다
+
+정상입니다. 스크립트 전체가 하나의 트랜잭션이라 **끝날 때 한꺼번에** 반영됩니다.
+로그를 리스트에 모았다가 마지막에 한 번 쓰세요 → [7.4 참조](07-pitfalls.html)
+
+### Q. 그래픽 표에서 클릭한 값을 어떻게 받나요?
+
+그래픽 표·KPI 차트의 **클릭 시 액션**으로 등록한 스크립트에서만 `Context` 객체를 쓸 수
+있습니다. `Context.Value`, `Context.HierarchyPathValues[0]`, `Context.Visualization`
+→ [2.3 참조](02-getting-started.html)
 
 ---
 
 ## 참고한 자료
 
+### 시작점
+
 - [IronPython Scripting in Spotfire® – Overview (Spotfire Community)](https://community.spotfire.com/articles/spotfire/ironpython-scripting-in-spotfire/)
+  — 수백 개 예제의 분류 색인. 하고 싶은 일이 있으면 여기부터
+- [Spotfire Analyst API Reference](https://docs.tibco.com/pub/doc_remote/sfire_dev/area/doc/api/tib_sfire-analyst_api/index.aspx)
+  — 이름·시그니처·폐기 여부의 최종 근거 → [6.10](06-api-map.html)
+- [The Spotfire IronPython Quick Reference (sf-ref.com)](https://www.sf-ref.com/ironpython/)
+  — 시각화 유형별 속성 훑어보기
+- [IronPython Example Scripts (Spotfire 제품 문서)](https://docs.tibco.com/pub/sfire-analyst/12.0.6/doc/html/en-US/TIB_sfire-analyst_UsersGuide/text/text_ironpython_example_scripts.htm)
+
+### 이 교안이 근거로 삼은 공식 문서
+
+| 교안의 내용 | 출처 |
+|-------------|------|
+| 7.4 트랜잭션·격리 실행·라이브러리 제약 | [How to develop IronPython scripts and their limitations](https://community.spotfire.com/s/article/How-to-develop-IronPython-scripts-in-TIBCO-Spotfire-and-their-limitations) |
+| 7.4 ③ 스냅샷 오류 우회 | [Attempt take snapshot … 오류 해결](https://community.spotfire.com/s/article/how-troubleshoot-exception-thrown-when-executing-ironpython-script-error-attempt-take-snapshot) |
+| 7.7 클라이언트 종류 판별 | [How to determine the client type](https://community.spotfire.com/s/article/how-determine-client-type-analyst-or-web-player-user-running-tibco-spotfire-using-ironpython) |
+| 2.3 `Context` 객체 | [Miniature Visualization Action Scripts](https://community.spotfire.com/s/article/How-to-use-Miniature-Visualization-Action-Scripts-using-IronPython-in-TIBCO-Spotfire) |
+| 2.5 TRACE 로깅·알림 | [Debugging IronPython Scripts in Spotfire®](https://community.spotfire.com/s/article/Debugging-IronPython-Scripts-TIBCO-Spotfire) |
+| 6.8 · 예제 22 ScriptManager | [Introducing the Spotfire Script Management APIs](https://community.spotfire.com/articles/spotfire/introducing-the-spotfire-script-management-apis/) |
+| 13.2 진행 표시·취소 | [Progress bar and cancellation option](https://community.spotfire.com/s/article/How-to-Add-Progress-Bar-and-Cancellation-Option-when-Executing-IronPython-Scripts-in-TIBCO-Spotfire) |
+
+### 커뮤니티 예제 모음
+
 - [essejhsif/spotfire — IronPython scripts for Spotfire](https://github.com/essejhsif/spotfire)
 - [Gurudutt-Goswami/Spotfire-Ironpython](https://github.com/Gurudutt-Goswami/Spotfire-Ironpython)
-- [IronPython Example Scripts (Spotfire 제품 문서)](https://docs.tibco.com/pub/sfire-analyst/12.0.6/doc/html/en-US/TIB_sfire-analyst_UsersGuide/text/text_ironpython_example_scripts.htm)
-- [The Spotfire IronPython Quick Reference](https://www.sf-ref.com/ironpython/visualizations/common-operations/referencing-visualizations/)
 - [How to Reset All Filters For All Filtering Schemes (Spotfire Community)](https://community.spotfire.com/articles/spotfire/how-to-reset-all-filters-for-all-filtering-schemes-in-spotfire-using-ironpython-scripting/)
 - [How to export a visualization as an image using IronPython (Spotfire Community)](https://community.spotfire.com/articles/spotfire/how-to-export-a-visualization-as-an-image-in-spotfire-using-ironpython-scripting/)
 - [Loop Through Pages and Visualization Using IronPython (Spotfire Community)](https://community.spotfire.com/articles/spotfire/loop-through-pages-and-visualization-spotfirer-using-ironpython-scripting/)
+
+!!! warning "커뮤니티 코드를 그대로 쓰기 전에"
+    위 저장소들의 스크립트는 대부분 2012~2021년에 작성된 것이라
+    **마킹 이름을 하드코딩하고**(`Markings["Marking"]`), **로컬 경로를 박아 두고**,
+    **`CreateDataWriter` 반환값을 확인하지 않습니다.**
+    7장의 체크리스트로 한 번 걸러서 쓰세요.

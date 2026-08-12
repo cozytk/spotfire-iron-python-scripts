@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# 예제 21종 사전 검증 하네스
+# 예제 23종 사전 검증 하네스
 #
 # 목적:
 #   예제를 하나씩 실제로 돌리지 않고도, 각 예제가 쓰는 API가 이 환경에 존재하고
@@ -494,11 +494,90 @@ except Exception, e:
     note(NO, "GetProperties -> %s" % clean(str(e)))
 
 
+start(22, u"문서 스크립트 전수 조사")
+# Document.ScriptManager 는 Spotfire 12.0 에서 추가되었다. 읽기만 한다.
+if not hasattr(Document, "ScriptManager"):
+    note(NO, "Document.ScriptManager 없음 (Spotfire 12.0 미만)")
+else:
+    note(OK, "Document.ScriptManager 존재")
+    manager = Document.ScriptManager
+    for name in ["GetScripts", "TryGetScript", "GetAllScriptsWithName",
+                 "AddScriptDefinition", "Replace", "Remove", "ExecuteScript"]:
+        note(OK if hasattr(manager, name) else NO,
+             "ScriptManager.%s 존재: %s" % (name, hasattr(manager, name)))
+    scripts = attempt("GetScripts() 개수", lambda: len(list(manager.GetScripts())))
+    try:
+        first = None
+        for item in manager.GetScripts():
+            first = item
+            break
+        if first is None:
+            note(SKIP, "문서에 스크립트가 없어 ScriptDefinition 멤버 확인 불가")
+        else:
+            attempt("ScriptDefinition.Name", lambda: first.Name)
+            attempt("ScriptDefinition.Language.Language", lambda: first.Language.Language)
+            attempt("ScriptCode 줄 수", lambda: len(first.ScriptCode.splitlines()))
+            attempt("Parameters 개수", lambda: len([p for p in first.Parameters]))
+            for name in ["WithScriptCode", "WithName", "IsEquivalentTo"]:
+                note(OK if hasattr(first, name) else NO,
+                     "ScriptDefinition.%s 존재: %s" % (name, hasattr(first, name)))
+    except Exception, e:
+        note(NO, "ScriptDefinition 확인 -> %s" % clean(str(e)))
+
+
+start(23, u"실행 환경 진단 리포트")
+attempt("Application 타입", lambda: Application.GetType().ToString())
+markingNames = []
+for marking in Document.Data.Markings:
+    markingNames.append(marking.Name)
+note(OK, "마킹 이름: %s" % clean(", ".join(markingNames)))
+note(OK if "Marking" in markingNames else NO,
+     'Markings["Marking"] 하드코딩 통함: %s' % ("Marking" in markingNames))
+try:
+    from Spotfire.Dxp.Data.Export import DataWriterTypeIdentifiers
+    writable_ids, blocked_ids = [], []
+    for name in dir(DataWriterTypeIdentifiers):
+        if name.startswith("_"):
+            continue
+        try:
+            writer = Document.Data.CreateDataWriter(getattr(DataWriterTypeIdentifiers, name))
+            (writable_ids if writer is not None else blocked_ids).append(name)
+        except:
+            blocked_ids.append(name)
+    note(OK if writable_ids else NO,
+         "내보내기 가능 형식 %d개: %s" % (len(writable_ids), clean(", ".join(writable_ids))))
+except Exception, e:
+    note(NO, "DataWriterTypeIdentifiers -> %s" % clean(str(e)))
+if contents:
+    firstVisual = contents[0][0]
+    for name in ["Id", "ShowTitle", "AutoConfigure", "ApplyUserPreferences", "RenderAsync"]:
+        note(OK if hasattr(firstVisual, name) else NO,
+             "Visual.%s 존재: %s" % (name, hasattr(firstVisual, name)))
+note(OK if hasattr(Document, "Bookmarks") else NO,
+     "Document.Bookmarks 존재: %s" % hasattr(Document, "Bookmarks"))
+try:
+    from Spotfire.Dxp.Application.Layout import TileMode
+    note(OK, "TileMode 멤버: %s" % clean(
+        ", ".join([n for n in dir(TileMode) if not n.startswith("_")][:12])))
+except Exception, e:
+    note(NO, "TileMode -> %s" % clean(str(e)))
+try:
+    from Spotfire.Dxp.Framework.ApplicationModel import ApplicationThread
+    thread = Document.GetService(ApplicationThread)
+    note(OK if thread is not None else NO,
+         "ApplicationThread 서비스: %s" % (thread is not None))
+    if thread is not None:
+        note(OK if hasattr(thread, "InvokeAsynchronously") else NO,
+             "InvokeAsynchronously 존재: %s" % hasattr(thread, "InvokeAsynchronously"))
+except Exception, e:
+    note(NO, "ApplicationThread -> %s" % clean(str(e)))
+
+
 # ===============================================================
 # 결과 출력
 # ===============================================================
 print "==============================================="
-print " 예제 21종 API 사전 검증 결과"
+print " 예제 23종 API 사전 검증 결과"
 print "==============================================="
 print "활성 페이지:", clean(page.Title)
 print "시각화:", len(allVisuals), "개 (VisualContent 캐스팅 가능", len(contents), "개)"

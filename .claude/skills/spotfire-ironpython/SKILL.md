@@ -8,8 +8,10 @@ description: Write, debug, or review Spotfire IronPython 2.7 scripts — the scr
 Spotfire 스크립트는 **"Python 2.7 문법으로 .NET API를 호출하는 것"** 입니다.
 실패의 대부분은 문법이 아니라 **환경과 API의 함정**에서 옵니다.
 
-이 스킬의 규칙은 Spotfire 14.x / IronPython 2.7.12 환경에서 **여덟 차례 실제 실행으로
-확인한 것**입니다. 추측이 아닙니다.
+이 스킬의 규칙 대부분은 Spotfire 14.x / IronPython 2.7.12 환경에서 **여덟 차례 실제
+실행으로 확인한 것**입니다. 나머지(트랜잭션·클라이언트 판별·`ScriptManager`·`RenderAsync`)는
+**Spotfire 공식 문서를 근거로 한 것**이며, `references/verified-apis.md` 에서 둘을 구분해
+두었습니다. 실측한 것과 문서로만 아는 것을 사용자에게 구분해서 알려 주세요.
 
 ## 작업 순서
 
@@ -115,6 +117,9 @@ writer = Document.Data.CreateDataWriter(identifier)
 | `IndexSet.Add(i)` | `AddIndex(i)` 또는 `indexSet[i] = True` |
 | `StdfDataSource` | 없음. `DataTableDataSource` 를 쓴다 |
 | `Visual.RenderSync` | `RenderAsync` 만 존재 |
+| `TileMode.Grid` | `Horizontally`/`Vertically`/`Evenly`/`Maximize` |
+| `Bookmark.Name` | `DisplayName` |
+| `CancellationToken.None` | 파이썬 문법 오류. `CancellationToken()` 을 쓴다 |
 
 확신이 없으면 **코드에 쓰지 말고 확인 방법을 제시한다.**
 
@@ -136,6 +141,31 @@ COM 연동. 반면 시각화·축·필터·마킹·문서 속성 조작은 전�
 `table.IsRefreshable` 로 코드에서 판별할 수 있다.
 
 사용자가 Web Player 배포를 언급하면 **로컬 파일 경로를 쓰는 코드를 제안하지 않는다.**
+
+Analyst 전용 기능을 쓸 수밖에 없다면 **맨 앞에서 클라이언트를 판별해** 안내를 남긴다.
+클라이언트 종류를 직접 알려 주는 API는 없고, `Application` 의 .NET 타입 이름으로 판별한다.
+
+```python
+if "RichAnalysisApplication" not in Application.GetType().ToString():
+    Document.Properties["ScriptLog"] = u"이 기능은 Analyst에서만 동작합니다."
+else:
+    ...   # 파일을 쓰는 본 작업
+```
+
+### 8. 스크립트 전체가 하나의 트랜잭션이다
+
+이것 하나로 설명되는 현상이 여럿이다.
+
+- 스크립트 **중간에** `Document.Properties` 에 쓴 값은 화면에 나타나지 않는다.
+  끝날 때 한꺼번에 반영되므로 **로그는 리스트에 모았다가 마지막에 한 번만 쓴다**
+- 속성을 바꾼 뒤 그 **재계산 결과를 같은 스크립트에서 읽을 수 없다.**
+  "바꾸고 → 읽고 → 판단" 흐름이 필요하면 스크립트를 둘로 나누고 문서 속성 트리거로 잇는다
+- 이미지 렌더링처럼 스냅샷이 필요한 작업은
+  `Attempt take snapshot on application thread in state 'Executing'` 로 실패한다.
+  `ApplicationThread.InvokeAsynchronously(fn)` 로 우회하되, `fn` 은 바깥 변수를 참조하지 말고
+  **필요한 것을 전부 기본 인자로 받아야** 한다
+- `ProgressService` 로 진행 표시를 하려면 스크립트 대화상자의
+  **"트랜잭션으로 감싸기" 체크를 꺼야** 한다. 대신 실행 취소를 잃는다
 
 ## 위험도 판정
 
@@ -173,6 +203,10 @@ Document.Properties["ScriptLog"] = u"12개 시각화를 변경했습니다."
 |------|------|
 | `references/api-map.md` | 객체 모델 지도와 자주 쓰는 코드 조각 |
 | `references/verified-apis.md` | 실측으로 확인된 API 목록과 존재하지 않는 이름들 |
-| `references/example-catalog.md` | 검증된 예제 21종 — 어떤 요청에 무엇을 재료로 쓸지 |
+| `references/example-catalog.md` | 예제 23종 — 어떤 요청에 무엇을 재료로 쓸지 |
+
+사용자가 **"왜 안 되는지 모르겠다"** 고 하면, 코드를 고치기 전에
+교안 예제 23(실행 환경 진단 리포트)을 먼저 돌려 보게 한다. 읽기 전용이며
+클라이언트 종류·마킹의 실제 이름·내보내기 가용성을 한 번에 알려 준다.
 
 교안 전문: <https://cozytk.github.io/spotfire-iron-python-scripts/>

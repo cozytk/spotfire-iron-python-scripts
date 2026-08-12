@@ -1,6 +1,6 @@
 # Spotfire IronPython 2.7 교안
 
-Spotfire의 IronPython 2.7 스크립팅 한국어 교안과, 바로 실행할 수 있는 예제 스크립트 21종입니다.
+Spotfire의 IronPython 2.7 스크립팅 한국어 교안과, 바로 실행할 수 있는 예제 스크립트 23종입니다.
 
 **프로그래밍을 해 본 적 없어도** 따라올 수 있도록 개념부터 시작하고,
 **생성형 AI로 원하는 스크립트를 얻어내는 절차**까지 다룹니다.
@@ -18,7 +18,7 @@ Spotfire의 IronPython 2.7 스크립팅 한국어 교안과, 바로 실행할 �
 | 6 | **Spotfire API 객체 모델** — `Document` 아래로 내려가는 지도 |
 | 7 | **스크립팅의 현실** — 실제로 부딪힌 함정 모음. 이 교안만의 내용 |
 | 8 | **생성형 AI로 만들기** — 5단계 틀, 프롬프트 템플릿, 검증 체크리스트 |
-| 9~12 | **예제 21선** — 위험도 배지 포함 |
+| 9~12 | **예제 23선** — 위험도 배지 포함 |
 | 13~14 | **레퍼런스** — 실무 팁, 치트시트 & FAQ |
 
 코딩 경험이 있으면 3장은 건너뛰고, 1 → 2 → 4.1 → 5 → 6 → 7 순으로 보면 됩니다.
@@ -41,9 +41,13 @@ Spotfire의 IronPython 2.7 스크립팅 한국어 교안과, 바로 실행할 �
 여기에 더해, Spotfire 관련 Q&A에서 반복적으로 올라오는 주제(필터 초기화, 마킹 제어,
 이미지·데이터 내보내기, 문서 속성 조작, 시각화 순회)를 우선 반영했습니다.
 
-## 예제 21선
+## 예제 23선
 
 예제는 **무엇을 다루는지**로 묶었고, 각 예제에 위험도를 표시했습니다.
+
+새 환경에서 처음 시작한다면 **예제 23(실행 환경 진단 리포트)** 을 먼저 실행하세요.
+읽기 전용이면서, 이 환경이 Analyst인지 Web Player인지·마킹의 실제 이름·내보내기
+가능 여부를 한 번에 알려 줍니다.
 
 ### 9장 · 시각화 일괄 제어 — [`scripts/01-visuals/`](scripts/01-visuals)
 
@@ -85,6 +89,8 @@ Spotfire의 IronPython 2.7 스크립팅 한국어 교안과, 바로 실행할 �
 | 19 | 표현식 전수 검사 (문서 감사 리포트) | 중간 |
 | 20 | 마킹한 값별로 시각화 자동 생성 | **높음** |
 | 21 | 산점도 매트릭스 자동 생성 (NxN) | **높음** |
+| 22 | 문서 안의 스크립트 전수 조사 | **읽기 전용** · Spotfire 12.0+ |
+| 23 | 실행 환경 진단 리포트 | **읽기 전용** |
 
 각 스크립트의 **문제 상황, 매개변수 설정법, 검증 포인트**는 교안 사이트의 해당 장에 있습니다.
 
@@ -113,7 +119,7 @@ Spotfire IronPython은 AI 학습 데이터가 적은 분야라, 그냥 물어보
 cp -r .claude/skills/spotfire-ironpython ~/.claude/skills/
 ```
 
-스킬에는 실측으로 확인한 API 목록, 존재하지 않는 이름 목록, 예제 21종 색인이 들어 있어
+스킬에는 실측으로 확인한 API 목록, 존재하지 않는 이름 목록, 예제 23종 색인이 들어 있어
 프롬프트를 따로 붙여 넣을 필요가 없습니다.
 
 ## 스크립트 사용법
@@ -130,7 +136,7 @@ cp -r .claude/skills/spotfire-ironpython ~/.claude/skills/
 
 이 파일들은 **생성형 AI에게 줄 재료**이기도 합니다.
 하고 싶은 일과 가장 비슷한 스크립트를 프롬프트에 붙여 넣으면 결과 품질이 크게 올라갑니다.
-자세한 절차는 교안 7장을 참고하세요.
+자세한 절차는 교안 8장을 참고하세요.
 
 > [!WARNING]
 > 스크립트는 되돌리기(Undo)가 되지 않는 변경을 만들 수 있습니다.
@@ -156,11 +162,15 @@ extract_scripts.py  content/ -> scripts/ 추출
 `checks/README.md` 에는 실제 Spotfire(IronPython 2.7.12 / Spotfire 14.x)에서 확인한
 API 실측 결과가 정리되어 있습니다. 교안의 "검증 포인트"는 이 결과를 근거로 합니다.
 
-**예제 21종이 사용하는 API는 여덟 차례 실행으로 전부 확인했습니다.**
+**예제 1~21이 사용하는 API는 여덟 차례 실행으로 전부 확인했습니다.**
 그 과정에서 교안 오류 8건(`TreemapChart`, `IndexSet.Add`, 마킹 이름 하드코딩,
 `StdfDataSource`, `RenderSync`, `Tables[0]`, `CreateDataWriter`, `ScriptLog` 미생성)을
 잡아 고쳤습니다. 교안을 수정한 뒤에는 `checks/00_verify_all_examples.py` 로
 회귀 확인을 할 수 있습니다.
+
+나중에 추가한 **예제 22·23은 아직 실측하지 않았습니다.** Spotfire 15.0 API 레퍼런스와
+공식 커뮤니티 문서를 근거로 작성했고, 둘 다 문서를 변경하지 않는 읽기 전용입니다.
+교안의 해당 절에도 그 사실을 표시해 두었습니다.
 
 ## 로컬에서 빌드하기
 
@@ -181,16 +191,23 @@ python -m http.server 8000 --directory docs
 - **Deploy from a branch** (간단): Branch = **저장소의 기본 브랜치**, 폴더 = `/docs`
 - **GitHub Actions**: 포함된 [`.github/workflows/pages.yml`](.github/workflows/pages.yml) 이 `docs/`를 배포합니다
 
-워크플로는 `main` 과 `claude/spotfire-ironpython-guide-m9nnv5` 브랜치에서 동작하도록
-설정되어 있습니다. 다른 브랜치를 쓰려면 `pages.yml` 의 `branches:` 목록에 추가하세요.
+워크플로는 `main` 브랜치에서 동작하도록 설정되어 있습니다.
+다른 브랜치를 쓰려면 `pages.yml` 의 `branches:` 목록에 추가하세요.
 
 ## 참고 자료
 
 - [IronPython Scripting in Spotfire® – Overview (Spotfire Community)](https://community.spotfire.com/articles/spotfire/ironpython-scripting-in-spotfire/)
+  — 수백 개 예제의 분류 색인
+- [Spotfire Analyst API Reference](https://docs.tibco.com/pub/doc_remote/sfire_dev/area/doc/api/tib_sfire-analyst_api/index.aspx)
+  — 이름·시그니처·폐기 여부의 최종 근거
+- [The Spotfire IronPython Quick Reference](https://www.sf-ref.com/ironpython/)
+- [IronPython Example Scripts (Spotfire 제품 문서)](https://docs.tibco.com/pub/sfire-analyst/12.0.6/doc/html/en-US/TIB_sfire-analyst_UsersGuide/text/text_ironpython_example_scripts.htm)
 - [essejhsif/spotfire](https://github.com/essejhsif/spotfire)
 - [Gurudutt-Goswami/Spotfire-Ironpython](https://github.com/Gurudutt-Goswami/Spotfire-Ironpython)
-- [IronPython Example Scripts (Spotfire 제품 문서)](https://docs.tibco.com/pub/sfire-analyst/12.0.6/doc/html/en-US/TIB_sfire-analyst_UsersGuide/text/text_ironpython_example_scripts.htm)
-- [The Spotfire IronPython Quick Reference](https://www.sf-ref.com/ironpython/)
+
+교안이 근거로 삼은 개별 공식 문서 목록은
+[14장 · 참고한 자료](https://cozytk.github.io/spotfire-iron-python-scripts/14-cheatsheet.html)에
+정리해 두었습니다.
 
 ## 라이선스
 

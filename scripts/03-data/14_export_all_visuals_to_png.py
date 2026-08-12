@@ -19,6 +19,7 @@ from System import DateTime
 
 WIDTH, HEIGHT = 1400, 900
 
+
 # 파일명에 쓸 수 없는 문자 제거
 def safe_name(text):
     result = []
@@ -26,36 +27,46 @@ def safe_name(text):
         result.append(ch if ch not in u'\\/:*?"<>|\r\n\t' else u"_")
     return u"".join(result).strip()[:80] or u"untitled"
 
-stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss")
-folder = Path.Combine(outDir, "spotfire_" + stamp)
-Directory.CreateDirectory(folder)
 
-saved = 0
-failed = []
+# Web Player에서는 로컬 폴더에 쓸 수 없다.
+# 알 수 없는 .NET 예외 대신 사람이 읽을 수 있는 안내를 남긴다. → 7.7 참조
+isAnalyst = "RichAnalysisApplication" in Application.GetType().ToString()
 
-for pageIndex, page in enumerate(Document.Pages):
-    for vizIndex, visual in enumerate(page.Visuals):
-        try:
-            vc = visual.As[VisualContent]()
+if not isAnalyst:
+    Document.Properties["ScriptLog"] = (
+        u"이미지 내보내기는 Spotfire Analyst(데스크톱)에서만 동작합니다.")
+else:
+    stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss")
+    folder = Path.Combine(outDir, "spotfire_" + stamp)
+    Directory.CreateDirectory(folder)
 
-            bitmap = Bitmap(WIDTH, HEIGHT)
-            graphics = Graphics.FromImage(bitmap)
-            vc.Render(graphics, Rectangle(0, 0, WIDTH, HEIGHT))
+    saved = 0
+    failed = []
 
-            fileName = u"%02d_%s__%02d_%s.png" % (
-                pageIndex + 1, safe_name(page.Title),
-                vizIndex + 1, safe_name(visual.Title))
+    for pageIndex, page in enumerate(Document.Pages):
+        for vizIndex, visual in enumerate(page.Visuals):
+            try:
+                vc = visual.As[VisualContent]()
 
-            bitmap.Save(Path.Combine(folder, fileName))
+                bitmap = Bitmap(WIDTH, HEIGHT)
+                graphics = Graphics.FromImage(bitmap)
+                vc.Render(graphics, Rectangle(0, 0, WIDTH, HEIGHT))
 
-            graphics.Dispose()
-            bitmap.Dispose()
-            saved += 1
-        except:
-            failed.append(u"%s / %s" % (page.Title, visual.Title))
+                fileName = u"%02d_%s__%02d_%s.png" % (
+                    pageIndex + 1, safe_name(page.Title),
+                    vizIndex + 1, safe_name(visual.Title))
 
-msg = u"%d개 이미지를 저장했습니다: %s" % (saved, folder)
-if failed:
-    msg += u" (건너뜀 %d개: %s)" % (len(failed), u", ".join(failed))
+                bitmap.Save(Path.Combine(folder, fileName))
 
-Document.Properties["ScriptLog"] = msg
+                graphics.Dispose()
+                bitmap.Dispose()
+                saved += 1
+            except:
+                # 텍스트 영역·Mod 시각화는 여기로 빠진다 (아래 "왜 실패하나" 참조)
+                failed.append(u"%s / %s" % (page.Title, visual.Title))
+
+    msg = u"%d개 이미지를 저장했습니다: %s" % (saved, folder)
+    if failed:
+        msg += u" (건너뜀 %d개: %s)" % (len(failed), u", ".join(failed))
+
+    Document.Properties["ScriptLog"] = msg

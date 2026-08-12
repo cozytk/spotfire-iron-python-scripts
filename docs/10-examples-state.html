@@ -369,7 +369,7 @@ Spotfire에서 테이블 간 마킹 연동은 <strong>데이터 테이블 관계
 
 <p><strong>문제 상황</strong><br />
 "기간 필터는 그대로 두고, 제품·지역 필터만 초기화" 하고 싶습니다.
-전체 초기화(<a href="11-examples-data.html">예제 10</a>)는 애써 맞춰 놓은 기간 설정까지 날려 버립니다.</p>
+전체 초기화(<a href="10-examples-state.html">예제 10</a>)는 애써 맞춰 놓은 기간 설정까지 날려 버립니다.</p>
 <p><strong>기본 기능으로 어려운 이유</strong><br />
 Spotfire의 필터 초기화는 <strong>전체 아니면 개별 수동</strong>입니다.
 "이 3개만 초기화"를 한 번에 하는 기능이 없습니다.
@@ -472,8 +472,6 @@ Spotfire의 필터 초기화는 <strong>전체 아니면 개별 수동</strong>�
 <p><code>python
   Document.FilteringSchemes[0].ResetAllFilters()   # 첫 번째 스킴 전체 초기화</code></p>
 </div>
-<hr />
-<p>다음 장은 <strong>심화 자동화</strong>입니다.</p>
 <hr />
 <h2 id="12">예제 12. 역할별 필터 패널 구성</h2>
 <ul class="meta">
@@ -666,7 +664,6 @@ Spotfire에서 페이지 숨김은 <strong>작성 시점에 고정</strong>되�
   스크립트를 실행할 수 있는 사람은 다시 보이게 만들 수 있습니다.
   진짜 접근 제어가 필요하면 <strong>라이브러리 권한이나 정보 링크 수준에서</strong> 처리하세요.</li>
 <li><code>Page.Visible</code> 은 읽기·쓰기 모두 동작합니다.</li>
-<li>페이지 숨김은 <strong>보안 장치가 아닙니다</strong> → <a href="07-pitfalls.html">7.6 참조</a></li>
 <li>페이지를 숨긴 채로 저장하면 <strong>다음에 열 때도 숨겨진 상태</strong>입니다.
   문서를 열 때 자동 실행되는 초기화 스크립트에 이 로직을 넣어 두세요.</li>
 <li>사용자 이름 형식은 인증 방식에 따라 다릅니다. 먼저 출력해 보고 목록을 만드세요.</li>

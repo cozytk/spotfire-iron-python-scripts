@@ -260,3 +260,65 @@ ns.AddInformationNotification(u"제목", u"설명", u"상세")
 ns.AddWarningNotification(u"제목", u"설명", u"상세")
 ns.AddErrorNotification(u"제목", u"설명", u"상세")
 ```
+
+## 진행 표시 (트랜잭션 래핑을 꺼야 동작)
+
+```python
+from Spotfire.Dxp.Framework.ApplicationModel import ProgressService
+
+ps = Application.GetService[ProgressService]()
+
+def work():
+    try:
+        with ps.CurrentProgress.BeginSubtask(u"처리", 10, u"{0} / {1}"):
+            for i in range(10):
+                ps.CurrentProgress.CheckCancel()
+                ps.CurrentProgress.TryReportProgress()
+    except:
+        pass          # 사용자가 취소한 경우 포함
+
+ps.ExecuteWithProgress(u"제목", u"설명", work)
+```
+
+## 환경 판별
+
+```python
+# Analyst = ...RichAnalysisApplication / Web Player = ...WebAnalysisApplication
+isAnalyst = "RichAnalysisApplication" in Application.GetType().ToString()
+
+from System.Threading import Thread
+print Thread.CurrentPrincipal.Identity.Name        # 로그인 사용자
+```
+
+## 문서 스크립트 관리 (Spotfire 12.0+)
+
+```python
+for script in Document.ScriptManager.GetScripts():
+    print script.Name, "|", script.Language.Language
+
+# out 매개변수는 튜플로 돌아온다. clr.Reference 를 쓰지 말 것 (StrongBox 오류)
+found, definition = Document.ScriptManager.TryGetScript(u"대시보드 초기화")
+
+# ScriptDefinition 은 불변 — 복사본을 만들어 교체한다
+if found:
+    updated = definition.WithScriptCode(definition.ScriptCode.replace("0.5", "0.9"))
+    Document.ScriptManager.Replace(definition, updated)
+```
+
+## 북마크
+
+```python
+for bookmark in Document.Bookmarks:
+    print bookmark.DisplayName, bookmark.IsBroken     # Name 이 아니라 DisplayName
+Document.Bookmarks[0].Apply()
+```
+
+## 그래픽 표·KPI 차트의 클릭 액션
+
+이 자리에서만 `Context` 를 쓸 수 있다. 편집 창의 "실행" 버튼으로는 시험할 수 없다.
+
+```python
+Context.Value                    # 클릭한 셀 값
+Context.HierarchyPathValues[0]   # 같은 행의 기준 값
+Context.Visualization            # 클릭된 미니어처 시각화
+```

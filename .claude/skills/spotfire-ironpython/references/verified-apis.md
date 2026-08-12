@@ -3,6 +3,8 @@
 Spotfire 14.x / IronPython 2.7.12에서 **여덟 차례 실행해 확인**한 결과입니다.
 버전이나 라이선스에 따라 다를 수 있으니, 다르면 `dir()` 로 확인하세요.
 
+맨 아래 "**문서로만 확인된 것**" 절은 실행해 보지 않았습니다. 구분해서 쓰세요.
+
 ## 존재하지 않는 이름 — 쓰지 말 것
 
 | 틀린 이름 | 실제 | 왜 그럴듯한가 |
@@ -13,6 +15,9 @@ Spotfire 14.x / IronPython 2.7.12에서 **여덟 차례 실행해 확인**한 �
 | `Visual.RenderSync` | `RenderAsync` 만 존재 | Async가 있으면 Sync도 있을 듯 |
 | `ColumnSelection` | 없음 (`RowSelection` 만) | `RowSelection`이 있으니 |
 | `DataSelection(...)` 직접 생성 | 추상 클래스. 마킹/필터링이 구체 클래스 | — |
+| `TileMode.Grid` | `Horizontally`/`Vertically`/`Evenly`/`Maximize` | 격자니까 Grid일 듯 (API 문서 확인) |
+| `Bookmark.Name` | `DisplayName` | 다른 객체는 `Name` 을 쓰니까 |
+| `CancellationToken.None` | 파이썬 문법 오류. `CancellationToken()` | C# 코드를 그대로 옮기면 |
 
 ## 동작이 확인된 것
 
@@ -97,6 +102,38 @@ TextFileDataSource    DataTableDataSource   DatabaseDataSource
 FileDataSource        InformationLinkDataSource
 DataSourceFactory     FileDataSourceFactory
 ```
+
+## 문서로만 확인된 것 (실행 안 해 봄)
+
+Spotfire 15.0 API 레퍼런스와 공식 커뮤니티 문서에서 확인한 것입니다.
+**실행 검증은 하지 않았습니다.** 쓰기 전에 `dir()` 로 한 번 걸러 보세요.
+
+| API | 내용 |
+|-----|------|
+| `Document.ScriptManager` | `GetScripts()` · `TryGetScript(name)` → **튜플** · `GetAllScriptsWithName` · `AddScriptDefinition` · `Replace` · `Remove` · `ExecuteScript`. **Spotfire 12.0+** |
+| `ScriptDefinition` | **불변**. `WithScriptCode` · `WithName` · `WithDescription` 로 복사본 생성. `IsEquivalentTo` 로 비교 |
+| `Document.Bookmarks` | `Bookmark.DisplayName` · `IsBroken` · `Apply()` · `Update()`. `AddNew` 는 **폐기 예정** |
+| `Visual.ShowTitle` / `Visual.Id` | 제목 표시 여부 / 이름이 바뀌어도 안 변하는 고유 ID |
+| `Visual.AutoConfigure()` / `ApplyUserPreferences()` | 새로 만든 시각화 기본 설정 |
+| `Visual.Render(gfx, rect)` | **폐기 예정(Obsolete)**. 14.x에서 동작은 확인됨 |
+| `Visual.RenderAsync(RenderResultSettings, VisualRenderSettings, CancellationToken)` | `Task<RenderResult>` 반환. `.Result` 로 대기 |
+| `RenderResultSettings(Size)` / `VisualRenderSettings()` | 후자는 `ShowTitle`·`ShowLegend`·`ShowAxisLabels`·`ShowAnnotations` |
+| `RenderResult` | `IsValid` · `WriteTo(stream)`. `AsImage()` 는 **폐기 예정** |
+| `Page.RenderAsync(...)` | 페이지 전체를 PNG로 |
+| `Page.GetVisualBounds(visual, rect)` | 배치 비율에 맞는 사각형 |
+| `Page.ApplyLayout(TileMode)` | `Horizontally` · `Vertically` · `Evenly` · `Maximize` |
+| `ApplicationThread.InvokeAsynchronously(fn)` | 트랜잭션 밖에서 실행. 스냅샷 오류 우회 |
+| `ProgressService.ExecuteWithProgress(title, desc, fn)` | `CurrentProgress` 의 `ExecuteSubtask` · `BeginSubtask(name, n, fmt)` · `CheckCancel()` · `TryReportProgress()`. **트랜잭션 래핑을 꺼야 동작** |
+| `Application.GetType().ToString()` | Analyst = `...RichAnalysisApplication`, Web Player = `...WebAnalysisApplication` |
+| `Context` (그래픽 표·KPI 클릭 액션 전용) | `Value` · `HierarchyPathValues` · `Visualization` |
+
+## 트랜잭션 (공식 문서 근거)
+
+- 스크립트는 **전체가 하나의 트랜잭션**으로 실행된다. 개별 변경은 끝날 때 한꺼번에 적용된다
+- 그래서 중간에 쓴 `Document.Properties` 값은 화면에 나타나지 않는다
+- 바꾼 속성의 재계산 결과를 같은 스크립트에서 읽을 수 없다
+- 스냅샷이 필요한 작업(렌더링)은 `Attempt take snapshot on application thread in state 'Executing'` 로 실패한다
+- 스크립트 대화상자의 **"트랜잭션으로 감싸기"** 를 끄면 진행 표시가 가능해지지만 Undo 를 잃는다
 
 ## 확인하는 방법
 

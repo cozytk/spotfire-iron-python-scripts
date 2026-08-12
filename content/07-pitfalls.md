@@ -5,14 +5,17 @@
 Spotfire 스크립팅에서 시간을 잡아먹는 것은 문법이 아닙니다.
 **분명히 맞게 썼는데 동작하지 않는 상황**입니다. 이 장은 그 패턴을 정리한 것입니다.
 
-!!! note "이 장의 내용은 전부 실제로 확인한 것입니다"
-    여기 나오는 함정은 추측이 아니라, 이 교안의 예제 21종을
+!!! note "근거를 밝혀 둡니다"
+    **7.1 · 7.2 · 7.3 · 7.5 · 7.6 · 7.8 · 7.9** 는 추측이 아니라, 이 교안의 예제 21종을
     **Spotfire 14.x / IronPython 2.7.12 환경에서 여덟 차례 실행**하며 실제로 부딪힌 것들입니다.
     그 과정에서 이 교안 자체의 오류도 8건 나왔습니다.
-
     전체 기록은 저장소의
     [`checks/README.md`](https://github.com/cozytk/spotfire-iron-python-scripts/blob/main/checks/README.md)
     에 있습니다.
+
+    **7.4(트랜잭션)** 와 **7.7(환경 판별)** 은 Spotfire 공식 문서를 근거로 정리한 것이고,
+    각 절에 출처를 링크해 두었습니다. 실측한 것과 문서로 확인한 것을 구분해 두었으니
+    "우리 환경에서 그대로 되는가"는 각자 확인하세요.
 
 ---
 
@@ -134,7 +137,93 @@ for page in Document.Pages:
 
 ---
 
-## 7.4 API가 조용히 실패한다
+## 7.4 스크립트는 트랜잭션 안에서 통째로 실행된다
+
+이걸 모르면 **"코드는 맞는데 결과가 이상한"** 상황을 영원히 이해할 수 없습니다.
+
+Spotfire는 스크립트를 **하나의 트랜잭션으로 감싸서** 실행합니다.
+사용자가 실행 취소(Undo)로 되돌릴 수 있게 하기 위해서입니다.
+그래서 스크립트 안에서 한 변경들은 **한 줄씩 즉시 반영되는 것이 아니라,
+스크립트가 끝나는 순간 한꺼번에 문서에 적용**됩니다.
+
+> 공식 문서의 표현: 트랜잭션이 동작하려면 스크립트 안의 개별 변경이 압축되어
+> 스크립트가 끝날 때 한 단계로 적용되어야 하고, 이것이 스크립트 안에서 조작하는
+> 객체에 영향을 준다.
+> — [How to develop IronPython scripts and their limitations](https://community.spotfire.com/s/article/How-to-develop-IronPython-scripts-in-TIBCO-Spotfire-and-their-limitations)
+
+여기서 네 가지 결과가 나옵니다.
+
+### ① 중간 진행 상황을 화면에 못 보여 준다
+
+```python
+Document.Properties["ScriptLog"] = u"1단계 시작"
+# ... 오래 걸리는 작업 ...
+Document.Properties["ScriptLog"] = u"2단계 시작"
+# ... 오래 걸리는 작업 ...
+Document.Properties["ScriptLog"] = u"완료"
+```
+
+화면에는 **"완료"만 보입니다.** 1·2단계는 표시되지 않습니다.
+문서 속성은 스크립트가 끝나야 갱신되기 때문입니다.
+
+진행 상황을 정말 보여 주고 싶으면 `ProgressService` 를 쓰고,
+**스크립트 대화상자의 "트랜잭션으로 감싸기" 체크를 해제**해야 합니다
+→ [13.2 참조](13-tips.html)
+
+### ② 바꾼 값을 같은 스크립트에서 다시 읽으면 옛날 값일 수 있다
+
+축 표현식이나 데이터 제한을 바꾸면 시각화가 다시 계산되어야 하는데,
+그 재계산은 트랜잭션이 끝난 뒤에 일어납니다.
+
+```python
+vc.Data.WhereClauseExpression = "[Year] = 2024"
+rows = vc.Data.DataTableReference.RowCount    # 필터링 반영 전 값
+```
+
+**"바꾸고 → 그 결과를 읽어서 → 다시 판단"하는 흐름은 한 스크립트 안에서 성립하지 않습니다.**
+필요하면 스크립트를 두 개로 나누고, 첫 번째가 문서 속성을 바꾸면
+그 속성 변경 트리거로 두 번째가 실행되게 하세요.
+
+### ③ 스냅샷이 필요한 작업이 실패한다
+
+이미지 내보내기처럼 **문서의 정지 화면(snapshot)** 이 필요한 작업은,
+트랜잭션 실행 중인 애플리케이션 스레드에서 스냅샷을 뜰 수 없어 실패합니다.
+
+```text
+System.InvalidOperationException:
+Attempt take snapshot on application thread in state 'Executing'.
+```
+
+[예제 14](11-examples-data.html)에서 텍스트 영역이 실패한 것이 정확히 이 오류였습니다.
+공식 해법은 **작업을 함수로 감싸 애플리케이션 스레드에 넘기는 것**입니다.
+함수 안에서 바깥 변수를 참조하지 말고 **전부 기본 인자로 받아야** 합니다.
+
+```python
+from Spotfire.Dxp.Framework.ApplicationModel import ApplicationThread
+
+app = Document.GetService(ApplicationThread)
+target = "C:/temp/visual.png"
+
+
+# 필요한 것을 전부 기본 인자로 받는다. 스레드가 바뀐 뒤에도 값이 살아 있어야 하기 때문이다.
+def render(visual=visual, document=Document, target=target):
+    ...        # 여기서는 바깥 변수를 쓰지 않고 인자로 받은 것만 쓴다
+
+
+app.InvokeAsynchronously(render)
+```
+
+전체 코드는 [예제 14의 "텍스트 영역까지 포함하려면"](11-examples-data.html) 절에 있습니다.
+
+### ④ 실패해도 클라이언트는 죽지 않는다 (다행인 쪽)
+
+스크립트는 Spotfire 본체와 **격리되어 실행**됩니다.
+스크립트가 예외로 죽어도 Spotfire가 함께 죽지는 않습니다.
+같은 이유로 스크립트는 **신뢰(trusted)** 상태여야 경고 없이 실행됩니다.
+
+---
+
+## 7.5 API가 조용히 실패한다
 
 예외를 던지지 않고 `None` 을 돌려주는 API가 있습니다.
 
@@ -169,7 +258,7 @@ else:
 
 ---
 
-## 7.5 존재하지 않는 API가 널려 있다
+## 7.6 존재하지 않는 API가 널려 있다
 
 검증 과정에서 **이 교안의 초안이 사용한 API 4개가 아예 존재하지 않았습니다.**
 
@@ -243,7 +332,7 @@ print imp.DataTableDataSource.__doc__
 
 ---
 
-## 7.6 환경이 기능을 막는다
+## 7.7 환경이 기능을 막는다
 
 코드가 맞아도 **그 환경에서 허용되지 않아** 실패하는 경우가 있습니다.
 
@@ -267,13 +356,39 @@ print imp.DataTableDataSource.__doc__
 
 반대로 **문서 구조를 다루는 것은 전부 동작합니다** — 시각화, 축, 필터, 마킹, 문서 속성.
 
-### 코드에서 판별하기
+### 지금 Analyst인지 Web Player인지 코드로 알아내기
 
-가능 여부를 미리 물어볼 수 있는 속성이 있습니다.
+**클라이언트 종류를 직접 알려 주는 API는 없습니다.** 대신 `Application` 객체의
+.NET 타입 이름을 보면 알 수 있습니다.
+
+```python
+def is_analyst():
+    # Analyst  -> Spotfire.Dxp.Application.RichAnalysisApplication
+    # Web Player -> Spotfire.Dxp.Web.WebAnalysisApplication
+    return "RichAnalysisApplication" in Application.GetType().ToString()
+```
+
+파일을 쓰는 예제(예제 14·15) 맨 앞에 이 검사를 넣어 두면, Web Player 사용자가
+버튼을 눌렀을 때 **알 수 없는 .NET 예외 대신 사람이 읽을 수 있는 메시지**가 나옵니다.
+
+```python
+if not is_analyst():
+    Document.Properties["ScriptLog"] = (
+        u"이 기능은 Spotfire Analyst(데스크톱)에서만 동작합니다.")
+else:
+    ...  # 파일을 쓰는 본 작업
+```
+
+근거: [How to determine the client type (Spotfire Community)](https://community.spotfire.com/s/article/how-determine-client-type-analyst-or-web-player-user-running-tibco-spotfire-using-ironpython)
+
+### 기능별로 물어볼 수 있는 속성
+
+가능 여부를 미리 물어볼 수 있는 속성도 있습니다.
 
 ```python
 plot.ExportDataEnabled          # 이 시각화에서 내보내기가 켜져 있나
 table.IsRefreshable             # 이 테이블을 새로고침할 수 있나
+table.NeedsRefresh              # 갱신이 필요한 상태인가
 ```
 
 **막혔을 때 사용자에게 알려 주는 것**까지가 스크립트의 몫입니다.
@@ -283,9 +398,14 @@ if not plot.ExportDataEnabled:
     Document.Properties["ScriptLog"] = u"이 시각화는 내보내기가 비활성화되어 있습니다."
 ```
 
+!!! tip "환경을 한 번에 진단하려면"
+    [예제 23 · 실행 환경 진단 리포트](12-examples-create.html)를 먼저 돌려 보세요.
+    클라이언트 종류, 마킹·필터링 스킴의 실제 이름, 내보내기 가능 여부를
+    한 번에 출력합니다. 새 환경에 예제를 적용하기 전에 이것부터 실행하는 것이 가장 빠릅니다.
+
 ---
 
-## 7.7 되돌릴 수 없다
+## 7.8 되돌릴 수 없다
 
 Spotfire의 실행 취소는 **스크립트 변경을 온전히 되돌리지 못합니다.**
 
@@ -304,13 +424,13 @@ Spotfire의 실행 취소는 **스크립트 변경을 온전히 되돌리지 못
 
 ---
 
-## 7.8 확인하는 다섯 가지 방법
+## 7.9 확인하는 다섯 가지 방법
 
 문서를 신뢰할 수 없을 때 쓰는 도구들입니다. 위험이 낮은 순서입니다.
 
 ### ① `dir()` 로 존재 확인 — 위험 없음
 
-7.5 참조. 가장 먼저 할 일입니다.
+7.6 참조. 가장 먼저 할 일입니다.
 
 ### ② 대상만 출력해 보기 — 위험 없음
 
@@ -364,20 +484,21 @@ finally:
 
 ---
 
-## 7.9 요약 — 스크립트를 쓸 때의 기본 자세
+## 7.10 요약 — 스크립트를 쓸 때의 기본 자세
 
 ```text
-□ 이름을 하드코딩하지 않았나          (7.1)
-□ 컬렉션 인덱싱 방식이 맞나            (7.2)
-□ 유형별로 속성이 다른 것을 감안했나    (7.3)
-□ 반환값을 확인했나                   (7.4)
-□ 쓰는 API가 실제로 존재하나           (7.5)
-□ 이 환경에서 허용되는 기능인가        (7.6)
-□ 되돌릴 수 없는 작업인가              (7.7)
+□ 이름을 하드코딩하지 않았나                    (7.1)
+□ 컬렉션 인덱싱 방식이 맞나                      (7.2)
+□ 유형별로 속성이 다른 것을 감안했나              (7.3)
+□ 바꾼 값을 같은 스크립트에서 다시 읽고 있지 않나  (7.4)
+□ 반환값을 확인했나                             (7.5)
+□ 쓰는 API가 실제로 존재하나                     (7.6)
+□ 이 환경에서 허용되는 기능인가                   (7.7)
+□ 되돌릴 수 없는 작업인가                        (7.8)
 □ 사본에서 먼저 시험했나
 ```
 
-이 여덟 줄이 이 교안 전체에서 가장 실용적인 부분일 수 있습니다.
+이 아홉 줄이 이 교안 전체에서 가장 실용적인 부분일 수 있습니다.
 
 ---
 

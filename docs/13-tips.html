@@ -107,8 +107,19 @@
 <span class="n">ns</span><span class="o">.</span><span class="n">AddInformationNotification</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;완료&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;12개 시각화를 변경했습니다.&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
 </code></pre></div>
 
+<h3 id="_1">두 환경에서 같은 파일을 쓴다면</h3>
+<p>Analyst 전용 기능이 들어간 스크립트는 <strong>맨 앞에서 클라이언트를 판별</strong>해
+Web Player 사용자에게 안내를 남기세요. 그러지 않으면 알 수 없는 .NET 예외 대화상자가 뜹니다.</p>
+<div class="codehilite"><pre><span></span><code><span class="k">if</span> <span class="s2">&quot;RichAnalysisApplication&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">Application</span><span class="o">.</span><span class="n">GetType</span><span class="p">()</span><span class="o">.</span><span class="n">ToString</span><span class="p">():</span>
+    <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;이 기능은 Analyst에서만 동작합니다.&quot;</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="o">...</span>   <span class="c1"># 파일을 쓰는 본 작업</span>
+</code></pre></div>
+
+<p><code>Application</code> 의 .NET 타입 이름이 판별 기준입니다 → <a href="07-pitfalls.html">7.7 참조</a>.
+현재 환경 전체를 한 번에 보고 싶으면 <a href="12-examples-create.html">예제 23</a>을 실행하세요.</p>
 <h2 id="132">13.2 성능</h2>
-<h3 id="_1">반복 안에서 비싼 호출을 하지 마세요</h3>
+<h3 id="_2">반복 안에서 비싼 호출을 하지 마세요</h3>
 <div class="codehilite"><pre><span></span><code><span class="c1"># 느림 — 매 반복마다 테이블을 다시 찾는다</span>
 <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1000</span><span class="p">):</span>
     <span class="n">value</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Tables</span><span class="p">[</span><span class="s2">&quot;Sales&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">Columns</span><span class="p">[</span><span class="s2">&quot;Revenue&quot;</span><span class="p">]</span>
@@ -120,7 +131,7 @@
     <span class="n">value</span> <span class="o">=</span> <span class="n">column</span>
 </code></pre></div>
 
-<h3 id="_2">행 순회는 최소한으로</h3>
+<h3 id="_3">행 순회는 최소한으로</h3>
 <p><code>GetRows</code>로 수백만 행을 도는 것은 느립니다. 가능하면 Spotfire에게 시키세요.</p>
 <div class="codehilite"><pre><span></span><code><span class="c1"># 느림 — 파이썬에서 전부 훑는다</span>
 <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
@@ -144,13 +155,44 @@
     <span class="o">...</span>
 </code></pre></div>
 
-<h3 id="_3">긴 작업에는 진행 표시</h3>
+<h3 id="_4">긴 작업에는 진행 표시와 취소 버튼</h3>
+<p>수십 초 이상 걸리는 스크립트는 사용자 눈에 <strong>Spotfire가 멈춘 것</strong>으로 보입니다.
+<code>ProgressService</code> 로 작업을 감싸면 몇 초 뒤 진행 대화상자가 자동으로 뜨고,
+사용자가 취소할 수 있게 됩니다. Web Player에서도 동작합니다.</p>
 <div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Framework.ApplicationModel</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProgressService</span>
 
 <span class="n">ps</span> <span class="o">=</span> <span class="n">Application</span><span class="o">.</span><span class="n">GetService</span><span class="p">[</span><span class="n">ProgressService</span><span class="p">]()</span>
-<span class="c1"># 버전에 따라 사용법이 다르므로, 실패하면 이 부분을 빼고 쓰세요</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">work</span><span class="p">():</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># ① 얼마나 걸릴지 모르는 단계</span>
+        <span class="n">ps</span><span class="o">.</span><span class="n">CurrentProgress</span><span class="o">.</span><span class="n">ExecuteSubtask</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;데이터 확인 중&quot;</span><span class="p">)</span>
+        <span class="o">...</span>
+
+        <span class="c1"># ② 횟수를 아는 단계 — 진행률 막대가 찬다</span>
+        <span class="n">pages</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">Pages</span><span class="p">]</span>
+        <span class="k">with</span> <span class="n">ps</span><span class="o">.</span><span class="n">CurrentProgress</span><span class="o">.</span><span class="n">BeginSubtask</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;페이지 처리&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">pages</span><span class="p">),</span> <span class="sa">u</span><span class="s2">&quot;</span><span class="si">{0}</span><span class="s2"> / </span><span class="si">{1}</span><span class="s2">&quot;</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">pages</span><span class="p">:</span>
+                <span class="n">ps</span><span class="o">.</span><span class="n">CurrentProgress</span><span class="o">.</span><span class="n">CheckCancel</span><span class="p">()</span>      <span class="c1"># 취소를 눌렀으면 여기서 예외</span>
+                <span class="o">...</span>
+                <span class="n">ps</span><span class="o">.</span><span class="n">CurrentProgress</span><span class="o">.</span><span class="n">TryReportProgress</span><span class="p">()</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span>          <span class="c1"># 사용자가 취소한 경우도 여기로 온다</span>
+
+
+<span class="n">ps</span><span class="o">.</span><span class="n">ExecuteWithProgress</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;일괄 처리&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;모든 페이지를 처리하고 있습니다.&quot;</span><span class="p">,</span> <span class="n">work</span><span class="p">)</span>
 </code></pre></div>
 
+<div class="admonition danger">
+<p class="admonition-title">이걸 쓰려면 '트랜잭션으로 감싸기'를 꺼야 합니다</p>
+<p>스크립트 편집 대화상자에서 <strong>트랜잭션 래핑 체크를 해제</strong>해야 진행 표시가 뜹니다
+→ <a href="07-pitfalls.html">7.4 참조</a></p>
+<p>체크를 끄면 <strong>실행 취소(Undo)가 되지 않습니다.</strong>
+그래서 진행 표시는 "오래 걸리지만 되돌릴 일이 없는 작업"(내보내기, 새로고침,
+읽기 전용 조사)에 어울립니다. 되돌릴 수 있어야 하는 일괄 변경에는 쓰지 마세요.</p>
+<p>근거: <a href="https://community.spotfire.com/s/article/How-to-Add-Progress-Bar-and-Cancellation-Option-when-Executing-IronPython-Scripts-in-TIBCO-Spotfire">Progress bar and cancellation option (Spotfire Community)</a></p>
+</div>
 <h2 id="133-undo">13.3 되돌리기(Undo)를 믿지 마세요</h2>
 <div class="admonition danger">
 <p class="admonition-title">스크립트 변경은 되돌아가지 않는 경우가 많습니다</p>
@@ -164,7 +206,7 @@
 <p><strong>반드시 지킬 것:</strong></p>
 <ol>
 <li>위험한 스크립트는 <strong>분석 파일 사본</strong>에서 먼저 실행</li>
-<li>실행 전에 <strong>예제 1(인벤토리)이나 예제 20(감사)</strong> 로 현재 상태를 기록</li>
+<li>실행 전에 <strong>예제 18(시각화 인벤토리)이나 예제 19(표현식 감사)</strong> 로 현재 상태를 기록</li>
 <li>사용자에게 배포하는 버튼은 <strong>읽기 전용이거나 되돌릴 수 있는 것</strong>만</li>
 </ol>
 </div>
@@ -220,6 +262,15 @@
 <span class="nb">print</span> <span class="n">markingNames</span>        <span class="c1"># 예: [&#39;마킹&#39;, &#39;마킹 (2)&#39;, &#39;마킹 (3)&#39;]</span>
 </code></pre></div>
 
+<div class="admonition tip">
+<p class="admonition-title">제목 대신 Id</p>
+<p>"이 시각화만 제외" 같은 규칙이 필요할 때, 제목 문자열 대신 <strong><code>visual.Id</code></strong> 를 쓰세요.
+사용자가 제목을 바꿔도 <code>Id</code> 는 그대로입니다. 페이지도 <code>page.Id</code> 를 가집니다.</p>
+<p><code>python
+for page in Document.Pages:
+    for visual in page.Visuals:
+        print visual.Id, "|", visual.Title      # 한 번 뽑아서 스크립트에 박아 둔다</code></p>
+</div>
 <h2 id="135">13.5 여러 번 실행해도 안전하게 (멱등성)</h2>
 <p>사용자는 버튼을 두 번 누릅니다. 스크립트는 <strong>두 번 눌러도 같은 결과</strong>여야 합니다.</p>
 <div class="codehilite"><pre><span></span><code><span class="c1"># 나쁨 — 누를 때마다 접미사가 붙는다</span>
@@ -354,6 +405,26 @@
 <li>같은 로직이 여러 스크립트에 복붙되어 있다면, <strong>문서 속성으로 분기</strong>해 하나로 합치세요</li>
 <li>스크립트 원본을 <strong>저장소에도 보관</strong>하세요. 분석 파일 안에만 있으면 이력 추적이 안 됩니다</li>
 </ul>
+<h3 id="spotfire-120">목록을 코드로 뽑기 (Spotfire 12.0+)</h3>
+<p><code>Document.ScriptManager</code> 로 문서 안의 스크립트를 전부 열거할 수 있습니다.
+버튼을 하나씩 열어 보지 않아도 됩니다.</p>
+<div class="codehilite"><pre><span></span><code><span class="k">for</span> <span class="n">script</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">ScriptManager</span><span class="o">.</span><span class="n">GetScripts</span><span class="p">():</span>
+    <span class="nb">print</span> <span class="n">script</span><span class="o">.</span><span class="n">Name</span><span class="p">,</span> <span class="s2">&quot;|&quot;</span><span class="p">,</span> <span class="n">script</span><span class="o">.</span><span class="n">Language</span><span class="o">.</span><span class="n">Language</span><span class="p">,</span> <span class="s2">&quot;|&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">script</span><span class="o">.</span><span class="n">ScriptCode</span><span class="o">.</span><span class="n">splitlines</span><span class="p">())</span>
+</code></pre></div>
+
+<p>같은 이름의 스크립트가 여러 벌 남아 있는 것이 실무에서 가장 흔한 문제입니다.</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 이름이 같은 스크립트 전부 가져와 내용이 같은지 비교</span>
+<span class="k">for</span> <span class="n">script</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">ScriptManager</span><span class="o">.</span><span class="n">GetAllScriptsWithName</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;대시보드 초기화&quot;</span><span class="p">):</span>
+    <span class="nb">print</span> <span class="n">script</span><span class="o">.</span><span class="n">IsEquivalentTo</span><span class="p">(</span><span class="n">기준정의</span><span class="p">)</span>
+</code></pre></div>
+
+<p>정리 리포트를 만들어 주는 완성본은 <a href="12-examples-create.html">예제 22</a>에 있습니다.</p>
+<div class="admonition warning">
+<p class="admonition-title">지우기·바꾸기는 신중하게</p>
+<p>액션 컨트롤에 연결된 스크립트를 <code>Remove</code> 하면 <strong>그 버튼을 손으로 다시 설정</strong>해야 합니다.
+<code>Replace</code> 도 매개변수 이름·타입이 달라지면 연결된 액션이 비활성화됩니다.
+컬렉션을 <strong>순회하면서 지우지 마세요.</strong> 지울 목록을 먼저 모으고 순회가 끝난 뒤에 지웁니다.</p>
+</div>
 <hr />
 <p>마지막 장은 <strong>한 장짜리 치트시트와 FAQ</strong>입니다.</p>
     <nav class="pager"><a class="pg prev" href="12-examples-create.html"><span>이전</span>12. 예제 D · 생성과 진단</a><a class="pg next" href="14-cheatsheet.html"><span>다음</span>14. 치트시트 & FAQ</a></nav>
@@ -364,12 +435,15 @@
   </main>
   <aside class="toc-side" aria-label="현재 문서 목차"><div class="toc">
 <ul>
-<li><a href="#131-analyst-web-player">13.1 Analyst 전용 코드와 Web Player</a></li>
+<li><a href="#131-analyst-web-player">13.1 Analyst 전용 코드와 Web Player</a><ul>
+<li><a href="#_1">두 환경에서 같은 파일을 쓴다면</a></li>
+</ul>
+</li>
 <li><a href="#132">13.2 성능</a><ul>
-<li><a href="#_1">반복 안에서 비싼 호출을 하지 마세요</a></li>
-<li><a href="#_2">행 순회는 최소한으로</a></li>
+<li><a href="#_2">반복 안에서 비싼 호출을 하지 마세요</a></li>
+<li><a href="#_3">행 순회는 최소한으로</a></li>
 <li><a href="#set">조회는 set으로</a></li>
-<li><a href="#_3">긴 작업에는 진행 표시</a></li>
+<li><a href="#_4">긴 작업에는 진행 표시와 취소 버튼</a></li>
 </ul>
 </li>
 <li><a href="#133-undo">13.3 되돌리기(Undo)를 믿지 마세요</a></li>
@@ -378,7 +452,10 @@
 <li><a href="#136">13.6 일괄 처리 루프의 표준 형태</a></li>
 <li><a href="#137">13.7 자주 만나는 오류와 해결</a></li>
 <li><a href="#138">13.8 보안과 신뢰</a></li>
-<li><a href="#139">13.9 스크립트 관리</a></li>
+<li><a href="#139">13.9 스크립트 관리</a><ul>
+<li><a href="#spotfire-120">목록을 코드로 뽑기 (Spotfire 12.0+)</a></li>
+</ul>
+</li>
 </ul>
 </div>
 </aside>

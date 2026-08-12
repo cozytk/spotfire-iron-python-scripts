@@ -439,13 +439,46 @@ MarkerSize, MarkerShape, MarkerLayout, ...
 </tbody>
 </table>
 <h3 id="ai">AI가 특히 자주 지어내는 것</h3>
-<p>실제 경험상 다음은 <strong>항상 의심</strong>하세요. 자세한 배경은 <a href="07-pitfalls.html">7.5 참조</a></p>
+<p>실제 경험상 다음은 <strong>항상 의심</strong>하세요. 자세한 배경은 <a href="07-pitfalls.html">7.6 참조</a></p>
 <ul>
 <li><strong>축 이름</strong> — 시각화 유형마다 다릅니다. 산점도에 <code>MeasureAxis</code>는 없습니다</li>
 <li><strong>레이아웃 API</strong> — 시각화 배치는 API가 까다롭습니다. <a href="12-examples-create.html">예제 21</a> 참고</li>
 <li><strong>필터 조작</strong> — 필터 유형별로 메서드가 다릅니다</li>
 <li><strong>이벤트 훅</strong> — "마킹이 바뀌면 자동 실행"은 없습니다. AI가 있다고 우기면 틀린 겁니다</li>
+<li><strong>"대칭이니까 있겠지" 하는 이름</strong> — <code>Async</code>가 있으니 <code>Sync</code>도, <code>Row</code>가 있으니 <code>Column</code>도,
+  격자니까 <code>Grid</code>도 있을 것 같지만 전부 없습니다
+  (<code>RenderSync</code> ✗ / <code>ColumnSelection</code> ✗ / <code>TileMode.Grid</code> ✗)</li>
 </ul>
+<h3 id="ai_1">AI가 모르는 것 — 요청에 미리 넣어야 하는 것</h3>
+<p>AI는 다음을 거의 알려 주지 않습니다. <strong>먼저 말해 주지 않으면 그냥 빠집니다.</strong></p>
+<table>
+<thead>
+<tr>
+<th>빠지는 것</th>
+<th>요청에 넣을 문장</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>트랜잭션</td>
+<td>"스크립트 중간에 문서 속성을 쓰지 말고, 로그는 리스트에 모았다가 마지막에 한 번만 써 줘"</td>
+</tr>
+<tr>
+<td>클라이언트 판별</td>
+<td>"Analyst 전용 기능이면 맨 앞에서 클라이언트를 판별하고 Web Player면 안내만 남겨 줘"</td>
+</tr>
+<tr>
+<td>반환값 <code>None</code></td>
+<td>"반환값이 있는 호출은 <code>None</code> 인지 확인하는 코드를 넣어 줘"</td>
+</tr>
+<tr>
+<td>멱등성</td>
+<td>"버튼을 두 번 눌러도 결과가 같게 만들어 줘"</td>
+</tr>
+</tbody>
+</table>
+<p>이 네 가지는 <a href="https://github.com/cozytk/spotfire-iron-python-scripts/blob/main/prompts/00-context.md"><code>prompts/00-context.md</code></a>
+에 이미 들어 있습니다. 그 블록을 붙여 넣으면 따로 말할 필요가 없습니다.</p>
 <hr />
 <h2 id="87">8.7 실전 예시 — 나쁜 요청과 좋은 요청</h2>
 <h3 id="_6">나쁜 요청</h3>
@@ -591,6 +624,7 @@ for page in Document.Pages:
 <li><a href="#_4">오류가 났을 때: 메시지를 그대로 되돌려주기</a></li>
 <li><a href="#_5">자주 나오는 실패 유형</a></li>
 <li><a href="#ai">AI가 특히 자주 지어내는 것</a></li>
+<li><a href="#ai_1">AI가 모르는 것 — 요청에 미리 넣어야 하는 것</a></li>
 </ul>
 </li>
 <li><a href="#87">8.7 실전 예시 — 나쁜 요청과 좋은 요청</a><ul>

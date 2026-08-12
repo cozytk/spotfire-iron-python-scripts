@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-교안(content/05~08)의 예제 코드 블록을 scripts/ 폴더의 .py 파일로 추출한다.
+교안(content/09~12)의 예제 코드 블록을 scripts/ 폴더의 .py 파일로 추출한다.
 
 교안 본문과 스크립트 파일이 어긋나지 않도록, 스크립트는 항상 이 도구로 생성한다.
 직접 scripts/*.py 를 수정하지 말고 content/*.md 를 고친 뒤 다시 실행할 것.
@@ -49,6 +49,8 @@ FILENAMES = {
     19: "audit_expressions",
     20: "generate_visuals_from_marking",
     21: "scatter_plot_matrix",
+    22: "script_inventory",
+    23: "environment_report",
 }
 
 HEADING = re.compile(r"^## 예제 (\d+)\.\s*(.+?)\s*$", re.M)

@@ -2,9 +2,16 @@
 
 **문서에 없던 것을 만들어 내거나, 문서 전체를 조사하는** 예제입니다.
 
-진단 예제(18·19)는 읽기 전용이라 완전히 안전하고,
+진단 예제(18·19·22·23)는 읽기 전용이라 완전히 안전하고,
 **위험한 스크립트를 돌리기 전에 현재 상태를 기록해 두는 용도**로 쓰면 좋습니다.
 생성 예제(20·21)는 페이지를 만들고 지우므로 사본에서 시험하세요.
+
+| # | 무엇을 조사하나 | 언제 |
+|---|-----------------|------|
+| 18 | 시각화가 어떤 데이터 테이블을 쓰는지 | 테이블을 교체하기 전 |
+| 19 | 어떤 표현식이 어느 컬럼을 쓰는지 | 컬럼 이름을 바꾸기 전 |
+| 22 | 문서에 스크립트가 몇 개, 무엇이 들어 있는지 | 남의 분석 파일을 넘겨받았을 때 |
+| 23 | 이 환경에서 무엇이 되고 무엇이 안 되는지 | **새 환경에서 제일 먼저** |
 
 ---
 
@@ -571,6 +578,26 @@ Document.Properties["ScriptLog"] = u"컬럼 %d개로 산점도 %d개를 '%s' 페
 | `EndSection()` | 구역 종료 (Begin과 짝을 맞춰야 함) |
 | `page.ApplyLayout(layout)` | 페이지에 적용 |
 
+!!! tip "격자만 필요하면 TileMode 한 줄로 끝납니다"
+    `ApplyLayout` 에는 `TileMode` 를 받는 오버로드도 있습니다.
+    "그냥 바둑판으로 깔아 줘" 라면 `LayoutDefinition` 을 조립할 필요가 없습니다.
+
+    ```python
+    from Spotfire.Dxp.Application.Layout import TileMode
+    page.ApplyLayout(TileMode.Evenly)
+    ```
+
+    | 값 | 배치 |
+    |----|------|
+    | `TileMode.Horizontally` | 가로 공간을 최대한 주며 나열 |
+    | `TileMode.Vertically` | 세로 공간을 최대한 주며 나열 |
+    | `TileMode.Evenly` | 크기를 최대한 균등하게 (격자에 가장 가까움) |
+    | `TileMode.Maximize` | 활성 시각화만 크게, 나머지는 최소로 |
+
+    **`Grid` 라는 값은 없습니다.** 이름이 있을 법한데 없는 대표적인 예입니다
+    → [7.6 참조](07-pitfalls.html). 왼쪽에 텍스트 영역을 고정하는 식의 **비대칭 배치**가
+    필요할 때만 아래의 `LayoutDefinition` 방식을 쓰면 됩니다.
+
 구역을 중첩해서 원하는 격자를 만듭니다.
 
 ```text
@@ -606,4 +633,292 @@ BeginSideBySideSection()          가로 분할
 
 ---
 
-예제 21종은 여기까지입니다. 다음 장에서 **실무 팁과 성능**을 정리합니다.
+## 예제 22. 문서 안의 스크립트 전수 조사
+
+<ul class="meta">
+<li class="badge risk-none">읽기 전용</li>
+<li class="badge hard">기본 기능으로 어려움</li>
+<li class="badge env">Spotfire 12.0 이상</li>
+</ul>
+
+**문제 상황**  
+넘겨받은 분석 파일에 버튼이 열댓 개 있습니다. **어떤 스크립트가 몇 개 들어 있고,
+그 안에 무엇이 하드코딩되어 있는지** 알아야 하는데, 확인하려면 버튼을 하나씩
+편집 모드로 열어 보는 수밖에 없습니다.
+
+**기본 기능으로 어려운 이유**  
+Spotfire UI에는 **문서에 저장된 스크립트 목록을 보여 주는 화면이 없습니다.**
+액션 컨트롤을 하나씩 열어야 하고, 어디에도 연결되지 않은 채 남아 있는 스크립트는
+아예 찾을 방법이 없습니다.
+
+`Document.ScriptManager` 는 **Spotfire 12.0에서 추가된 API**입니다.
+그보다 낮은 버전에서는 이 예제가 동작하지 않습니다.
+
+**스크립트 매개변수**  
+없음.
+
+```python
+# -*- coding: utf-8 -*-
+# 문서에 저장된 모든 스크립트(IronPython/JavaScript)의 목록과 요약을 만든다.
+# 결과를 보려면 텍스트 영역에 문서 속성 "InventoryReport" 를 삽입하세요.
+#
+# 필요 버전: Spotfire 12.0 이상 (Document.ScriptManager)
+
+# 스크립트 안에서 눈여겨봐야 할 흔적들
+SUSPICIOUS = [
+    ("C:/",           u"로컬 경로 (Web Player에서 실패)"),
+    ("C:\\",          u"로컬 경로 (Web Player에서 실패)"),
+    ("MessageBox",    u"Analyst 전용 UI"),
+    ("Windows.Forms", u"Analyst 전용 UI"),
+    ('["Marking"]',   u"마킹 이름 하드코딩 (한국어 UI에서 실패)"),
+    ("CreateDataWriter", u"라이선스에 막힐 수 있음"),
+]
+
+rows = []
+total = 0
+byLanguage = {}
+
+try:
+    scripts = list(Document.ScriptManager.GetScripts())
+except:
+    scripts = None
+
+
+def report(html, summary):
+    # 문서 속성이 아직 없으면 편집 창 출력으로 떨어뜨린다
+    try:
+        Document.Properties["InventoryReport"] = html
+        Document.Properties["ScriptLog"] = summary
+    except:
+        print summary
+        print html
+
+
+if scripts is None:
+    report(u"<p>이 Spotfire 버전에는 ScriptManager API가 없습니다. (12.0 이상 필요)</p>",
+           u"ScriptManager를 사용할 수 없습니다.")
+else:
+    for script in scripts:
+        total += 1
+
+        try:
+            language = script.Language.Language
+        except:
+            language = u"(알 수 없음)"
+        byLanguage[language] = byLanguage.get(language, 0) + 1
+
+        code = script.ScriptCode or u""
+        lineCount = len(code.splitlines())
+
+        try:
+            paramNames = [p.Name for p in script.Parameters]
+        except:
+            paramNames = []
+
+        flags = []
+        for needle, why in SUSPICIOUS:
+            if needle in code and why not in flags:
+                flags.append(why)
+
+        rows.append(u"<tr><td>%s</td><td>%s</td><td>%d</td><td>%s</td><td>%s</td></tr>" % (
+            script.Name,
+            language,
+            lineCount,
+            u", ".join(paramNames) or u"—",
+            u"<br>".join(flags) or u"—",
+        ))
+
+    # 이름이 겹치는 스크립트 찾기 — 실수로 복제된 것을 잡아낸다
+    names = [s.Name for s in scripts]
+    duplicated = sorted(set([n for n in names if names.count(n) > 1]))
+
+    summary = u", ".join(u"%s %d개" % (lang, n) for lang, n in byLanguage.items())
+
+    html = u"""
+<table border="1" cellpadding="4" cellspacing="0">
+<tr><th>스크립트</th><th>언어</th><th>줄 수</th><th>매개변수</th><th>확인 필요</th></tr>
+%s
+</table>
+<p>총 %d개 (%s)</p>
+""" % (u"".join(rows), total, summary)
+
+    if duplicated:
+        html += u"<p><b>이름이 겹치는 스크립트:</b> %s</p>" % u", ".join(duplicated)
+
+    report(html, u"스크립트 %d개를 조사했습니다." % total)
+```
+
+**사용법**
+
+1. 문서 속성 `InventoryReport` 를 만들어 두고(사전 준비 스크립트에 포함되어 있습니다)
+   텍스트 영역에 삽입합니다 — [예제 18](12-examples-create.html)과 같은 방식입니다
+2. 버튼을 눌러 실행하면 스크립트 목록이 표로 나옵니다
+
+**"확인 필요" 열이 알려 주는 것**
+
+| 흔적 | 왜 문제인가 |
+|------|-------------|
+| 로컬 경로 (`C:/`) | Web Player에서 실행하면 실패 → [7.7](07-pitfalls.html) |
+| `MessageBox`, `Windows.Forms` | Analyst 전용. 브라우저에서 실패 |
+| `Markings["Marking"]` | 한국어 UI에서는 이름이 `"마킹"` → [7.1](07-pitfalls.html) |
+| `CreateDataWriter` | 라이선스가 없으면 `None` 반환 → [7.5](07-pitfalls.html) |
+
+!!! note "검증 포인트"
+    - **문서를 변경하지 않습니다.** 안전하게 여러 번 실행해도 됩니다.
+    - `TryGetScript(name)` 는 `(찾음여부, 정의)` **튜플**을 반환합니다.
+      `clr.Reference` 로 out 매개변수를 흉내 내지 마세요 → [5.8 참조](05-dotnet-interop.html#58-api)
+    - `ScriptDefinition` 은 불변입니다. 코드를 고치려면 `WithScriptCode(...)` 로 복사본을
+      만들어 `ScriptManager.Replace(old, new)` 를 부릅니다.
+    - **스크립트를 지우거나 교체하는 것은 위험합니다.** 액션 컨트롤에 연결된 스크립트를
+      `Remove` 하면 그 버튼을 손으로 다시 설정해야 합니다. 이 예제는 읽기만 합니다.
+    - 이 예제는 이 교안의 검증 환경(14.x)에서 **실행해 보지 않았습니다.**
+      근거는 Spotfire 15.0 API 레퍼런스의 `ScriptManager` · `ScriptDefinition` 문서와
+      [Introducing the Spotfire Script Management APIs](https://community.spotfire.com/articles/spotfire/introducing-the-spotfire-script-management-apis/)
+      입니다. `GetScripts()` 호출을 `try` 로 감싼 것은 그래서입니다.
+
+---
+
+## 예제 23. 실행 환경 진단 리포트
+
+<ul class="meta">
+<li class="badge risk-none">읽기 전용</li>
+<li class="badge">자주 묻는 질문</li>
+</ul>
+
+**문제 상황**  
+남의 스크립트를 받아 왔는데 **실행하기 전에** 알고 싶은 것이 있습니다.
+지금 이 환경이 Analyst인가 Web Player인가, 마킹의 실제 이름은 무엇인가,
+내보내기가 라이선스에 막혀 있는가.
+
+**기본 기능으로 어려운 이유**  
+이 정보는 UI 여기저기에 흩어져 있고, 일부(내보내기 라이선스, 마킹의 정확한 이름)는
+**실제로 코드를 돌려 보기 전에는 알 수 없습니다.**
+
+7장에서 다룬 함정들이 **"내 환경에서는 어느 것이 해당되는지"** 를 한 번에 답해 주는
+스크립트입니다. **새 환경에 이 교안의 예제를 적용하기 전에 이것부터 실행하세요.**
+
+**스크립트 매개변수**  
+없음.
+
+```python
+# -*- coding: utf-8 -*-
+# 이 환경에서 무엇이 되고 무엇이 안 되는지 한 번에 진단한다.
+# 문서를 전혀 변경하지 않는다.
+#
+# 결과를 보려면 텍스트 영역에 문서 속성 "InventoryReport" 를 삽입하세요.
+
+from Spotfire.Dxp.Data.Export import DataWriterTypeIdentifiers
+
+lines = []
+
+
+def add(label, value):
+    lines.append(u"<tr><td>%s</td><td>%s</td></tr>" % (label, value))
+
+
+# 1) 클라이언트 종류 — 파일 쓰기·MessageBox 가능 여부를 가른다
+appType = Application.GetType().ToString()
+isAnalyst = "RichAnalysisApplication" in appType
+add(u"클라이언트", u"%s<br><code>%s</code>" % (
+    u"Analyst (데스크톱)" if isAnalyst else u"Web Player (브라우저)", appType))
+add(u"로컬 파일 쓰기", u"가능" if isAnalyst else u"<b>불가</b>")
+add(u"MessageBox / 파일 대화상자", u"가능" if isAnalyst else u"<b>불가</b>")
+
+# 2) 마킹 이름 — 하드코딩된 "Marking" 이 통하는지
+markingNames = [m.Name for m in Document.Data.Markings]
+add(u"마킹 이름", u", ".join(markingNames) or u"(없음)")
+add(u'`Markings["Marking"]` 사용 가능', u"예" if "Marking" in markingNames else u"<b>아니오</b>")
+
+# 3) 필터링 스킴 이름
+schemeNames = []
+for scheme in Document.FilteringSchemes:
+    try:
+        schemeNames.append(scheme.FilteringSelectionReference.Name)
+    except:
+        schemeNames.append(u"(이름 없음)")
+add(u"필터링 스킴", u"%d개 — %s" % (len(schemeNames), u", ".join(schemeNames)))
+
+# 4) 내보내기 라이선스 — CreateDataWriter 가 None 을 돌려주는지 확인만 한다
+#    writer 객체를 만들 뿐 파일을 쓰지 않으므로 안전하다.
+DOTNET_BASE = ["Equals", "GetHashCode", "GetType", "MemberwiseClone",
+               "ReferenceEquals", "ToString"]
+
+writable, blocked = [], []
+for name in dir(DataWriterTypeIdentifiers):
+    if name.startswith("_") or name in DOTNET_BASE:
+        continue
+    try:
+        identifier = getattr(DataWriterTypeIdentifiers, name)
+        writer = Document.Data.CreateDataWriter(identifier)
+        (writable if writer is not None else blocked).append(name)
+    except:
+        blocked.append(name)
+add(u"내보내기 가능한 형식", u", ".join(writable) or u"<b>없음 (라이선스 확인 필요)</b>")
+
+# 5) 문서 규모와 구성
+typeCounts = {}
+for page in Document.Pages:
+    for visual in page.Visuals:
+        key = visual.TypeId.Name
+        typeCounts[key] = typeCounts.get(key, 0) + 1
+add(u"페이지 / 시각화", u"%d개 / %d개" % (
+    Document.Pages.Count, sum(typeCounts.values())))
+add(u"시각화 구성", u", ".join(
+    u"%s %d" % (k, v) for k, v in sorted(typeCounts.items())) or u"(없음)")
+
+# 6) 데이터 테이블과 새로고침 가능 여부
+tableRows = []
+for table in Document.Data.Tables:
+    tableRows.append(u"%s (%d행, 새로고침 %s)" % (
+        table.Name, table.RowCount, u"가능" if table.IsRefreshable else u"불가"))
+add(u"데이터 테이블", u"<br>".join(tableRows) or u"(없음)")
+
+# 7) 교안 예제가 쓰는 문서 속성이 준비되어 있는지
+NEEDED = ["ScriptLog", "InventoryReport", "LimitExpression", "SelectedMeasure"]
+existing = []
+for name in NEEDED:
+    try:
+        Document.Properties[name]
+        existing.append(name)
+    except:
+        pass
+missing = [n for n in NEEDED if n not in existing]
+add(u"예제용 문서 속성",
+    (u"없음: %s" % u", ".join(missing)) if missing else u"모두 준비됨")
+
+report = (u'<table border="1" cellpadding="4" cellspacing="0">'
+          u"<tr><th>항목</th><th>결과</th></tr>%s</table>" % u"".join(lines))
+summary = u"환경 진단 완료 — %s" % (u"Analyst" if isAnalyst else u"Web Player")
+
+# 결과를 담을 문서 속성 자체가 없을 수도 있다. 그게 진단 대상 중 하나이므로
+# 여기서 실패하면 안 된다. 없으면 편집 창 출력으로 떨어뜨린다.
+try:
+    Document.Properties["InventoryReport"] = report
+    Document.Properties["ScriptLog"] = summary
+except:
+    print summary
+    print report
+```
+
+**읽는 법**
+
+| 결과 | 무엇을 뜻하나 |
+|------|---------------|
+| 클라이언트가 Web Player | 예제 14·15는 쓸 수 없습니다. 나머지는 전부 동작합니다 |
+| `Markings["Marking"]` 사용 불가 | 인터넷에서 복사한 스크립트 대부분이 그대로는 실패합니다 → [7.1](07-pitfalls.html) |
+| 내보내기 가능한 형식 없음 | `CreateDataWriter` 방식을 포기하고 `ExportText` 를 쓰세요 → [예제 15](11-examples-data.html) |
+| 예제용 문서 속성 없음 | [9장 맨 앞의 사전 준비 스크립트](09-examples-visuals.html)를 먼저 실행하세요 |
+
+!!! note "검증 포인트"
+    - **문서를 전혀 변경하지 않습니다.** 값을 읽기만 하고, 쓰는 것은
+      결과를 담을 문서 속성 두 개뿐입니다.
+    - `CreateDataWriter` 는 **writer 객체를 만들 뿐 파일을 쓰지 않습니다.**
+      그래서 이 진단은 안전합니다 → [7.5 참조](07-pitfalls.html)
+    - 문서 속성 존재 확인에 `Document.Properties[name]` 접근을 `try` 로 감쌌습니다.
+      없는 속성을 읽으면 예외가 나기 때문입니다.
+    - 이 예제는 [7장](07-pitfalls.html)의 함정들을 코드로 옮긴 것입니다.
+      각 항목이 어느 절에 대응하는지는 위 표에 링크해 두었습니다.
+
+---
+
+예제 23종은 여기까지입니다. 다음 장에서 **실무 팁과 성능**을 정리합니다.

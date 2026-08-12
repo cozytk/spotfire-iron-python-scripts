@@ -53,7 +53,7 @@
 <p class="admonition-title">이 장은 환경을 가장 많이 탑니다</p>
 <p>파일 내보내기는 <strong>Analyst 데스크톱 전용</strong>이고, 일부는 <strong>라이선스</strong>에 막힙니다.
 실행했는데 안 된다면 코드가 아니라 환경 문제일 수 있습니다 →
-<a href="07-pitfalls.html">7.6 참조</a></p>
+<a href="07-pitfalls.html">7.7 참조</a></p>
 </div>
 <hr />
 <h2 id="14-png">예제 14. 모든 페이지의 시각화를 PNG로 일괄 내보내기</h2>
@@ -104,6 +104,7 @@ Spotfire의 이미지 내보내기는 <strong>한 번에 하나씩</strong>입�
 
 <span class="n">WIDTH</span><span class="p">,</span> <span class="n">HEIGHT</span> <span class="o">=</span> <span class="mi">1400</span><span class="p">,</span> <span class="mi">900</span>
 
+
 <span class="c1"># 파일명에 쓸 수 없는 문자 제거</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">safe_name</span><span class="p">(</span><span class="n">text</span><span class="p">):</span>
     <span class="n">result</span> <span class="o">=</span> <span class="p">[]</span>
@@ -111,60 +112,187 @@ Spotfire의 이미지 내보내기는 <strong>한 번에 하나씩</strong>입�
         <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ch</span> <span class="k">if</span> <span class="n">ch</span> <span class="ow">not</span> <span class="ow">in</span> <span class="sa">u</span><span class="s1">&#39;</span><span class="se">\\</span><span class="s1">/:*?&quot;&lt;&gt;|</span><span class="se">\r\n\t</span><span class="s1">&#39;</span> <span class="k">else</span> <span class="sa">u</span><span class="s2">&quot;_&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="sa">u</span><span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">result</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()[:</span><span class="mi">80</span><span class="p">]</span> <span class="ow">or</span> <span class="sa">u</span><span class="s2">&quot;untitled&quot;</span>
 
-<span class="n">stamp</span> <span class="o">=</span> <span class="n">DateTime</span><span class="o">.</span><span class="n">Now</span><span class="o">.</span><span class="n">ToString</span><span class="p">(</span><span class="s2">&quot;yyyyMMdd_HHmmss&quot;</span><span class="p">)</span>
-<span class="n">folder</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">Combine</span><span class="p">(</span><span class="n">outDir</span><span class="p">,</span> <span class="s2">&quot;spotfire_&quot;</span> <span class="o">+</span> <span class="n">stamp</span><span class="p">)</span>
-<span class="n">Directory</span><span class="o">.</span><span class="n">CreateDirectory</span><span class="p">(</span><span class="n">folder</span><span class="p">)</span>
 
-<span class="n">saved</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">failed</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="c1"># Web Player에서는 로컬 폴더에 쓸 수 없다.</span>
+<span class="c1"># 알 수 없는 .NET 예외 대신 사람이 읽을 수 있는 안내를 남긴다. → 7.7 참조</span>
+<span class="n">isAnalyst</span> <span class="o">=</span> <span class="s2">&quot;RichAnalysisApplication&quot;</span> <span class="ow">in</span> <span class="n">Application</span><span class="o">.</span><span class="n">GetType</span><span class="p">()</span><span class="o">.</span><span class="n">ToString</span><span class="p">()</span>
 
-<span class="k">for</span> <span class="n">pageIndex</span><span class="p">,</span> <span class="n">page</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">Document</span><span class="o">.</span><span class="n">Pages</span><span class="p">):</span>
-    <span class="k">for</span> <span class="n">vizIndex</span><span class="p">,</span> <span class="n">visual</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">page</span><span class="o">.</span><span class="n">Visuals</span><span class="p">):</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">vc</span> <span class="o">=</span> <span class="n">visual</span><span class="o">.</span><span class="n">As</span><span class="p">[</span><span class="n">VisualContent</span><span class="p">]()</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">isAnalyst</span><span class="p">:</span>
+    <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="sa">u</span><span class="s2">&quot;이미지 내보내기는 Spotfire Analyst(데스크톱)에서만 동작합니다.&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">stamp</span> <span class="o">=</span> <span class="n">DateTime</span><span class="o">.</span><span class="n">Now</span><span class="o">.</span><span class="n">ToString</span><span class="p">(</span><span class="s2">&quot;yyyyMMdd_HHmmss&quot;</span><span class="p">)</span>
+    <span class="n">folder</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">Combine</span><span class="p">(</span><span class="n">outDir</span><span class="p">,</span> <span class="s2">&quot;spotfire_&quot;</span> <span class="o">+</span> <span class="n">stamp</span><span class="p">)</span>
+    <span class="n">Directory</span><span class="o">.</span><span class="n">CreateDirectory</span><span class="p">(</span><span class="n">folder</span><span class="p">)</span>
 
-            <span class="n">bitmap</span> <span class="o">=</span> <span class="n">Bitmap</span><span class="p">(</span><span class="n">WIDTH</span><span class="p">,</span> <span class="n">HEIGHT</span><span class="p">)</span>
-            <span class="n">graphics</span> <span class="o">=</span> <span class="n">Graphics</span><span class="o">.</span><span class="n">FromImage</span><span class="p">(</span><span class="n">bitmap</span><span class="p">)</span>
-            <span class="n">vc</span><span class="o">.</span><span class="n">Render</span><span class="p">(</span><span class="n">graphics</span><span class="p">,</span> <span class="n">Rectangle</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">WIDTH</span><span class="p">,</span> <span class="n">HEIGHT</span><span class="p">))</span>
+    <span class="n">saved</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">failed</span> <span class="o">=</span> <span class="p">[]</span>
 
-            <span class="n">fileName</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;</span><span class="si">%02d</span><span class="s2">_</span><span class="si">%s</span><span class="s2">__</span><span class="si">%02d</span><span class="s2">_</span><span class="si">%s</span><span class="s2">.png&quot;</span> <span class="o">%</span> <span class="p">(</span>
-                <span class="n">pageIndex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">safe_name</span><span class="p">(</span><span class="n">page</span><span class="o">.</span><span class="n">Title</span><span class="p">),</span>
-                <span class="n">vizIndex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">safe_name</span><span class="p">(</span><span class="n">visual</span><span class="o">.</span><span class="n">Title</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">pageIndex</span><span class="p">,</span> <span class="n">page</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">Document</span><span class="o">.</span><span class="n">Pages</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">vizIndex</span><span class="p">,</span> <span class="n">visual</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">page</span><span class="o">.</span><span class="n">Visuals</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">vc</span> <span class="o">=</span> <span class="n">visual</span><span class="o">.</span><span class="n">As</span><span class="p">[</span><span class="n">VisualContent</span><span class="p">]()</span>
 
-            <span class="n">bitmap</span><span class="o">.</span><span class="n">Save</span><span class="p">(</span><span class="n">Path</span><span class="o">.</span><span class="n">Combine</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="n">fileName</span><span class="p">))</span>
+                <span class="n">bitmap</span> <span class="o">=</span> <span class="n">Bitmap</span><span class="p">(</span><span class="n">WIDTH</span><span class="p">,</span> <span class="n">HEIGHT</span><span class="p">)</span>
+                <span class="n">graphics</span> <span class="o">=</span> <span class="n">Graphics</span><span class="o">.</span><span class="n">FromImage</span><span class="p">(</span><span class="n">bitmap</span><span class="p">)</span>
+                <span class="n">vc</span><span class="o">.</span><span class="n">Render</span><span class="p">(</span><span class="n">graphics</span><span class="p">,</span> <span class="n">Rectangle</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">WIDTH</span><span class="p">,</span> <span class="n">HEIGHT</span><span class="p">))</span>
 
-            <span class="n">graphics</span><span class="o">.</span><span class="n">Dispose</span><span class="p">()</span>
-            <span class="n">bitmap</span><span class="o">.</span><span class="n">Dispose</span><span class="p">()</span>
-            <span class="n">saved</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="k">except</span><span class="p">:</span>
-            <span class="n">failed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> / </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">page</span><span class="o">.</span><span class="n">Title</span><span class="p">,</span> <span class="n">visual</span><span class="o">.</span><span class="n">Title</span><span class="p">))</span>
+                <span class="n">fileName</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;</span><span class="si">%02d</span><span class="s2">_</span><span class="si">%s</span><span class="s2">__</span><span class="si">%02d</span><span class="s2">_</span><span class="si">%s</span><span class="s2">.png&quot;</span> <span class="o">%</span> <span class="p">(</span>
+                    <span class="n">pageIndex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">safe_name</span><span class="p">(</span><span class="n">page</span><span class="o">.</span><span class="n">Title</span><span class="p">),</span>
+                    <span class="n">vizIndex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">safe_name</span><span class="p">(</span><span class="n">visual</span><span class="o">.</span><span class="n">Title</span><span class="p">))</span>
 
-<span class="n">msg</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;</span><span class="si">%d</span><span class="s2">개 이미지를 저장했습니다: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">saved</span><span class="p">,</span> <span class="n">folder</span><span class="p">)</span>
-<span class="k">if</span> <span class="n">failed</span><span class="p">:</span>
-    <span class="n">msg</span> <span class="o">+=</span> <span class="sa">u</span><span class="s2">&quot; (건너뜀 </span><span class="si">%d</span><span class="s2">개: </span><span class="si">%s</span><span class="s2">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">failed</span><span class="p">),</span> <span class="sa">u</span><span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">failed</span><span class="p">))</span>
+                <span class="n">bitmap</span><span class="o">.</span><span class="n">Save</span><span class="p">(</span><span class="n">Path</span><span class="o">.</span><span class="n">Combine</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="n">fileName</span><span class="p">))</span>
 
-<span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">msg</span>
+                <span class="n">graphics</span><span class="o">.</span><span class="n">Dispose</span><span class="p">()</span>
+                <span class="n">bitmap</span><span class="o">.</span><span class="n">Dispose</span><span class="p">()</span>
+                <span class="n">saved</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="c1"># 텍스트 영역·Mod 시각화는 여기로 빠진다 (아래 &quot;왜 실패하나&quot; 참조)</span>
+                <span class="n">failed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> / </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">page</span><span class="o">.</span><span class="n">Title</span><span class="p">,</span> <span class="n">visual</span><span class="o">.</span><span class="n">Title</span><span class="p">))</span>
+
+    <span class="n">msg</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;</span><span class="si">%d</span><span class="s2">개 이미지를 저장했습니다: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">saved</span><span class="p">,</span> <span class="n">folder</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">failed</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">+=</span> <span class="sa">u</span><span class="s2">&quot; (건너뜀 </span><span class="si">%d</span><span class="s2">개: </span><span class="si">%s</span><span class="s2">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">failed</span><span class="p">),</span> <span class="sa">u</span><span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">failed</span><span class="p">))</span>
+
+    <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">msg</span>
 </code></pre></div>
 
 <div class="admonition danger">
 <p class="admonition-title">검증 포인트 — Analyst 전용입니다</p>
 <ul>
-<li><strong>Web Player에서는 동작하지 않습니다.</strong> 로컬 파일 시스템에 쓰기 때문입니다.</li>
-<li><code>VisualContent.Render(Graphics, Rectangle)</code> 방식은 <strong>동작을 확인했습니다.</strong>(14.x)</li>
-<li><strong>텍스트 영역은 실패합니다.</strong> 실측 오류 메시지는 다음과 같습니다.</li>
+<li><strong>Web Player에서는 동작하지 않습니다.</strong> 로컬 파일 시스템에 쓰기 때문입니다.
+  맨 앞의 클라이언트 판별로 미리 걸러 냅니다 → <a href="07-pitfalls.html">7.7 참조</a></li>
+<li><code>VisualContent.Render(Graphics, Rectangle)</code> 방식은 <strong>동작을 확인했습니다.</strong>(14.x)
+  다만 <code>Visual.Render</code> 는 공식 API 문서에서 <strong>폐기 예정(Obsolete)</strong> 으로 표시되어
+  있습니다. 지금은 동작하지만, 장기적으로는 아래 <code>RenderAsync</code> 쪽이 정식 경로입니다.</li>
+<li><strong><code>RenderSync</code> 는 존재하지 않습니다.</strong> 실측 결과 <code>Visual</code> 객체에는
+  <code>RenderAsync</code> 만 있습니다(<code>hasattr(visual, "RenderSync")</code> → <code>False</code>).</li>
+<li>폴더가 없으면 <code>Directory.CreateDirectory</code>가 만들어 줍니다. 쓰기 권한은 확인하세요.</li>
 </ul>
-<p><code>text
-  Attempt take snapshot on application thread in state 'Executing'.</code></p>
-<p>위 코드처럼 <code>try/except</code> 로 감싸고 실패 목록을 보고하는 구조가 필요한 이유입니다.
-  Mod 시각화도 같은 이유로 실패할 수 있습니다.
-- <strong><code>RenderSync</code> 는 존재하지 않습니다.</strong> 실측 결과 <code>Visual</code> 객체에는
-  <code>RenderAsync</code> 만 있습니다(<code>hasattr(visual, "RenderSync")</code> → <code>False</code>,
-  <code>RenderAsync</code> → <code>True</code>). 현재 테마를 적용한 이미지가 필요하면 <code>RenderAsync</code> 쪽을
-  알아보세요. 위 방식으로 충분하면 굳이 바꿀 필요는 없습니다.
-- 해상도를 키우면 텍스트가 상대적으로 작아집니다. 보고서용이면 <code>WIDTH/HEIGHT</code> 비율을
-  실제 시각화 배치 비율과 비슷하게 맞추세요.
-- 폴더가 없으면 <code>Directory.CreateDirectory</code>가 만들어 줍니다. 쓰기 권한은 확인하세요.</p>
 </div>
+<h3 id="_1">왜 텍스트 영역에서 실패하나 — 그리고 어떻게 살리나</h3>
+<p>실측 오류 메시지는 이것이었습니다.</p>
+<div class="codehilite"><pre><span></span><code>System.InvalidOperationException:
+Attempt take snapshot on application thread in state &#39;Executing&#39;.
+</code></pre></div>
+
+<p>원인은 시각화 종류가 아니라 <strong>스크립트가 트랜잭션 안에서 돌고 있다는 것</strong>입니다.
+렌더링은 문서의 정지 화면(snapshot)을 필요로 하는데, 트랜잭션 실행 중인 스레드에서는
+스냅샷을 뜰 수 없습니다 → <a href="07-pitfalls.html">7.4 참조</a></p>
+<p>공식 해법은 <strong>작업을 함수로 감싸 애플리케이션 스레드에 넘기는 것</strong>입니다.
+이때 함수 안에서 바깥 변수를 참조하면 안 되고, <strong>필요한 것을 전부 기본 인자로 받아야</strong>
+합니다. 스레드가 바뀐 뒤에도 값이 살아 있어야 하기 때문입니다.</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="c1"># 트랜잭션 밖(애플리케이션 스레드)에서 렌더링해 텍스트 영역까지 내보낸다.</span>
+<span class="c1">#</span>
+<span class="c1"># 매개변수:</span>
+<span class="c1">#   visual (Visualization) 내보낼 시각화</span>
+<span class="c1">#   outDir (String)        저장 폴더</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">clr</span>
+<span class="n">clr</span><span class="o">.</span><span class="n">AddReference</span><span class="p">(</span><span class="s2">&quot;System.Drawing&quot;</span><span class="p">)</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">System.Drawing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Bitmap</span><span class="p">,</span> <span class="n">Graphics</span><span class="p">,</span> <span class="n">Rectangle</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">System.IO</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Framework.ApplicationModel</span><span class="w"> </span><span class="kn">import</span> <span class="n">ApplicationThread</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">GetService</span><span class="p">(</span><span class="n">ApplicationThread</span><span class="p">)</span>
+<span class="n">image</span> <span class="o">=</span> <span class="n">Bitmap</span><span class="p">(</span><span class="mi">1400</span><span class="p">,</span> <span class="mi">900</span><span class="p">)</span>
+<span class="n">target</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">Combine</span><span class="p">(</span><span class="n">outDir</span><span class="p">,</span> <span class="s2">&quot;visual.png&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="n">visual</span><span class="o">=</span><span class="n">visual</span><span class="p">,</span> <span class="n">document</span><span class="o">=</span><span class="n">Document</span><span class="p">,</span> <span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span>
+           <span class="n">Graphics</span><span class="o">=</span><span class="n">Graphics</span><span class="p">,</span> <span class="n">Rectangle</span><span class="o">=</span><span class="n">Rectangle</span><span class="p">):</span>
+    <span class="c1"># 바깥 변수를 직접 쓰지 않는다. 전부 인자로 받은 것만 쓴다.</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">gfx</span> <span class="o">=</span> <span class="n">Graphics</span><span class="o">.</span><span class="n">FromImage</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+        <span class="n">rect</span> <span class="o">=</span> <span class="n">Rectangle</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">Width</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">Height</span><span class="p">)</span>
+        <span class="c1"># 페이지 배치상의 실제 비율에 맞춘 영역을 얻는다</span>
+        <span class="n">bounds</span> <span class="o">=</span> <span class="n">document</span><span class="o">.</span><span class="n">ActivePageReference</span><span class="o">.</span><span class="n">GetVisualBounds</span><span class="p">(</span><span class="n">visual</span><span class="p">,</span> <span class="n">rect</span><span class="p">)</span>
+        <span class="n">visual</span><span class="o">.</span><span class="n">Render</span><span class="p">(</span><span class="n">gfx</span><span class="p">,</span> <span class="n">bounds</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="n">image</span><span class="o">.</span><span class="n">Save</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+
+
+<span class="n">app</span><span class="o">.</span><span class="n">InvokeAsynchronously</span><span class="p">(</span><span class="n">render</span><span class="p">)</span>
+</code></pre></div>
+
+<p><code>Page.GetVisualBounds(visual, rect)</code> 는 <strong>페이지에서 그 시각화가 차지하는 비율</strong>에 맞는
+사각형을 돌려줍니다. 고정 크기로 그릴 때 생기는 "글자만 작아 보이는" 문제를 줄여 줍니다.</p>
+<div class="admonition warning">
+<p class="admonition-title">이 변형은 이 교안의 검증 환경에서 실행해 보지 않았습니다</p>
+<p>출처는 Spotfire 공식 문서
+(<a href="https://community.spotfire.com/s/article/how-troubleshoot-exception-thrown-when-executing-ironpython-script-error-attempt-take-snapshot">Attempt take snapshot 오류 해결</a>)
+입니다. <code>InvokeAsynchronously</code> 는 이름 그대로 <strong>비동기</strong>라, 스크립트가 끝난 뒤에
+파일이 만들어집니다. "저장했습니다" 메시지를 스크립트 끝에서 쓰면 거짓말이 됩니다.</p>
+</div>
+<h3 id="renderasync-spotfire-15x">참고 — RenderAsync (Spotfire 15.x 정식 경로)</h3>
+<p><code>Visual.Render</code> 를 대체하는 API입니다. PNG 바이트를 바로 스트림에 씁니다.</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Visuals</span><span class="w"> </span><span class="kn">import</span> <span class="n">RenderResultSettings</span><span class="p">,</span> <span class="n">VisualRenderSettings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">System.Drawing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Size</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">System.Threading</span><span class="w"> </span><span class="kn">import</span> <span class="n">CancellationToken</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">System.IO</span><span class="w"> </span><span class="kn">import</span> <span class="n">FileStream</span><span class="p">,</span> <span class="n">FileMode</span>
+
+<span class="n">resultSettings</span> <span class="o">=</span> <span class="n">RenderResultSettings</span><span class="p">(</span><span class="n">Size</span><span class="p">(</span><span class="mi">1400</span><span class="p">,</span> <span class="mi">900</span><span class="p">))</span>
+
+<span class="n">visualSettings</span> <span class="o">=</span> <span class="n">VisualRenderSettings</span><span class="p">()</span>
+<span class="n">visualSettings</span><span class="o">.</span><span class="n">ShowTitle</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="n">visualSettings</span><span class="o">.</span><span class="n">ShowLegend</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="n">visualSettings</span><span class="o">.</span><span class="n">ShowAxisLabels</span> <span class="o">=</span> <span class="kc">True</span>
+
+<span class="c1"># CancellationToken.None 은 파이썬 문법 오류다 → 기본 생성자를 쓴다 (5.5 참조)</span>
+<span class="n">task</span> <span class="o">=</span> <span class="n">visual</span><span class="o">.</span><span class="n">RenderAsync</span><span class="p">(</span><span class="n">resultSettings</span><span class="p">,</span> <span class="n">visualSettings</span><span class="p">,</span> <span class="n">CancellationToken</span><span class="p">())</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">Result</span>                     <span class="c1"># 완료까지 대기</span>
+
+<span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">IsValid</span><span class="p">:</span>
+    <span class="n">stream</span> <span class="o">=</span> <span class="n">FileStream</span><span class="p">(</span><span class="s2">&quot;C:/temp/visual.png&quot;</span><span class="p">,</span> <span class="n">FileMode</span><span class="o">.</span><span class="n">Create</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">result</span><span class="o">.</span><span class="n">WriteTo</span><span class="p">(</span><span class="n">stream</span><span class="p">)</span>           <span class="c1"># AsImage() 는 폐기 예정</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">stream</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
+</code></pre></div>
+
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>상태</th>
+<th>비고</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Visual.Render(gfx, rect)</code></td>
+<td><strong>폐기 예정</strong></td>
+<td>이 교안 검증 환경에서 동작 확인</td>
+</tr>
+<tr>
+<td><code>Visual.RenderAsync(...)</code></td>
+<td>현행</td>
+<td><code>Task&lt;RenderResult&gt;</code> 반환 → <code>.Result</code> 로 대기</td>
+</tr>
+<tr>
+<td><code>RenderResult.WriteTo(stream)</code></td>
+<td>현행</td>
+<td>PNG 바이트를 스트림에 기록</td>
+</tr>
+<tr>
+<td><code>RenderResult.AsImage()</code></td>
+<td><strong>폐기 예정</strong></td>
+<td></td>
+</tr>
+<tr>
+<td><code>Page.RenderAsync(...)</code></td>
+<td>현행</td>
+<td><strong>페이지 하나를 통째로</strong> 이미지로. 시각화별로 도는 대신</td>
+</tr>
+</tbody>
+</table>
+<p>"보고서에 페이지 스크린샷 한 장"이 필요한 경우라면 시각화를 하나씩 도는 대신
+<code>Page.RenderAsync</code> 쪽이 훨씬 간단합니다. 두 번째 인자만 <code>PageRenderSettings</code> 로 바뀝니다.</p>
+<p><strong>이 절의 코드도 검증 환경에서 실행해 보지 않았습니다.</strong> 공식 API 문서의 시그니처를
+그대로 옮긴 것이니, 쓰기 전에 <a href="07-pitfalls.html">7.9의 확인 방법</a>으로 한 번 걸러 보세요.</p>
 <hr />
 <h2 id="15">예제 15. 여러 데이터 테이블을 한 번에 파일로 내보내기</h2>
 <ul class="meta">
@@ -233,7 +361,15 @@ The writer with typeidentifier Spreadsheet CSV UTF8 data writer cannot write fro
 
 <span class="n">plot</span> <span class="o">=</span> <span class="n">vTable</span><span class="o">.</span><span class="n">As</span><span class="p">[</span><span class="n">TablePlot</span><span class="p">]()</span>
 
-<span class="k">if</span> <span class="ow">not</span> <span class="n">plot</span><span class="o">.</span><span class="n">ExportDataEnabled</span><span class="p">:</span>
+<span class="c1"># 실행 전 두 가지를 확인한다 → 7.7 참조</span>
+<span class="c1">#   1) 지금 Analyst인가 (Web Player는 로컬 경로에 못 쓴다)</span>
+<span class="c1">#   2) 이 시각화에서 내보내기가 켜져 있나</span>
+<span class="n">isAnalyst</span> <span class="o">=</span> <span class="s2">&quot;RichAnalysisApplication&quot;</span> <span class="ow">in</span> <span class="n">Application</span><span class="o">.</span><span class="n">GetType</span><span class="p">()</span><span class="o">.</span><span class="n">ToString</span><span class="p">()</span>
+
+<span class="k">if</span> <span class="ow">not</span> <span class="n">isAnalyst</span><span class="p">:</span>
+    <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="sa">u</span><span class="s2">&quot;파일 내보내기는 Spotfire Analyst(데스크톱)에서만 동작합니다.&quot;</span><span class="p">)</span>
+<span class="k">elif</span> <span class="ow">not</span> <span class="n">plot</span><span class="o">.</span><span class="n">ExportDataEnabled</span><span class="p">:</span>
     <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;이 시각화는 데이터 내보내기가 비활성화되어 있습니다.&quot;</span>
 <span class="k">else</span><span class="p">:</span>
     <span class="c1"># 한글이 있으면 UTF-8 로 명시한다</span>
@@ -280,7 +416,7 @@ The writer with typeidentifier Spreadsheet CSV UTF8 data writer cannot write fro
     <span class="n">writer</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
 </code></pre></div>
 
-<h3 id="_1">여러 표를 한 번에</h3>
+<h3 id="_2">여러 표를 한 번에</h3>
 <p>원래 이 예제의 목적(일괄 내보내기)은 이렇게 달성합니다.</p>
 <div class="codehilite"><pre><span></span><code><span class="c1"># -*- coding: utf-8 -*-</span>
 <span class="c1"># 모든 페이지의 모든 표 시각화를 각각 파일로 내보낸다.</span>
@@ -443,7 +579,7 @@ Spotfire UI에는 "마킹된 행을 새 데이터 테이블로 저장" 기능이
         <span class="n">snapshotName</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">markedRows</span><span class="o">.</span><span class="n">Count</span><span class="p">)</span>
 </code></pre></div>
 
-<h3 id="_2">변형: 현재 필터를 통과한 행만</h3>
+<h3 id="_3">변형: 현재 필터를 통과한 행만</h3>
 <p>마킹 대신 <strong>필터링</strong>을 넘기면 그대로 필터 결과 스냅샷이 됩니다. 코드는 한 줄만 다릅니다.</p>
 <div class="codehilite"><pre><span></span><code><span class="c1"># -*- coding: utf-8 -*-</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Data.Import</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataTableDataSource</span>
@@ -475,7 +611,7 @@ Spotfire UI에는 "마킹된 행을 새 데이터 테이블로 저장" 기능이
 </tr>
 </tbody>
 </table>
-<h3 id="_3">활용</h3>
+<h3 id="_4">활용</h3>
 <ul>
 <li><strong>What-if 비교</strong>: 조건을 바꿔 가며 마킹 → 스냅샷을 여러 개 만들어 나란히 비교</li>
 <li><strong>검토 목록 관리</strong>: 이상치를 마킹해 스냅샷으로 저장 → 그 테이블로만 표를 만들어 검토</li>
@@ -503,7 +639,7 @@ Spotfire UI에는 "마킹된 행을 새 데이터 테이블로 저장" 기능이
 <p class="admonition-title">예전에 널리 쓰이던 방법과의 차이</p>
 <p>커뮤니티에는 <strong>writer로 메모리에 STDF를 쓴 뒤 다시 읽어들이는</strong> 방식이 많이 돌아다닙니다.</p>
 <p>```python</p>
-<h1 id="_4">흔히 보이는 옛 방식 — 이 환경에서는 동작하지 않습니다</h1>
+<h1 id="_5">흔히 보이는 옛 방식 — 이 환경에서는 동작하지 않습니다</h1>
 <p>writer = Document.Data.CreateDataWriter(DataWriterTypeIdentifiers.StdfDataWriter)
 writer.Write(stream, table, markedRows, columnNames)
 dataSource = StdfDataSource(stream)
@@ -567,7 +703,7 @@ dataSource = StdfDataSource(stream)
     <span class="n">ns</span><span class="o">.</span><span class="n">AddInformationNotification</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;데이터 새로고침&quot;</span><span class="p">,</span> <span class="n">summary</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
 </code></pre></div>
 
-<h3 id="_5">변형: 필요한 것만 새로고침</h3>
+<h3 id="_6">변형: 필요한 것만 새로고침</h3>
 <div class="codehilite"><pre><span></span><code><span class="k">for</span> <span class="n">table</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Tables</span><span class="p">:</span>
     <span class="k">if</span> <span class="n">table</span><span class="o">.</span><span class="n">IsRefreshable</span> <span class="ow">and</span> <span class="n">table</span><span class="o">.</span><span class="n">NeedsRefresh</span><span class="p">:</span>
         <span class="n">table</span><span class="o">.</span><span class="n">Refresh</span><span class="p">()</span>
@@ -587,8 +723,6 @@ dataSource = StdfDataSource(stream)
 </ul>
 </div>
 <hr />
-<p>다음 장은 <strong>UI를 동적으로 제어</strong>하는 예제입니다.</p>
-<hr />
 <p>다음 장은 <strong>문서를 만들어 내고 진단하는</strong> 예제입니다.</p>
     <nav class="pager"><a class="pg prev" href="10-examples-state.html"><span>이전</span>10. 예제 B · 필터·마킹·상태</a><a class="pg next" href="12-examples-create.html"><span>다음</span>12. 예제 D · 생성과 진단</a></nav>
     <footer class="foot">
@@ -598,21 +732,25 @@ dataSource = StdfDataSource(stream)
   </main>
   <aside class="toc-side" aria-label="현재 문서 목차"><div class="toc">
 <ul>
-<li><a href="#14-png">예제 14. 모든 페이지의 시각화를 PNG로 일괄 내보내기</a></li>
+<li><a href="#14-png">예제 14. 모든 페이지의 시각화를 PNG로 일괄 내보내기</a><ul>
+<li><a href="#_1">왜 텍스트 영역에서 실패하나 — 그리고 어떻게 살리나</a></li>
+<li><a href="#renderasync-spotfire-15x">참고 — RenderAsync (Spotfire 15.x 정식 경로)</a></li>
+</ul>
+</li>
 <li><a href="#15">예제 15. 여러 데이터 테이블을 한 번에 파일로 내보내기</a><ul>
 <li><a href="#exporttext">검증된 방법 — ExportText</a></li>
 <li><a href="#csv">CSV가 필요하면 직접 변환</a></li>
-<li><a href="#_1">여러 표를 한 번에</a></li>
+<li><a href="#_2">여러 표를 한 번에</a></li>
 <li><a href="#createdatawriter">참고 — CreateDataWriter 방식 (라이선스가 있는 환경에서)</a></li>
 </ul>
 </li>
 <li><a href="#16">예제 16. 마킹한 행을 새 데이터 테이블로 스냅샷</a><ul>
-<li><a href="#_2">변형: 현재 필터를 통과한 행만</a></li>
-<li><a href="#_3">활용</a></li>
+<li><a href="#_3">변형: 현재 필터를 통과한 행만</a></li>
+<li><a href="#_4">활용</a></li>
 </ul>
 </li>
 <li><a href="#17">예제 17. 모든 데이터 테이블 일괄 새로고침</a><ul>
-<li><a href="#_5">변형: 필요한 것만 새로고침</a></li>
+<li><a href="#_6">변형: 필요한 것만 새로고침</a></li>
 </ul>
 </li>
 </ul>

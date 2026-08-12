@@ -85,6 +85,16 @@
 <h3 id="_2">문서 속성 변경 시 자동 실행</h3>
 <p><code>도구 &gt; 문서 속성 &gt; 속성</code> 에서 속성을 만들고, <strong>스크립트</strong> 탭에서 해당 속성이 바뀔 때 실행할
 스크립트를 등록합니다. 드롭다운/슬라이더 값 변경에 반응하는 대시보드를 만들 때 씁니다.</p>
+<h3 id="kpi">그래픽 표·KPI 차트의 항목 클릭</h3>
+<p><strong>차트 안의 항목을 클릭했을 때</strong> 스크립트를 실행할 수도 있습니다.
+그래픽 표(Graphical Table)나 KPI 차트에서만 되는데, "클릭한 그 값"을 스크립트가
+받을 수 있어서 드릴다운 대시보드를 만들 때 유용합니다.</p>
+<ol>
+<li>그래픽 표 속성 → <strong>축(Axes)</strong> → 컬럼 선택 → <strong>액션(Actions)</strong></li>
+<li><strong>클릭 시 액션 수행</strong> 체크 → <strong>설정(Settings…)</strong></li>
+<li>새 Spotfire 스크립트 추가</li>
+</ol>
+<p>이 자리에서만 쓸 수 있는 <strong><code>Context</code></strong> 객체가 주어집니다 (2.3 참조).</p>
 <h3 id="_3">기타 실행 지점</h3>
 <table>
 <thead>
@@ -106,8 +116,18 @@
 <td>도구 &gt; 개발 도구 &gt; 스크립트</td>
 <td>즉석 실행/시험용. 문서에 저장되지 않음</td>
 </tr>
+<tr>
+<td>텍스트 영역의 JavaScript</td>
+<td>JavaScript API로 액션 컨트롤 버튼을 대신 눌러 간접 실행</td>
+</tr>
 </tbody>
 </table>
+<h3 id="_4">"트랜잭션으로 감싸기" 체크박스</h3>
+<p>스크립트 편집 대화상자에는 스크립트를 <strong>트랜잭션으로 감쌀지</strong> 정하는 체크박스가 있습니다.
+기본값은 켜짐이고, 그 상태에서는 <strong>스크립트의 모든 변경이 끝날 때 한꺼번에 적용</strong>됩니다.
+실행 취소(Undo)가 되는 대신, 중간 진행 상황을 화면에 못 보여 줍니다.</p>
+<p>이 하나로 설명되는 현상이 여러 개라 <a href="07-pitfalls.html">7.4에 따로 정리</a>해 두었습니다.
+<strong>진행 표시줄(<code>ProgressService</code>)을 쓰려면 이 체크를 꺼야 합니다.</strong></p>
 <div class="admonition warning">
 <p class="admonition-title">라이선스가 필요합니다</p>
 <p>스크립트를 <strong>작성</strong>하려면 <code>Author Scripts</code>(스크립트 작성) 라이선스 기능이 필요합니다.
@@ -124,6 +144,7 @@
 <th>객체</th>
 <th>타입</th>
 <th>의미</th>
+<th>어디서</th>
 </tr>
 </thead>
 <tbody>
@@ -131,11 +152,19 @@
 <td><code>Document</code></td>
 <td><code>Spotfire.Dxp.Application.Document</code></td>
 <td>현재 분석 문서. 페이지·데이터·속성의 최상위 진입점</td>
+<td>어디서나</td>
 </tr>
 <tr>
 <td><code>Application</code></td>
 <td><code>AnalysisApplication</code></td>
 <td>애플리케이션 수준. 서비스 조회, 문서 열기/저장</td>
+<td>어디서나</td>
+</tr>
+<tr>
+<td><code>Context</code></td>
+<td><code>MiniatureVisualizationActionContext</code></td>
+<td><strong>클릭된 항목</strong>의 값과 시각화</td>
+<td>그래픽 표·KPI 차트의 클릭 액션에서만</td>
 </tr>
 </tbody>
 </table>
@@ -145,6 +174,22 @@
 <span class="nb">print</span> <span class="n">Application</span><span class="o">.</span><span class="n">Document</span><span class="o">.</span><span class="n">ActivePageReference</span><span class="o">.</span><span class="n">Title</span>
 </code></pre></div>
 
+<h3 id="context">Context — 클릭한 항목 받기</h3>
+<p>그래픽 표·KPI 차트의 <strong>클릭 시 액션</strong>으로 등록한 스크립트에서만 쓸 수 있습니다.</p>
+<div class="codehilite"><pre><span></span><code><span class="n">val</span> <span class="o">=</span> <span class="n">Context</span><span class="o">.</span><span class="n">Value</span>                    <span class="c1"># 클릭한 셀의 값</span>
+<span class="n">key</span> <span class="o">=</span> <span class="n">Context</span><span class="o">.</span><span class="n">HierarchyPathValues</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>   <span class="c1"># 같은 행의 기준 값 (행 축의 값)</span>
+<span class="n">vis</span> <span class="o">=</span> <span class="n">Context</span><span class="o">.</span><span class="n">Visualization</span>            <span class="c1"># 클릭된 미니어처 시각화 객체</span>
+</code></pre></div>
+
+<div class="admonition warning">
+<p class="admonition-title">Context는 편집 창의 '실행' 버튼으로 시험할 수 없습니다</p>
+<p><code>Context</code> 는 <strong>사용자가 실제로 항목을 클릭할 때</strong> 채워집니다.
+스크립트 편집 창에서 실행하면 존재하지 않아 오류가 납니다.
+개발 중에는 값을 문서 속성에 써 두고 텍스트 영역에서 확인하세요.</p>
+<p><code>python
+Document.Properties["ScriptLog"] = u"클릭한 값: %s" % Context.Value</code></p>
+<p>근거: <a href="https://community.spotfire.com/s/article/How-to-use-Miniature-Visualization-Action-Scripts-using-IronPython-in-TIBCO-Spotfire">How to use Miniature Visualization Action Scripts (Spotfire Community)</a></p>
+</div>
 <h2 id="24">2.4 스크립트 매개변수</h2>
 <p>스크립트 편집 창 아래쪽에서 <strong>매개변수(Parameters)</strong> 를 정의하면, 문서의 객체를 스크립트 안의
 변수로 넘길 수 있습니다. 이 교안 예제 대부분이 매개변수를 씁니다.</p>
@@ -160,7 +205,7 @@
 <span class="n">viz</span><span class="o">.</span><span class="n">Title</span> <span class="o">=</span> <span class="n">newTitle</span>
 </code></pre></div>
 
-<h3 id="_4">왜 매개변수를 쓰는가</h3>
+<h3 id="_5">왜 매개변수를 쓰는가</h3>
 <p>시각화를 이름으로 찾는 코드는 <strong>제목을 바꾸는 순간 깨집니다.</strong></p>
 <div class="codehilite"><pre><span></span><code><span class="c1"># 나쁜 예: 제목 문자열에 의존 → 사용자가 제목을 바꾸면 실패</span>
 <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">ActivePageReference</span><span class="o">.</span><span class="n">Visuals</span><span class="p">:</span>
@@ -179,6 +224,12 @@
 <h3 id="print">print의 출력 위치</h3>
 <p><code>print</code>의 출력은 <strong>스크립트 편집 창에서 실행(Execute)했을 때만</strong> 하단 출력 영역에 보입니다.
 액션 컨트롤 버튼으로 실행하면 <strong>아무 데도 보이지 않습니다.</strong> 개발 중에만 쓰세요.</p>
+<div class="admonition tip">
+<p class="admonition-title">버튼으로 실행할 때도 print를 보고 싶다면</p>
+<p>Analyst에서 <strong>도구 &gt; 지원 진단 및 로깅(Support Diagnostics and Logging)</strong> 의
+로그 수준을 <code>TRACE</code> 로 올리면 <code>print</code> 출력이 Analyst 디버그 로그에 기록됩니다.
+개발 장비에서 원인을 좁힐 때만 쓰세요. 로그가 매우 커집니다.</p>
+</div>
 <h3 id="3">사용자에게 보여주는 3가지 방법</h3>
 <div class="codehilite"><pre><span></span><code><span class="c1"># 1) 문서 속성에 써서 텍스트 영역에 표시 — Web Player에서도 동작. 가장 무난함</span>
 <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;처리 완료: 12개 시각화&quot;</span>
@@ -197,6 +248,19 @@
 <span class="n">MessageBox</span><span class="o">.</span><span class="n">Show</span><span class="p">(</span><span class="s2">&quot;완료&quot;</span><span class="p">)</span>
 </code></pre></div>
 
+<div class="admonition warning">
+<p class="admonition-title">문서 속성은 스크립트가 끝나야 갱신됩니다</p>
+<p>위 1번 방법으로 <strong>중간 진행 상황</strong>을 여러 번 쓰더라도, 화면에는 <strong>마지막 값 하나만</strong>
+보입니다. 스크립트 전체가 하나의 트랜잭션으로 묶여 있기 때문입니다
+→ <a href="07-pitfalls.html">7.4 참조</a></p>
+<p>그래서 <code>Document.Properties["ScriptLog"] = ...</code> 는 <strong>끝난 뒤의 요약</strong>을 남기는 용도로만
+쓰고, 단계별 추적이 필요하면 메시지를 리스트에 모았다가 마지막에 한 번에 쓰세요.</p>
+<p><code>python
+log = []
+log.append(u"1단계 완료")
+log.append(u"2단계 완료")
+Document.Properties["ScriptLog"] = u" / ".join(log)</code></p>
+</div>
 <div class="admonition danger">
 <p class="admonition-title">MessageBox와 파일 대화상자는 Web Player에서 동작하지 않습니다</p>
 <p><code>System.Windows.Forms</code>에 의존하는 코드(<code>MessageBox</code>, <code>FolderBrowserDialog</code>,
@@ -204,7 +268,7 @@
 브라우저에서 여는 분석 파일에 넣으면 서버에서 실행되거나 오류가 납니다.
 배포 대상이 Web Player라면 문서 속성이나 <code>NotificationService</code>를 쓰세요.</p>
 </div>
-<h3 id="_5">오류 메시지 읽기</h3>
+<h3 id="_6">오류 메시지 읽기</h3>
 <p>스크립트가 실패하면 대화상자에 .NET 예외가 그대로 나옵니다. 자주 보는 것들:</p>
 <table>
 <thead>
@@ -236,7 +300,7 @@
 </tr>
 </tbody>
 </table>
-<h3 id="_6">방어적으로 짜기</h3>
+<h3 id="_7">방어적으로 짜기</h3>
 <div class="codehilite"><pre><span></span><code><span class="c1"># 존재 확인 후 접근하는 습관</span>
 <span class="n">tableName</span> <span class="o">=</span> <span class="s2">&quot;Sales&quot;</span>
 <span class="k">if</span> <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Tables</span><span class="o">.</span><span class="n">Contains</span><span class="p">(</span><span class="n">tableName</span><span class="p">):</span>
@@ -274,19 +338,24 @@
 <li><a href="#22">2.2 스크립트를 넣는 위치</a><ul>
 <li><a href="#_1">액션 컨트롤 (가장 흔한 방법)</a></li>
 <li><a href="#_2">문서 속성 변경 시 자동 실행</a></li>
+<li><a href="#kpi">그래픽 표·KPI 차트의 항목 클릭</a></li>
 <li><a href="#_3">기타 실행 지점</a></li>
+<li><a href="#_4">"트랜잭션으로 감싸기" 체크박스</a></li>
 </ul>
 </li>
-<li><a href="#23">2.3 미리 정의된 객체</a></li>
+<li><a href="#23">2.3 미리 정의된 객체</a><ul>
+<li><a href="#context">Context — 클릭한 항목 받기</a></li>
+</ul>
+</li>
 <li><a href="#24">2.4 스크립트 매개변수</a><ul>
-<li><a href="#_4">왜 매개변수를 쓰는가</a></li>
+<li><a href="#_5">왜 매개변수를 쓰는가</a></li>
 </ul>
 </li>
 <li><a href="#25">2.5 출력 확인과 디버깅</a><ul>
 <li><a href="#print">print의 출력 위치</a></li>
 <li><a href="#3">사용자에게 보여주는 3가지 방법</a></li>
-<li><a href="#_5">오류 메시지 읽기</a></li>
-<li><a href="#_6">방어적으로 짜기</a></li>
+<li><a href="#_6">오류 메시지 읽기</a></li>
+<li><a href="#_7">방어적으로 짜기</a></li>
 </ul>
 </li>
 <li><a href="#26">2.6 반드시 지켜야 할 편집 습관</a></li>

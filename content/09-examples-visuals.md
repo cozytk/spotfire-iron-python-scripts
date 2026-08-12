@@ -284,7 +284,7 @@ Spotfire에는 "모든 시각화에 서식 일괄 적용" 기능이 없습니다
 
 ```python
 # -*- coding: utf-8 -*-
-# 모든 페이지의 모든 시각화에 대해 범례 표시 여부를 통일한다.
+# 모든 페이지의 모든 시각화에 대해 범례와 제목 표시 여부를 통일한다.
 #
 # 매개변수:
 #   showLegend (String) "True" 또는 "False"
@@ -293,11 +293,21 @@ from Spotfire.Dxp.Application.Visuals import VisualContent
 
 visible = (str(showLegend).lower() == "true")
 
+SHOW_TITLE = True        # 제목 표시 여부도 함께 통일한다
+
 changed = 0
 noLegend = 0
 
 for page in Document.Pages:
     for visual in page.Visuals:
+        # 제목 표시 여부는 Visual(껍데기)의 속성이라 캐스팅 없이 바로 된다.
+        # 텍스트 영역에도 있으므로 모든 시각화에 적용된다.
+        try:
+            visual.ShowTitle = SHOW_TITLE
+        except:
+            pass
+
+        # 범례는 VisualContent(알맹이) 쪽이고, 없는 유형도 있다
         try:
             vc = visual.As[VisualContent]()
             vc.Legend.Visible = visible
@@ -309,6 +319,10 @@ for page in Document.Pages:
 Document.Properties["ScriptLog"] = u"범례 %s: %d개 적용, %d개 해당 없음" % (
     u"표시" if visible else u"숨김", changed, noLegend)
 ```
+
+`ShowTitle`(제목을 보일지)과 `Title`(제목 문자열)은 **다른 속성**입니다.
+제목을 지우려고 `visual.Title = ""` 로 두면 자리는 그대로 남습니다.
+자리까지 없애려면 `visual.ShowTitle = False` 를 쓰세요.
 
 ### 변형: 제목도 함께 정리하기
 
@@ -375,6 +389,8 @@ Document.Properties["ScriptLog"] = u"산점도 %d개의 마커 크기를 조정�
       `for item in vc.Legend.Items: print item.Title` 로 확인하세요.
     - 제목 변형 스크립트는 **여러 번 실행해도 안전하도록** 중복 접미사를 막았습니다.
       일괄 스크립트를 짤 때 항상 신경 쓸 부분입니다.
+    - 특정 시각화만 이 일괄 처리에서 빼고 싶다면 제목 대신 **`visual.Id`** 로 거르세요.
+      제목은 사용자가 바꾸지만 `Id` 는 바뀌지 않습니다 → [6.3 참조](06-api-map.html)
 
 ---
 
@@ -465,10 +481,6 @@ for page in Document.Pages:
       "사용자가 확대해 놓은 걸 되돌리고 싶다"면 `ZoomRange`([예제 5](09-examples-visuals.html)),
       "축 눈금 자체를 고정하고 싶다"면 `Range`입니다.
     - 되돌리기가 필요하면 위 변형 스크립트를 버튼으로 함께 배포하세요.
-
----
-
-다음 장에서는 **데이터를 읽고 내보내는** 예제를 봅니다.
 
 ---
 
@@ -717,6 +729,19 @@ Document.Properties["ScriptLog"] = msg
     - 실행 전에 **예제 18의 인벤토리를 뽑아 두면** 무엇이 바뀌었는지 대조할 수 있습니다.
     - 데이터 제한 표현식(`WhereClauseExpression`)도 컬럼을 참조하므로, 필요하면 축과 같은
       방식으로 저장·복원 대상에 추가하세요.
+
+!!! tip "축을 보존하지 않아도 되는 경우 — AutoConfigure"
+    컬럼 구성이 많이 달라서 **축을 되살리는 것이 무의미**하다면, 표현식을 복원하는 대신
+    Spotfire에게 새 데이터에 맞는 기본 설정을 다시 잡게 하는 방법이 있습니다.
+
+    ```python
+    vc.Data.DataTableReference = newTable
+    visual.AutoConfigure()            # 새 데이터에 맞는 기본 축 구성
+    visual.ApplyUserPreferences()     # 사용자 기본 서식 적용
+    ```
+
+    커뮤니티 예제에서 흔히 보이는 형태입니다. **기존 축 설정은 전부 사라지므로**
+    위의 저장·복원 방식과 목적이 정반대입니다. 상황에 맞는 쪽을 고르세요.
 
 ---
 

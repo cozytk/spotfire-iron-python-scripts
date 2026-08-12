@@ -81,6 +81,8 @@
     │
     ├── Properties ────────── 문서 속성 값 (읽기/쓰기)
     ├── FilteringSchemes ──── 필터링 스킴 (필터 초기화의 열쇠)
+    ├── Bookmarks ─────────── 북마크 (상태 저장/복원)
+    ├── ScriptManager ─────── 이 문서에 저장된 스크립트들 (12.0+)
     ├── ActivePageReference
     ├── ActiveDataTableReference
     ├── ActiveMarkingSelectionReference
@@ -122,6 +124,75 @@
     <span class="nb">print</span> <span class="n">vc</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">DataTableReference</span><span class="o">.</span><span class="n">Name</span>
 </code></pre></div>
 
+<p><code>Visual</code>(껍데기)이 가진 것은 이게 전부입니다. 짧으니 외워 두면 편합니다.</p>
+<table>
+<thead>
+<tr>
+<th>멤버</th>
+<th>의미</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Title</code></td>
+<td>제목 문자열</td>
+</tr>
+<tr>
+<td><code>ShowTitle</code></td>
+<td>제목 표시 여부 (제목 문자열과 별개)</td>
+</tr>
+<tr>
+<td><code>TypeId</code></td>
+<td>유형. <strong>쓰면 그 유형으로 변환된다</strong></td>
+</tr>
+<tr>
+<td><code>Id</code></td>
+<td>이 시각화의 <strong>고유 ID</strong>. 제목이 바뀌어도 그대로</td>
+</tr>
+<tr>
+<td><code>As[T]()</code></td>
+<td>알맹이로 캐스팅</td>
+</tr>
+<tr>
+<td><code>AutoConfigure()</code></td>
+<td>새로 만든 시각화를 현재 데이터에 맞게 기본 설정</td>
+</tr>
+<tr>
+<td><code>ApplyUserPreferences()</code></td>
+<td>사용자 기본 서식 적용</td>
+</tr>
+<tr>
+<td><code>RenderAsync(...)</code></td>
+<td>이미지로 렌더링 (<code>Render</code> 는 폐기 예정)</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition tip">
+<p class="admonition-title">제목 대신 Id를 키로 쓰세요</p>
+<p>"이 시각화만 건드리지 마라" 같은 규칙을 제목 문자열로 만들면 사용자가 제목을 바꾸는 순간
+깨집니다 → <a href="07-pitfalls.html">7.1 참조</a>. <code>Visual.Id</code> 는 바뀌지 않습니다.</p>
+<p>```python</p>
+<h1 id="id">한 번 실행해서 Id를 알아낸다</h1>
+<p>for page in Document.Pages:
+    for visual in page.Visuals:
+        print visual.Id, "|", visual.Title</p>
+<h1 id="id_1">그 Id를 스크립트에 박아 둔다</h1>
+<p>SKIP_IDS = ["...붙여 넣기..."]
+if str(visual.Id) in SKIP_IDS:
+    continue
+```</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">공식 문서가 못 박아 둔 것</p>
+<p><code>Visual</code> 클래스 문서에는 이렇게 적혀 있습니다.</p>
+<ul>
+<li>사용자가 언제든 UI에서 유형을 바꿀 수 있으므로 <strong><code>As&lt;T&gt;()</code> 를 부르기 전에 반드시
+  <code>TypeId</code> 를 먼저 확인</strong>할 것</li>
+<li><code>TablePlotBase</code> · <code>TrellisVisualization</code> 같은 <strong>추상 기반 클래스 말고
+  <code>BarChart</code> 같은 구체 클래스</strong>로 캐스팅할 것</li>
+</ul>
+<p>이 교안의 예제가 전부 <code>TypeId</code> 로 먼저 거르는 이유입니다.</p>
+</div>
 <h3 id="_1">주요 시각화 유형 식별자</h3>
 <p>아래는 Spotfire 14.x에서 <code>dir(VisualTypeIdentifiers)</code> 로 실제 확인한 전체 목록입니다.</p>
 <div class="codehilite"><pre><span></span><code><span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">BarChart</span>
@@ -382,7 +453,79 @@ First  Last  IsEmpty  IsFull  GetNextIndex  GetPreviousIndex</code></p>
 </code></pre></div>
 
 <p><code>DataPropertyClass</code>는 <code>Document</code>, <code>Table</code>, <code>Column</code> 세 가지입니다.</p>
-<h2 id="68">6.8 자주 쓰는 진입점 요약</h2>
+<h2 id="68">6.8 북마크와 스크립트 관리</h2>
+<p>두 가지는 잘 알려져 있지 않지만 알아 두면 쓸 데가 많습니다.</p>
+<h3 id="_8">북마크 — 상태를 통째로 저장·복원</h3>
+<p>필터·마킹·페이지·시각화 설정을 <strong>한 덩어리로</strong> 저장했다 되돌립니다.</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 목록 보기 / 적용</span>
+<span class="k">for</span> <span class="n">bookmark</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">Bookmarks</span><span class="p">:</span>
+    <span class="nb">print</span> <span class="n">bookmark</span><span class="o">.</span><span class="n">DisplayName</span><span class="p">,</span> <span class="n">bookmark</span><span class="o">.</span><span class="n">IsBroken</span>
+
+<span class="n">Document</span><span class="o">.</span><span class="n">Bookmarks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">Apply</span><span class="p">()</span>
+</code></pre></div>
+
+<p>이름 속성이 <code>Name</code> 이 아니라 <strong><code>DisplayName</code></strong> 입니다. 여기서 자주 틀립니다.
+<code>IsBroken</code> 이 <code>True</code> 면 북마크가 참조하던 대상이 사라진 것이고,
+<code>Apply()</code> 는 <strong>깨지지 않은 부분만</strong> 적용합니다.</p>
+<p>"보기 초기화"를 직접 짜는 대신(<a href="10-examples-state.html">예제 10</a>) 기준 상태를 북마크로
+저장해 두고 적용하는 방법도 있습니다. 다만 북마크는 <strong>저장한 것 전부</strong>를 되돌리므로
+"필터만 초기화" 같은 선택적 제어에는 맞지 않습니다.
+<code>BookmarkCollection.AddNew(...)</code> 는 <strong>폐기 예정(Obsolete)</strong> 이므로 새 북마크는 UI에서
+만들고, 스크립트는 적용만 하는 쪽이 안전합니다.</p>
+<h3 id="scriptmanager-spotfire-120">ScriptManager — 문서 안의 스크립트 목록 (Spotfire 12.0+)</h3>
+<p>분석 파일에 스크립트가 20개씩 쌓이면 <strong>뭐가 어디서 쓰이는지</strong> 알 수 없게 됩니다.
+<code>Document.ScriptManager</code> 가 그 목록을 코드로 보여 줍니다.</p>
+<div class="codehilite"><pre><span></span><code><span class="k">for</span> <span class="n">script</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">ScriptManager</span><span class="o">.</span><span class="n">GetScripts</span><span class="p">():</span>
+    <span class="nb">print</span> <span class="n">script</span><span class="o">.</span><span class="n">Name</span><span class="p">,</span> <span class="s2">&quot;|&quot;</span><span class="p">,</span> <span class="n">script</span><span class="o">.</span><span class="n">Language</span><span class="o">.</span><span class="n">Language</span>
+    <span class="nb">print</span> <span class="n">script</span><span class="o">.</span><span class="n">ScriptCode</span>
+</code></pre></div>
+
+<table>
+<thead>
+<tr>
+<th>멤버</th>
+<th>하는 일</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GetScripts()</code></td>
+<td>문서의 모든 스크립트 정의 열거</td>
+</tr>
+<tr>
+<td><code>TryGetScript(name)</code></td>
+<td><code>(찾음여부, 정의)</code> 튜플 반환 → <a href="05-dotnet-interop.html#58-api">5.8 참조</a></td>
+</tr>
+<tr>
+<td><code>GetAllScriptsWithName(name)</code></td>
+<td>같은 이름의 스크립트 전부 (중복 정리용)</td>
+</tr>
+<tr>
+<td><code>AddScriptDefinition(def)</code> / <code>Replace(old, new)</code> / <code>Remove(def)</code></td>
+<td>추가·교체·삭제</td>
+</tr>
+<tr>
+<td><code>ExecuteScript(...)</code></td>
+<td>스크립트 안에서 다른 스크립트 실행</td>
+</tr>
+</tbody>
+</table>
+<p><code>ScriptDefinition</code> 은 <strong>불변(immutable)</strong> 입니다. 고치려면 <code>WithScriptCode(...)</code> ·
+<code>WithName(...)</code> 로 복사본을 만들어 <code>Replace</code> 합니다.</p>
+<div class="codehilite"><pre><span></span><code><span class="n">found</span><span class="p">,</span> <span class="n">old</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">ScriptManager</span><span class="o">.</span><span class="n">TryGetScript</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;대시보드 초기화&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">found</span><span class="p">:</span>
+    <span class="n">new</span> <span class="o">=</span> <span class="n">old</span><span class="o">.</span><span class="n">WithScriptCode</span><span class="p">(</span><span class="n">old</span><span class="o">.</span><span class="n">ScriptCode</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;0.5&quot;</span><span class="p">,</span> <span class="s2">&quot;0.9&quot;</span><span class="p">))</span>
+    <span class="n">Document</span><span class="o">.</span><span class="n">ScriptManager</span><span class="o">.</span><span class="n">Replace</span><span class="p">(</span><span class="n">old</span><span class="p">,</span> <span class="n">new</span><span class="p">)</span>
+</code></pre></div>
+
+<p>읽기만 하는 사용법은 <a href="12-examples-create.html">예제 22</a>에 있습니다.</p>
+<div class="admonition danger">
+<p class="admonition-title">쓰기는 조심하세요</p>
+<p><code>Remove</code> 로 지운 스크립트가 액션 컨트롤에 연결되어 있었다면 <strong>그 버튼을 손으로 다시
+설정해야</strong> 합니다. <code>Replace</code> 도 매개변수 구성이 달라지면 연결된 액션이 비활성화됩니다.
+(공식 API 문서의 경고입니다.)</p>
+</div>
+<h2 id="69">6.9 자주 쓰는 진입점 요약</h2>
 <table>
 <thead>
 <tr>
@@ -405,7 +548,7 @@ First  Last  IsEmpty  IsFull  GetNextIndex  GetPreviousIndex</code></p>
 </tr>
 <tr>
 <td>마킹 읽기/설정</td>
-<td><code>Document.Data.Markings["Marking"]</code></td>
+<td><code>Document.ActiveMarkingSelectionReference</code></td>
 </tr>
 <tr>
 <td>필터 초기화</td>
@@ -424,11 +567,55 @@ First  Last  IsEmpty  IsFull  GetNextIndex  GetPreviousIndex</code></p>
 <td><code>Application.GetService[NotificationService]()</code></td>
 </tr>
 <tr>
+<td>진행률 표시</td>
+<td><code>Application.GetService[ProgressService]()</code></td>
+</tr>
+<tr>
 <td>파일 내보내기</td>
-<td><code>Document.Data.CreateDataWriter(...)</code></td>
+<td><code>TablePlot.ExportText(...)</code> / <code>Document.Data.CreateDataWriter(...)</code></td>
+</tr>
+<tr>
+<td>상태 저장·복원</td>
+<td><code>Document.Bookmarks</code></td>
+</tr>
+<tr>
+<td>스크립트 목록</td>
+<td><code>Document.ScriptManager</code></td>
+</tr>
+<tr>
+<td>클라이언트 종류 판별</td>
+<td><code>Application.GetType().ToString()</code></td>
 </tr>
 </tbody>
 </table>
+<h2 id="610-api">6.10 공식 API 레퍼런스에서 클래스 찾기</h2>
+<p>Spotfire의 API 레퍼런스는 검색이 불편하지만, <strong>URL 규칙이 단순</strong>해서 주소창에 직접
+쳐 넣는 편이 빠릅니다.</p>
+<div class="codehilite"><pre><span></span><code>https://docs.tibco.com/pub/doc_remote/sfire_dev/area/doc/api/tib_sfire-analyst_api/html/T_&lt;네임스페이스&gt;_&lt;클래스&gt;.htm
+</code></pre></div>
+
+<ul>
+<li>점(<code>.</code>)을 <strong>밑줄(<code>_</code>)</strong> 로 바꾸고</li>
+<li>타입은 <code>T_</code>, 네임스페이스는 <code>N_</code>, 메서드는 <code>M_</code>, 속성은 <code>P_</code> 를 앞에 붙입니다</li>
+</ul>
+<div class="codehilite"><pre><span></span><code>Spotfire.Dxp.Application.Visuals.BarChart
+→ .../html/T_Spotfire_Dxp_Application_Visuals_BarChart.htm
+
+Spotfire.Dxp.Application.Visual.RenderAsync (메서드)
+→ .../html/M_Spotfire_Dxp_Application_Visual_RenderAsync.htm
+</code></pre></div>
+
+<p>문서에서 확인해야 할 것은 세 가지입니다.</p>
+<ol>
+<li><strong>Obsolete 표시</strong> — 폐기 예정인 멤버인지 (예: <code>Visual.Render</code>)</li>
+<li><strong>생성자 시그니처</strong> — <code>RenderResultSettings(Size)</code> 처럼 인자가 필요한지</li>
+<li><strong>Remarks</strong> — "이 순서로 불러야 한다" 같은 제약이 여기 적혀 있습니다</li>
+</ol>
+<div class="admonition warning">
+<p class="admonition-title">문서에 있다고 동작하는 것은 아닙니다</p>
+<p>문서는 <strong>이름과 시그니처</strong>를 확인하는 용도입니다.
+"그 환경에서 실제로 되는가"는 <a href="07-pitfalls.html">7.9의 확인 방법</a>으로 따로 봐야 합니다.</p>
+</div>
 <hr />
 <p>지도는 여기까지입니다. 다음 <a href="07-pitfalls.html">7장</a>에서는 이 API들이 <strong>실제로는 어떻게
 말썽을 부리는지</strong> 봅니다. 문서대로 되지 않는 경우가 생각보다 많습니다.</p>
@@ -464,7 +651,13 @@ First  Last  IsEmpty  IsFull  GetNextIndex  GetPreviousIndex</code></p>
 <li><a href="#_7">새 문서 속성 만들기</a></li>
 </ul>
 </li>
-<li><a href="#68">6.8 자주 쓰는 진입점 요약</a></li>
+<li><a href="#68">6.8 북마크와 스크립트 관리</a><ul>
+<li><a href="#_8">북마크 — 상태를 통째로 저장·복원</a></li>
+<li><a href="#scriptmanager-spotfire-120">ScriptManager — 문서 안의 스크립트 목록 (Spotfire 12.0+)</a></li>
+</ul>
+</li>
+<li><a href="#69">6.9 자주 쓰는 진입점 요약</a></li>
+<li><a href="#610-api">6.10 공식 API 레퍼런스에서 클래스 찾기</a></li>
 </ul>
 </div>
 </aside>

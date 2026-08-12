@@ -231,6 +231,42 @@ File.Exists(r"C:\data\a.csv")
 Directory.CreateDirectory(r"C:\out")
 ```
 
+### 이름이 파이썬 예약어와 겹칠 때
+
+.NET에는 `None` · `is` · `in` · `not` · `from` 같은 **파이썬 예약어와 같은 이름의 멤버**가 있습니다.
+그대로 쓰면 문법 오류입니다.
+
+```python
+from System.Threading import CancellationToken
+
+token = CancellationToken.None      # SyntaxError — None 은 파이썬 키워드
+```
+
+두 가지 우회법이 있습니다.
+
+```python
+token = CancellationToken()                        # 기본 생성자 = C#의 .None 과 같은 값
+token = getattr(CancellationToken, "None")         # 이름을 문자열로 우회
+```
+
+`getattr(객체, "이름")` 은 예약어뿐 아니라 **속성 이름을 변수로 다뤄야 할 때** 전반에
+쓰입니다. 이 교안의 축 순회 코드가 그 예입니다.
+
+```python
+for axisName in ["XAxis", "YAxis"]:
+    getattr(vc, axisName).ZoomRange = AxisRange.DefaultRange
+```
+
+### 비동기 API(Task) 다루기
+
+`...Async` 로 끝나는 .NET 메서드는 `Task<T>` 를 반환합니다.
+IronPython에는 `await` 가 없으므로 **`.Result` 로 완료를 기다립니다.**
+
+```python
+task = visual.RenderAsync(resultSettings, visualSettings, CancellationToken())
+result = task.Result        # 여기서 완료될 때까지 대기한다
+```
+
 ## 5.6 서비스 가져오기 — GetService
 
 문서에 속하지 않는 기능(알림, 진행 표시, 라이브러리 접근)은 **서비스**로 제공됩니다.
@@ -294,6 +330,26 @@ success, libraryFolder = libraryManager.TryGetItem(folderName, LibraryItemType.F
 if success:
     print libraryFolder.Title
 ```
+
+`Try...` 로 시작하는 메서드는 대부분 이 형태입니다.
+
+```python
+found, scriptDef = Document.ScriptManager.TryGetScript(u"대시보드 초기화")
+if found:
+    print scriptDef.ScriptCode
+```
+
+!!! warning "`clr.Reference` 로 out 매개변수를 만들지 마세요"
+    오래된 커뮤니티 코드에는 `clr.Reference[T]()` 로 참조를 만들어 넘기는 방식이 자주 보입니다.
+    동작은 하지만 결과가 **`StrongBox` 로 감싸진 값**이라, 나중에 그 값을 쓰는 곳에서
+    이런 오류가 납니다.
+
+    ```text
+    expected ScriptDefinition, got StrongBox[ScriptDefinition]
+    ```
+
+    **튜플로 받는 위 방식이 정석입니다.**
+    (근거: [Introducing the Spotfire Script Management APIs](https://community.spotfire.com/articles/spotfire/introducing-the-spotfire-script-management-apis/))
 
 !!! tip "속성 이름을 모를 때는 dir()로 탐색하세요"
     문서를 못 찾겠으면 객체가 가진 멤버를 직접 출력해 보는 것이 가장 빠릅니다.

@@ -25,6 +25,21 @@ ns = Application.GetService[NotificationService]()
 ns.AddInformationNotification(u"완료", u"12개 시각화를 변경했습니다.", u"")
 ```
 
+### 두 환경에서 같은 파일을 쓴다면
+
+Analyst 전용 기능이 들어간 스크립트는 **맨 앞에서 클라이언트를 판별**해
+Web Player 사용자에게 안내를 남기세요. 그러지 않으면 알 수 없는 .NET 예외 대화상자가 뜹니다.
+
+```python
+if "RichAnalysisApplication" not in Application.GetType().ToString():
+    Document.Properties["ScriptLog"] = u"이 기능은 Analyst에서만 동작합니다."
+else:
+    ...   # 파일을 쓰는 본 작업
+```
+
+`Application` 의 .NET 타입 이름이 판별 기준입니다 → [7.7 참조](07-pitfalls.html).
+현재 환경 전체를 한 번에 보고 싶으면 [예제 23](12-examples-create.html)을 실행하세요.
+
 ## 13.2 성능
 
 ### 반복 안에서 비싼 호출을 하지 마세요
@@ -70,14 +85,47 @@ if value in bigSet:
     ...
 ```
 
-### 긴 작업에는 진행 표시
+### 긴 작업에는 진행 표시와 취소 버튼
+
+수십 초 이상 걸리는 스크립트는 사용자 눈에 **Spotfire가 멈춘 것**으로 보입니다.
+`ProgressService` 로 작업을 감싸면 몇 초 뒤 진행 대화상자가 자동으로 뜨고,
+사용자가 취소할 수 있게 됩니다. Web Player에서도 동작합니다.
 
 ```python
 from Spotfire.Dxp.Framework.ApplicationModel import ProgressService
 
 ps = Application.GetService[ProgressService]()
-# 버전에 따라 사용법이 다르므로, 실패하면 이 부분을 빼고 쓰세요
+
+
+def work():
+    try:
+        # ① 얼마나 걸릴지 모르는 단계
+        ps.CurrentProgress.ExecuteSubtask(u"데이터 확인 중")
+        ...
+
+        # ② 횟수를 아는 단계 — 진행률 막대가 찬다
+        pages = [p for p in Document.Pages]
+        with ps.CurrentProgress.BeginSubtask(u"페이지 처리", len(pages), u"{0} / {1}"):
+            for page in pages:
+                ps.CurrentProgress.CheckCancel()      # 취소를 눌렀으면 여기서 예외
+                ...
+                ps.CurrentProgress.TryReportProgress()
+    except:
+        pass          # 사용자가 취소한 경우도 여기로 온다
+
+
+ps.ExecuteWithProgress(u"일괄 처리", u"모든 페이지를 처리하고 있습니다.", work)
 ```
+
+!!! danger "이걸 쓰려면 '트랜잭션으로 감싸기'를 꺼야 합니다"
+    스크립트 편집 대화상자에서 **트랜잭션 래핑 체크를 해제**해야 진행 표시가 뜹니다
+    → [7.4 참조](07-pitfalls.html)
+
+    체크를 끄면 **실행 취소(Undo)가 되지 않습니다.**
+    그래서 진행 표시는 "오래 걸리지만 되돌릴 일이 없는 작업"(내보내기, 새로고침,
+    읽기 전용 조사)에 어울립니다. 되돌릴 수 있어야 하는 일괄 변경에는 쓰지 마세요.
+
+    근거: [Progress bar and cancellation option (Spotfire Community)](https://community.spotfire.com/s/article/How-to-Add-Progress-Bar-and-Cancellation-Option-when-Executing-IronPython-Scripts-in-TIBCO-Spotfire)
 
 ## 13.3 되돌리기(Undo)를 믿지 마세요
 
@@ -92,7 +140,7 @@ ps = Application.GetService[ProgressService]()
     **반드시 지킬 것:**
 
     1. 위험한 스크립트는 **분석 파일 사본**에서 먼저 실행
-    2. 실행 전에 **예제 1(인벤토리)이나 예제 20(감사)** 로 현재 상태를 기록
+    2. 실행 전에 **예제 18(시각화 인벤토리)이나 예제 19(표현식 감사)** 로 현재 상태를 기록
     3. 사용자에게 배포하는 버튼은 **읽기 전용이거나 되돌릴 수 있는 것**만
 
 ## 13.4 이름에 의존하지 않기
@@ -120,6 +168,16 @@ markedRows = Document.ActiveMarkingSelectionReference.GetSelection(table).AsInde
 markingNames = [m.Name for m in Document.Data.Markings]
 print markingNames        # 예: ['마킹', '마킹 (2)', '마킹 (3)']
 ```
+
+!!! tip "제목 대신 Id"
+    "이 시각화만 제외" 같은 규칙이 필요할 때, 제목 문자열 대신 **`visual.Id`** 를 쓰세요.
+    사용자가 제목을 바꿔도 `Id` 는 그대로입니다. 페이지도 `page.Id` 를 가집니다.
+
+    ```python
+    for page in Document.Pages:
+        for visual in page.Visuals:
+            print visual.Id, "|", visual.Title      # 한 번 뽑아서 스크립트에 박아 둔다
+    ```
 
 ## 13.5 여러 번 실행해도 안전하게 (멱등성)
 
@@ -218,6 +276,31 @@ Document.Properties["ScriptLog"] = message
 - 스크립트 첫 줄에 **목적과 매개변수를 주석**으로 남기세요 (이 교안 예제 형식)
 - 같은 로직이 여러 스크립트에 복붙되어 있다면, **문서 속성으로 분기**해 하나로 합치세요
 - 스크립트 원본을 **저장소에도 보관**하세요. 분석 파일 안에만 있으면 이력 추적이 안 됩니다
+
+### 목록을 코드로 뽑기 (Spotfire 12.0+)
+
+`Document.ScriptManager` 로 문서 안의 스크립트를 전부 열거할 수 있습니다.
+버튼을 하나씩 열어 보지 않아도 됩니다.
+
+```python
+for script in Document.ScriptManager.GetScripts():
+    print script.Name, "|", script.Language.Language, "|", len(script.ScriptCode.splitlines())
+```
+
+같은 이름의 스크립트가 여러 벌 남아 있는 것이 실무에서 가장 흔한 문제입니다.
+
+```python
+# 이름이 같은 스크립트 전부 가져와 내용이 같은지 비교
+for script in Document.ScriptManager.GetAllScriptsWithName(u"대시보드 초기화"):
+    print script.IsEquivalentTo(기준정의)
+```
+
+정리 리포트를 만들어 주는 완성본은 [예제 22](12-examples-create.html)에 있습니다.
+
+!!! warning "지우기·바꾸기는 신중하게"
+    액션 컨트롤에 연결된 스크립트를 `Remove` 하면 **그 버튼을 손으로 다시 설정**해야 합니다.
+    `Replace` 도 매개변수 이름·타입이 달라지면 연결된 액션이 비활성화됩니다.
+    컬렉션을 **순회하면서 지우지 마세요.** 지울 목록을 먼저 모으고 순회가 끝난 뒤에 지웁니다.
 
 ---
 

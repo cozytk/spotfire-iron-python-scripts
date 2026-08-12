@@ -74,12 +74,17 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Filters</span><span class="w"> </span><span class="kn">import</span> <span class="n">FilterTypeIdentifiers</span>
 
 <span class="c1"># 서비스</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Framework.ApplicationModel</span><span class="w"> </span><span class="kn">import</span> <span class="n">NotificationService</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Framework.ApplicationModel</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">NotificationService</span><span class="p">,</span> <span class="n">ProgressService</span><span class="p">,</span> <span class="n">ApplicationThread</span><span class="p">)</span>
+
+<span class="c1"># 스크립트 관리 (12.0+)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Scripting</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ScriptDefinition</span><span class="p">,</span> <span class="n">ScriptLanguage</span><span class="p">,</span> <span class="n">ScriptParameter</span><span class="p">,</span> <span class="n">ScriptParameterCollection</span><span class="p">)</span>
 
 <span class="c1"># .NET</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">System</span><span class="w"> </span><span class="kn">import</span> <span class="n">Array</span><span class="p">,</span> <span class="n">String</span><span class="p">,</span> <span class="n">Guid</span><span class="p">,</span> <span class="n">DateTime</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">System.IO</span><span class="w"> </span><span class="kn">import</span> <span class="n">File</span><span class="p">,</span> <span class="n">Path</span><span class="p">,</span> <span class="n">Directory</span><span class="p">,</span> <span class="n">MemoryStream</span><span class="p">,</span> <span class="n">StreamWriter</span><span class="p">,</span> <span class="n">SeekOrigin</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">System.Threading</span><span class="w"> </span><span class="kn">import</span> <span class="n">Thread</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">System.Threading</span><span class="w"> </span><span class="kn">import</span> <span class="n">Thread</span><span class="p">,</span> <span class="n">CancellationToken</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">clr</span>
 <span class="n">clr</span><span class="o">.</span><span class="n">AddReference</span><span class="p">(</span><span class="s2">&quot;System.Drawing&quot;</span><span class="p">)</span>
@@ -107,6 +112,19 @@
 <span class="c1"># 유형 확인 / 변경</span>
 <span class="k">if</span> <span class="n">visual</span><span class="o">.</span><span class="n">TypeId</span> <span class="o">==</span> <span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">BarChart</span><span class="p">:</span>
     <span class="n">visual</span><span class="o">.</span><span class="n">TypeId</span> <span class="o">=</span> <span class="n">VisualTypeIdentifiers</span><span class="o">.</span><span class="n">LineChart</span>
+
+<span class="c1"># Visual(껍데기) 수준 속성 — 캐스팅 없이 바로 된다</span>
+<span class="n">visual</span><span class="o">.</span><span class="n">Title</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;제목&quot;</span>
+<span class="n">visual</span><span class="o">.</span><span class="n">ShowTitle</span> <span class="o">=</span> <span class="kc">False</span>        <span class="c1"># 제목 문자열과 별개. 자리까지 없앤다</span>
+<span class="nb">print</span> <span class="n">visual</span><span class="o">.</span><span class="n">Id</span>                 <span class="c1"># 이름이 바뀌어도 변하지 않는 고유 ID</span>
+
+<span class="c1"># 새로 만든 시각화 기본 설정</span>
+<span class="n">visual</span><span class="o">.</span><span class="n">AutoConfigure</span><span class="p">()</span>
+<span class="n">visual</span><span class="o">.</span><span class="n">ApplyUserPreferences</span><span class="p">()</span>
+
+<span class="c1"># 배치 — 격자만 필요하면 한 줄</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Layout</span><span class="w"> </span><span class="kn">import</span> <span class="n">TileMode</span>
+<span class="n">page</span><span class="o">.</span><span class="n">ApplyLayout</span><span class="p">(</span><span class="n">TileMode</span><span class="o">.</span><span class="n">Evenly</span><span class="p">)</span>   <span class="c1"># Horizontally / Vertically / Evenly / Maximize</span>
 </code></pre></div>
 
 <h2 id="143">14.3 시각화 속성</h2>
@@ -270,20 +288,37 @@
 </code></pre></div>
 
 <h2 id="149">14.9 내보내기</h2>
-<div class="codehilite"><pre><span></span><code><span class="c1"># 데이터</span>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 데이터 — 표 시각화 경유. 이 교안 검증 환경에서 확인된 방법</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Visuals</span><span class="w"> </span><span class="kn">import</span> <span class="n">TablePlot</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">System.IO</span><span class="w"> </span><span class="kn">import</span> <span class="n">StreamWriter</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">System.Text</span><span class="w"> </span><span class="kn">import</span> <span class="n">Encoding</span>
+
+<span class="n">plot</span> <span class="o">=</span> <span class="n">vTable</span><span class="o">.</span><span class="n">As</span><span class="p">[</span><span class="n">TablePlot</span><span class="p">]()</span>           <span class="c1"># 매개변수로 받은 표 시각화</span>
+<span class="k">if</span> <span class="n">plot</span><span class="o">.</span><span class="n">ExportDataEnabled</span><span class="p">:</span>
+    <span class="n">writer</span> <span class="o">=</span> <span class="n">StreamWriter</span><span class="p">(</span><span class="s2">&quot;C:/out/data.txt&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="n">Encoding</span><span class="o">.</span><span class="n">UTF8</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">plot</span><span class="o">.</span><span class="n">ExportText</span><span class="p">(</span><span class="n">writer</span><span class="p">)</span>         <span class="c1"># 탭 구분 텍스트</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">writer</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code><span class="c1"># 데이터 — CreateDataWriter 방식. 라이선스에 막히면 None 을 반환한다</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Data.Export</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataWriterTypeIdentifiers</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">System.IO</span><span class="w"> </span><span class="kn">import</span> <span class="n">File</span>
 
 <span class="n">writer</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">CreateDataWriter</span><span class="p">(</span><span class="n">DataWriterTypeIdentifiers</span><span class="o">.</span><span class="n">ExcelXlsDataWriter</span><span class="p">)</span>
-<span class="n">filtered</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">ActiveFilteringSelectionReference</span><span class="o">.</span><span class="n">GetSelection</span><span class="p">(</span><span class="n">table</span><span class="p">)</span><span class="o">.</span><span class="n">AsIndexSet</span><span class="p">()</span>
-<span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">Name</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">table</span><span class="o">.</span><span class="n">Columns</span><span class="p">]</span>
+<span class="k">if</span> <span class="n">writer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>                  <span class="c1"># 반드시 확인할 것 (7.5)</span>
+    <span class="n">filtered</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">ActiveFilteringSelectionReference</span><span class="o">.</span><span class="n">GetSelection</span><span class="p">(</span><span class="n">table</span><span class="p">)</span><span class="o">.</span><span class="n">AsIndexSet</span><span class="p">()</span>
+    <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">Name</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">table</span><span class="o">.</span><span class="n">Columns</span><span class="p">]</span>
 
-<span class="n">stream</span> <span class="o">=</span> <span class="n">File</span><span class="o">.</span><span class="n">OpenWrite</span><span class="p">(</span><span class="s2">&quot;C:/out/data.xls&quot;</span><span class="p">)</span>
-<span class="n">writer</span><span class="o">.</span><span class="n">Write</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="n">table</span><span class="p">,</span> <span class="n">filtered</span><span class="p">,</span> <span class="n">names</span><span class="p">)</span>
-<span class="n">stream</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
+    <span class="n">stream</span> <span class="o">=</span> <span class="n">File</span><span class="o">.</span><span class="n">OpenWrite</span><span class="p">(</span><span class="s2">&quot;C:/out/data.xls&quot;</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">writer</span><span class="o">.</span><span class="n">Write</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="n">table</span><span class="p">,</span> <span class="n">filtered</span><span class="p">,</span> <span class="n">names</span><span class="p">)</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">stream</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
 </code></pre></div>
 
-<div class="codehilite"><pre><span></span><code><span class="c1"># 이미지</span>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 이미지 — Render 방식 (검증 환경에서 동작 확인. 단 API 문서상 폐기 예정)</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">clr</span>
 <span class="n">clr</span><span class="o">.</span><span class="n">AddReference</span><span class="p">(</span><span class="s2">&quot;System.Drawing&quot;</span><span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">System.Drawing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Bitmap</span><span class="p">,</span> <span class="n">Graphics</span><span class="p">,</span> <span class="n">Rectangle</span>
@@ -296,14 +331,83 @@
 <span class="n">bitmap</span><span class="o">.</span><span class="n">Dispose</span><span class="p">()</span>
 </code></pre></div>
 
-<h2 id="1410">14.10 사용자 알림</h2>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 이미지 — RenderAsync 방식 (15.x 정식 경로. 이 교안에서는 미검증)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Visuals</span><span class="w"> </span><span class="kn">import</span> <span class="n">RenderResultSettings</span><span class="p">,</span> <span class="n">VisualRenderSettings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">System.Drawing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Size</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">System.Threading</span><span class="w"> </span><span class="kn">import</span> <span class="n">CancellationToken</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">System.IO</span><span class="w"> </span><span class="kn">import</span> <span class="n">FileStream</span><span class="p">,</span> <span class="n">FileMode</span>
+
+<span class="n">task</span> <span class="o">=</span> <span class="n">visual</span><span class="o">.</span><span class="n">RenderAsync</span><span class="p">(</span><span class="n">RenderResultSettings</span><span class="p">(</span><span class="n">Size</span><span class="p">(</span><span class="mi">1200</span><span class="p">,</span> <span class="mi">800</span><span class="p">)),</span>
+                          <span class="n">VisualRenderSettings</span><span class="p">(),</span>
+                          <span class="n">CancellationToken</span><span class="p">())</span>     <span class="c1"># .None 은 파이썬 문법 오류</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">Result</span>
+<span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">IsValid</span><span class="p">:</span>
+    <span class="n">stream</span> <span class="o">=</span> <span class="n">FileStream</span><span class="p">(</span><span class="s2">&quot;C:/out/chart.png&quot;</span><span class="p">,</span> <span class="n">FileMode</span><span class="o">.</span><span class="n">Create</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">result</span><span class="o">.</span><span class="n">WriteTo</span><span class="p">(</span><span class="n">stream</span><span class="p">)</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">stream</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
+</code></pre></div>
+
+<h2 id="1410">14.10 사용자 알림과 진행 표시</h2>
 <div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Framework.ApplicationModel</span><span class="w"> </span><span class="kn">import</span> <span class="n">NotificationService</span>
 <span class="n">ns</span> <span class="o">=</span> <span class="n">Application</span><span class="o">.</span><span class="n">GetService</span><span class="p">[</span><span class="n">NotificationService</span><span class="p">]()</span>
 <span class="n">ns</span><span class="o">.</span><span class="n">AddInformationNotification</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;제목&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;설명&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;상세&quot;</span><span class="p">)</span>
 <span class="n">ns</span><span class="o">.</span><span class="n">AddWarningNotification</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;제목&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;설명&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;상세&quot;</span><span class="p">)</span>
+<span class="n">ns</span><span class="o">.</span><span class="n">AddErrorNotification</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;제목&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;설명&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;상세&quot;</span><span class="p">)</span>
 </code></pre></div>
 
-<h2 id="1411">14.11 탐색용 스니펫</h2>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 진행 표시 + 취소 — 스크립트의 &quot;트랜잭션으로 감싸기&quot;를 꺼야 동작한다 (7.4)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Framework.ApplicationModel</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProgressService</span>
+<span class="n">ps</span> <span class="o">=</span> <span class="n">Application</span><span class="o">.</span><span class="n">GetService</span><span class="p">[</span><span class="n">ProgressService</span><span class="p">]()</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">work</span><span class="p">():</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">ps</span><span class="o">.</span><span class="n">CurrentProgress</span><span class="o">.</span><span class="n">BeginSubtask</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;처리&quot;</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;</span><span class="si">{0}</span><span class="s2"> / </span><span class="si">{1}</span><span class="s2">&quot;</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+                <span class="n">ps</span><span class="o">.</span><span class="n">CurrentProgress</span><span class="o">.</span><span class="n">CheckCancel</span><span class="p">()</span>
+                <span class="n">ps</span><span class="o">.</span><span class="n">CurrentProgress</span><span class="o">.</span><span class="n">TryReportProgress</span><span class="p">()</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+<span class="n">ps</span><span class="o">.</span><span class="n">ExecuteWithProgress</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;제목&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;설명&quot;</span><span class="p">,</span> <span class="n">work</span><span class="p">)</span>
+</code></pre></div>
+
+<h2 id="1411">14.11 환경 판별과 스크립트 관리</h2>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 지금 Analyst인가 Web Player인가 (직접 알려 주는 API는 없다)</span>
+<span class="n">isAnalyst</span> <span class="o">=</span> <span class="s2">&quot;RichAnalysisApplication&quot;</span> <span class="ow">in</span> <span class="n">Application</span><span class="o">.</span><span class="n">GetType</span><span class="p">()</span><span class="o">.</span><span class="n">ToString</span><span class="p">()</span>
+
+<span class="c1"># 로그인 사용자 이름</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">System.Threading</span><span class="w"> </span><span class="kn">import</span> <span class="n">Thread</span>
+<span class="nb">print</span> <span class="n">Thread</span><span class="o">.</span><span class="n">CurrentPrincipal</span><span class="o">.</span><span class="n">Identity</span><span class="o">.</span><span class="n">Name</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code><span class="c1"># 문서에 저장된 스크립트 목록 (Spotfire 12.0+)</span>
+<span class="k">for</span> <span class="n">script</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">ScriptManager</span><span class="o">.</span><span class="n">GetScripts</span><span class="p">():</span>
+    <span class="nb">print</span> <span class="n">script</span><span class="o">.</span><span class="n">Name</span><span class="p">,</span> <span class="s2">&quot;|&quot;</span><span class="p">,</span> <span class="n">script</span><span class="o">.</span><span class="n">Language</span><span class="o">.</span><span class="n">Language</span>
+
+<span class="c1"># 이름으로 찾기 — out 매개변수는 튜플로 돌아온다</span>
+<span class="n">found</span><span class="p">,</span> <span class="n">definition</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">ScriptManager</span><span class="o">.</span><span class="n">TryGetScript</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;대시보드 초기화&quot;</span><span class="p">)</span>
+
+<span class="c1"># 고치기 — ScriptDefinition 은 불변이라 복사본을 만들어 교체한다</span>
+<span class="k">if</span> <span class="n">found</span><span class="p">:</span>
+    <span class="n">updated</span> <span class="o">=</span> <span class="n">definition</span><span class="o">.</span><span class="n">WithScriptCode</span><span class="p">(</span><span class="n">definition</span><span class="o">.</span><span class="n">ScriptCode</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;0.5&quot;</span><span class="p">,</span> <span class="s2">&quot;0.9&quot;</span><span class="p">))</span>
+    <span class="n">Document</span><span class="o">.</span><span class="n">ScriptManager</span><span class="o">.</span><span class="n">Replace</span><span class="p">(</span><span class="n">definition</span><span class="p">,</span> <span class="n">updated</span><span class="p">)</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code><span class="c1"># 북마크 — 이름 속성이 Name 이 아니라 DisplayName</span>
+<span class="k">for</span> <span class="n">bookmark</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">Bookmarks</span><span class="p">:</span>
+    <span class="nb">print</span> <span class="n">bookmark</span><span class="o">.</span><span class="n">DisplayName</span><span class="p">,</span> <span class="n">bookmark</span><span class="o">.</span><span class="n">IsBroken</span>
+<span class="n">Document</span><span class="o">.</span><span class="n">Bookmarks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">Apply</span><span class="p">()</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code><span class="c1"># 그래픽 표·KPI 차트의 클릭 액션 스크립트에서만 쓸 수 있는 객체</span>
+<span class="n">Context</span><span class="o">.</span><span class="n">Value</span>                   <span class="c1"># 클릭한 셀 값</span>
+<span class="n">Context</span><span class="o">.</span><span class="n">HierarchyPathValues</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># 같은 행의 기준 값</span>
+<span class="n">Context</span><span class="o">.</span><span class="n">Visualization</span>           <span class="c1"># 클릭된 미니어처 시각화</span>
+</code></pre></div>
+
+<h2 id="1412">14.12 탐색용 스니펫</h2>
 <div class="codehilite"><pre><span></span><code><span class="c1"># 객체의 멤버 보기</span>
 <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">(</span><span class="n">someObject</span><span class="p">):</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">m</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">):</span>
@@ -356,7 +460,7 @@
 <p>같습니다. 짧은 <code>Document</code>를 쓰세요.</p>
 <h3 id="q_2">Q. 시각화를 이름으로 찾는 게 왜 나쁜가요?</h3>
 <p>사용자가 제목을 바꾸면 스크립트가 조용히 실패합니다.
-<strong>스크립트 매개변수</strong>로 시각화 객체를 직접 넘기세요 → <a href="02-getting-started.html#24">1.4 참조</a></p>
+<strong>스크립트 매개변수</strong>로 시각화 객체를 직접 넘기세요 → <a href="02-getting-started.html">2.4 참조</a></p>
 <h3 id="q-asvisualcontent">Q. <code>As[VisualContent]()</code>가 자꾸 실패합니다</h3>
 <p>텍스트 영역·필터 패널·Mod 시각화는 캐스팅되지 않거나 다른 속성 구조를 가집니다.
 <code>try/except</code>로 감싸고 <code>TypeId</code>로 걸러 내세요 → <a href="05-dotnet-interop.html#52-ast">5.2 참조</a></p>
@@ -366,28 +470,106 @@
 사용자에게 보여 주려면 문서 속성이나 <code>NotificationService</code>를 쓰세요.</p>
 <h3 id="q_3">Q. 스크립트를 되돌릴 수 있나요?</h3>
 <p><strong>믿지 마세요.</strong> 데이터 테이블 교체, 페이지·시각화 삭제, 축 일괄 변경은 복구가 어렵습니다.
-반드시 사본에서 먼저 시험하세요 → <a href="13-tips.html#133-undo">9.3 참조</a></p>
+반드시 사본에서 먼저 시험하세요 → <a href="13-tips.html">13.3 참조</a></p>
 <h3 id="q-web-player">Q. Web Player에서 스크립트가 실패합니다</h3>
 <p><code>MessageBox</code>, 파일 대화상자, 로컬 파일 쓰기는 브라우저에서 동작하지 않습니다.
-→ <a href="13-tips.html#131-analyst-web-player">9.1 참조</a></p>
+→ <a href="13-tips.html">13.1 참조</a></p>
 <h3 id="q_4">Q. 한글이 깨집니다</h3>
 <p>문자열에 <code>u</code> 접두사를 붙이고(<code>u"한글"</code>), 스크립트 첫 줄에 <code># -*- coding: utf-8 -*-</code> 를 넣으세요.</p>
 <h3 id="q-api">Q. API 문서는 어디서 보나요?</h3>
-<p>Spotfire 공식 API 레퍼런스(<code>Spotfire.Dxp.*</code>)를 보세요. C# 시그니처로 되어 있는데,
-IronPython으로 옮기는 규칙은 <a href="05-dotnet-interop.html#58-api">3.8</a>에 정리해 두었습니다.
-문서를 못 찾겠으면 <code>dir()</code>로 직접 탐색하는 편이 빠릅니다.</p>
+<p>세 군데를 순서대로 쓰면 됩니다.</p>
+<ol>
+<li><strong><a href="https://docs.tibco.com/pub/doc_remote/sfire_dev/area/doc/api/tib_sfire-analyst_api/index.aspx">공식 API 레퍼런스</a></strong>
+   — 이름·시그니처·폐기 여부의 최종 근거. URL 규칙이 단순해서 주소창에 직접 치는 편이 빠릅니다
+   → <a href="06-api-map.html">6.10 참조</a></li>
+</ol>
+<p><code>text
+   .../html/T_Spotfire_Dxp_Application_Visuals_BarChart.htm</code></p>
+<ol start="2">
+<li><strong><a href="https://community.spotfire.com/articles/spotfire/ironpython-scripting-in-spotfire/">IronPython 예제 색인 (Spotfire Community)</a></strong>
+   — "이런 걸 하고 싶다"에서 출발할 때. 데이터·시각화·필터/마킹·레이아웃·지도·문서·연동으로
+   분류된 수백 개의 예제 링크가 있습니다</li>
+<li><strong><a href="https://www.sf-ref.com/ironpython/">sf-ref.com</a></strong> — 시각화 유형별로 어떤 속성이
+   있는지 훑을 때</li>
+</ol>
+<p>셋 다 못 찾겠으면 <code>dir()</code>로 직접 탐색하는 편이 빠릅니다 → <a href="07-pitfalls.html">7.6 참조</a></p>
+<h3 id="q_5">Q. 진행 표시줄을 띄우고 싶습니다</h3>
+<p><code>ProgressService.ExecuteWithProgress(...)</code> 를 쓰고, 스크립트 편집 대화상자에서
+<strong>"트랜잭션으로 감싸기" 체크를 해제</strong>하세요. 체크가 켜져 있으면 진행 표시가 뜨지 않습니다
+→ <a href="13-tips.html">13.2 참조</a></p>
+<h3 id="q_6">Q. 스크립트 중간에 문서 속성을 써도 화면에 안 나옵니다</h3>
+<p>정상입니다. 스크립트 전체가 하나의 트랜잭션이라 <strong>끝날 때 한꺼번에</strong> 반영됩니다.
+로그를 리스트에 모았다가 마지막에 한 번 쓰세요 → <a href="07-pitfalls.html">7.4 참조</a></p>
+<h3 id="q_7">Q. 그래픽 표에서 클릭한 값을 어떻게 받나요?</h3>
+<p>그래픽 표·KPI 차트의 <strong>클릭 시 액션</strong>으로 등록한 스크립트에서만 <code>Context</code> 객체를 쓸 수
+있습니다. <code>Context.Value</code>, <code>Context.HierarchyPathValues[0]</code>, <code>Context.Visualization</code>
+→ <a href="02-getting-started.html">2.3 참조</a></p>
 <hr />
 <h2 id="_2">참고한 자료</h2>
+<h3 id="_3">시작점</h3>
 <ul>
-<li><a href="https://community.spotfire.com/articles/spotfire/ironpython-scripting-in-spotfire/">IronPython Scripting in Spotfire® – Overview (Spotfire Community)</a></li>
+<li><a href="https://community.spotfire.com/articles/spotfire/ironpython-scripting-in-spotfire/">IronPython Scripting in Spotfire® – Overview (Spotfire Community)</a>
+  — 수백 개 예제의 분류 색인. 하고 싶은 일이 있으면 여기부터</li>
+<li><a href="https://docs.tibco.com/pub/doc_remote/sfire_dev/area/doc/api/tib_sfire-analyst_api/index.aspx">Spotfire Analyst API Reference</a>
+  — 이름·시그니처·폐기 여부의 최종 근거 → <a href="06-api-map.html">6.10</a></li>
+<li><a href="https://www.sf-ref.com/ironpython/">The Spotfire IronPython Quick Reference (sf-ref.com)</a>
+  — 시각화 유형별 속성 훑어보기</li>
+<li><a href="https://docs.tibco.com/pub/sfire-analyst/12.0.6/doc/html/en-US/TIB_sfire-analyst_UsersGuide/text/text_ironpython_example_scripts.htm">IronPython Example Scripts (Spotfire 제품 문서)</a></li>
+</ul>
+<h3 id="_4">이 교안이 근거로 삼은 공식 문서</h3>
+<table>
+<thead>
+<tr>
+<th>교안의 내용</th>
+<th>출처</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>7.4 트랜잭션·격리 실행·라이브러리 제약</td>
+<td><a href="https://community.spotfire.com/s/article/How-to-develop-IronPython-scripts-in-TIBCO-Spotfire-and-their-limitations">How to develop IronPython scripts and their limitations</a></td>
+</tr>
+<tr>
+<td>7.4 ③ 스냅샷 오류 우회</td>
+<td><a href="https://community.spotfire.com/s/article/how-troubleshoot-exception-thrown-when-executing-ironpython-script-error-attempt-take-snapshot">Attempt take snapshot … 오류 해결</a></td>
+</tr>
+<tr>
+<td>7.7 클라이언트 종류 판별</td>
+<td><a href="https://community.spotfire.com/s/article/how-determine-client-type-analyst-or-web-player-user-running-tibco-spotfire-using-ironpython">How to determine the client type</a></td>
+</tr>
+<tr>
+<td>2.3 <code>Context</code> 객체</td>
+<td><a href="https://community.spotfire.com/s/article/How-to-use-Miniature-Visualization-Action-Scripts-using-IronPython-in-TIBCO-Spotfire">Miniature Visualization Action Scripts</a></td>
+</tr>
+<tr>
+<td>2.5 TRACE 로깅·알림</td>
+<td><a href="https://community.spotfire.com/s/article/Debugging-IronPython-Scripts-TIBCO-Spotfire">Debugging IronPython Scripts in Spotfire®</a></td>
+</tr>
+<tr>
+<td>6.8 · 예제 22 ScriptManager</td>
+<td><a href="https://community.spotfire.com/articles/spotfire/introducing-the-spotfire-script-management-apis/">Introducing the Spotfire Script Management APIs</a></td>
+</tr>
+<tr>
+<td>13.2 진행 표시·취소</td>
+<td><a href="https://community.spotfire.com/s/article/How-to-Add-Progress-Bar-and-Cancellation-Option-when-Executing-IronPython-Scripts-in-TIBCO-Spotfire">Progress bar and cancellation option</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="_5">커뮤니티 예제 모음</h3>
+<ul>
 <li><a href="https://github.com/essejhsif/spotfire">essejhsif/spotfire — IronPython scripts for Spotfire</a></li>
 <li><a href="https://github.com/Gurudutt-Goswami/Spotfire-Ironpython">Gurudutt-Goswami/Spotfire-Ironpython</a></li>
-<li><a href="https://docs.tibco.com/pub/sfire-analyst/12.0.6/doc/html/en-US/TIB_sfire-analyst_UsersGuide/text/text_ironpython_example_scripts.htm">IronPython Example Scripts (Spotfire 제품 문서)</a></li>
-<li><a href="https://www.sf-ref.com/ironpython/visualizations/common-operations/referencing-visualizations/">The Spotfire IronPython Quick Reference</a></li>
 <li><a href="https://community.spotfire.com/articles/spotfire/how-to-reset-all-filters-for-all-filtering-schemes-in-spotfire-using-ironpython-scripting/">How to Reset All Filters For All Filtering Schemes (Spotfire Community)</a></li>
 <li><a href="https://community.spotfire.com/articles/spotfire/how-to-export-a-visualization-as-an-image-in-spotfire-using-ironpython-scripting/">How to export a visualization as an image using IronPython (Spotfire Community)</a></li>
 <li><a href="https://community.spotfire.com/articles/spotfire/loop-through-pages-and-visualization-spotfirer-using-ironpython-scripting/">Loop Through Pages and Visualization Using IronPython (Spotfire Community)</a></li>
 </ul>
+<div class="admonition warning">
+<p class="admonition-title">커뮤니티 코드를 그대로 쓰기 전에</p>
+<p>위 저장소들의 스크립트는 대부분 2012~2021년에 작성된 것이라
+<strong>마킹 이름을 하드코딩하고</strong>(<code>Markings["Marking"]</code>), <strong>로컬 경로를 박아 두고</strong>,
+<strong><code>CreateDataWriter</code> 반환값을 확인하지 않습니다.</strong>
+7장의 체크리스트로 한 번 걸러서 쓰세요.</p>
+</div>
     <nav class="pager"><a class="pg prev" href="13-tips.html"><span>이전</span>13. 실무 팁과 성능</a></nav>
     <footer class="foot">
       <p>이 교안의 모든 예제 스크립트는 <a href="https://github.com/cozytk/spotfire-iron-python-scripts/tree/HEAD/scripts">scripts/ 폴더</a>에 실행 가능한 <code>.py</code> 파일로도 들어 있습니다.</p>
@@ -408,8 +590,9 @@ IronPython으로 옮기는 규칙은 <a href="05-dotnet-interop.html#58-api">3.8
 <li><a href="#147">14.7 문서 속성</a></li>
 <li><a href="#148">14.8 레이아웃(배치)</a></li>
 <li><a href="#149">14.9 내보내기</a></li>
-<li><a href="#1410">14.10 사용자 알림</a></li>
-<li><a href="#1411">14.11 탐색용 스니펫</a></li>
+<li><a href="#1410">14.10 사용자 알림과 진행 표시</a></li>
+<li><a href="#1411">14.11 환경 판별과 스크립트 관리</a></li>
+<li><a href="#1412">14.12 탐색용 스니펫</a></li>
 <li><a href="#faq">FAQ</a><ul>
 <li><a href="#q-pandas-numpy">Q. pandas나 numpy를 쓸 수 있나요?</a></li>
 <li><a href="#q-python-3">Q. Python 3 문법을 쓰면 안 되나요?</a></li>
@@ -423,9 +606,17 @@ IronPython으로 옮기는 규칙은 <a href="05-dotnet-interop.html#58-api">3.8
 <li><a href="#q-web-player">Q. Web Player에서 스크립트가 실패합니다</a></li>
 <li><a href="#q_4">Q. 한글이 깨집니다</a></li>
 <li><a href="#q-api">Q. API 문서는 어디서 보나요?</a></li>
+<li><a href="#q_5">Q. 진행 표시줄을 띄우고 싶습니다</a></li>
+<li><a href="#q_6">Q. 스크립트 중간에 문서 속성을 써도 화면에 안 나옵니다</a></li>
+<li><a href="#q_7">Q. 그래픽 표에서 클릭한 값을 어떻게 받나요?</a></li>
 </ul>
 </li>
-<li><a href="#_2">참고한 자료</a></li>
+<li><a href="#_2">참고한 자료</a><ul>
+<li><a href="#_3">시작점</a></li>
+<li><a href="#_4">이 교안이 근거로 삼은 공식 문서</a></li>
+<li><a href="#_5">커뮤니티 예제 모음</a></li>
+</ul>
+</li>
 </ul>
 </div>
 </aside>

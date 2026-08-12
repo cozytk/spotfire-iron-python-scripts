@@ -43,9 +43,23 @@
 6. 존재하지 않는 API 를 지어내지 마라
    - 확실하지 않으면 코드에 쓰지 말고 "확인 필요"라고 표시할 것
    - 실제로 존재하지 않는 예: TreemapChart(→Treemap), IndexSet.Add(→AddIndex),
-     StdfDataSource, Visual.RenderSync(→RenderAsync 만 존재)
+     StdfDataSource, Visual.RenderSync(→RenderAsync 만 존재), TileMode.Grid(→Evenly)
 7. 되돌리기가 안 되는 작업이 있다
    - 데이터 테이블 교체·삭제, 페이지·시각화 삭제는 복구 불가
+8. 스크립트 전체가 하나의 트랜잭션으로 실행된다
+   - 스크립트 중간에 Document.Properties 에 쓴 값은 화면에 나타나지 않는다.
+     끝날 때 한꺼번에 반영되므로, 로그는 리스트에 모았다가 마지막에 한 번만 쓸 것
+   - 속성을 바꾼 뒤 그 결과(재계산된 값)를 같은 스크립트에서 읽으려 하지 말 것
+   - 이미지 렌더링처럼 스냅샷이 필요한 작업은
+     "Attempt take snapshot on application thread in state 'Executing'" 로 실패할 수 있다
+9. Analyst 전용 기능은 실행 전에 클라이언트를 판별할 것
+   - 로컬 파일 읽기/쓰기, MessageBox, System.Windows.Forms, COM 연동은 Web Player 에서 불가
+   - 판별: "RichAnalysisApplication" in Application.GetType().ToString()
+   - 불가한 환경이면 예외를 내지 말고 Document.Properties["ScriptLog"] 에 안내를 남길 것
+10. 파이썬 예약어와 겹치는 .NET 멤버 이름에 주의할 것
+   - CancellationToken.None 은 문법 오류다. CancellationToken() 또는
+     getattr(CancellationToken, "None") 을 쓸 것
+   - Async 메서드는 Task 를 반환한다. .Result 로 완료를 기다릴 것
 
 [코드 작성 규칙]
 - 여러 시각화를 순회하는 일괄 처리는 다음 골격을 따를 것
@@ -83,8 +97,9 @@
 | `IndexSet.Add(i)` | `AddIndex(i)` | 파이썬 `set`을 알면 당연한 이름 |
 | `StdfDataSource(stream)` | 존재하지 않음 | `StdfDataWriter`가 있으니 짝이 있을 듯 |
 | `Visual.RenderSync` | `RenderAsync`만 존재 | Async가 있으면 Sync도 있을 듯 |
+| `TileMode.Grid` | `Horizontally`/`Vertically`/`Evenly`/`Maximize` | 격자 배치니까 Grid일 듯 |
 
-**네 개 모두 "있을 법한 이름"입니다.** AI가 Spotfire에서 실패하는 방식은
+**전부 "있을 법한 이름"입니다.** AI가 Spotfire에서 실패하는 방식은
 문법 오류가 아니라 **그럴듯하게 틀린 이름**입니다.
 
 위 컨텍스트의 6번 항목이 이걸 막습니다. 그래도 완벽하지는 않으므로,

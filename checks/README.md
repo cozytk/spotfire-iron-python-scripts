@@ -11,10 +11,10 @@
 
 ---
 
-## 먼저 이것부터 — 예제 21종 일괄 검증
+## 먼저 이것부터 — 예제 23종 일괄 검증
 
 예제를 하나씩 실제로 돌리는 것은 현실적이지 않으므로,
-**예제 21개가 쓰는 API를 한 번에 확인하는 하네스**를 만들었습니다.
+**예제 23개가 쓰는 API를 한 번에 확인하는 하네스**를 만들었습니다.
 
 ### [`00_verify_all_examples.py`](00_verify_all_examples.py)
 
@@ -43,10 +43,40 @@
 
 ## 검증 완료
 
-**예제 21종 전부 실제 Spotfire에서 확인했습니다.** (Spotfire 14.x / IronPython 2.7.12)
+**예제 1~21은 전부 실제 Spotfire에서 확인했습니다.** (Spotfire 14.x / IronPython 2.7.12)
 
-남은 확인 항목이 없어 `checks/` 에는 재실행용 하네스만 남겨 둡니다.
 교안을 고친 뒤 회귀 확인이 필요하면 `00_verify_all_examples.py` 를 다시 돌리세요.
+하네스에는 **아직 실측하지 않은 예제 22·23의 API 존재 확인**도 넣어 두었으므로,
+한 번 돌리면 아래 표의 상당 부분이 채워집니다.
+
+### 아직 확인하지 않은 것
+
+나중에 추가한 항목들입니다. **Spotfire 15.0 API 레퍼런스와 공식 커뮤니티 문서를
+근거로 작성했고, 실행해 보지는 않았습니다.** 교안에도 그렇게 표시해 두었습니다.
+
+| 대상 | 확인할 것 |
+|------|-----------|
+| 예제 22 (스크립트 인벤토리) | `Document.ScriptManager.GetScripts()` 가 14.x에 있는지. `ScriptDefinition` 의 `Name`·`Language.Language`·`ScriptCode`·`Parameters` 접근 |
+| 예제 23 (환경 진단) | `Application.GetType().ToString()` 의 실제 반환 문자열. `scheme.FilteringSelectionReference.Name` 접근 |
+| 7.4 ③ 스냅샷 우회 | `Document.GetService(ApplicationThread)` 와 `InvokeAsynchronously` 로 텍스트 영역까지 렌더링되는지 |
+| 예제 14 RenderAsync | `RenderResultSettings(Size)` · `VisualRenderSettings()` · `task.Result` · `result.WriteTo(stream)` |
+| 13.2 진행 표시 | `ProgressService.ExecuteWithProgress` + 트랜잭션 래핑 해제 |
+| `Visual.ShowTitle` / `Visual.Id` | 읽기·쓰기 동작 |
+| `Document.Bookmarks` | `DisplayName` · `IsBroken` · `Apply()` |
+| `page.ApplyLayout(TileMode.Evenly)` | 배치 동작 |
+
+확인하기 가장 빠른 방법은 **예제 23을 먼저 돌려 보는 것**입니다.
+그 뒤 개별 API는 `dir()` 과 `__doc__` 으로 봅니다.
+
+```python
+print hasattr(Document, "ScriptManager")
+print hasattr(Document, "Bookmarks")
+print Application.GetType().ToString()
+
+for v in Document.ActivePageReference.Visuals:
+    print v.Id, "|", v.ShowTitle, "|", v.Title
+    break
+```
 
 교안 내용을 크게 바꿨다면 아래 순서를 권합니다.
 
