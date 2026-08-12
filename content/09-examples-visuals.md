@@ -105,10 +105,7 @@ if failed:
 
 ---
 
----
-
 ## 예제 1. 모든 시각화에 데이터 제한 표현식 일괄 적용
-
 
 <ul class="meta">
 <li class="badge risk-mid">위험도 중간</li>
@@ -183,10 +180,7 @@ Document.Properties["ScriptLog"] = u"%d개 시각화에 적용, %d개 건너뜀"
 
 ---
 
----
-
 ## 예제 2. 축 표현식 동시 전환 (측정지표 스위처)
-
 
 <ul class="meta">
 <li class="badge risk-mid">위험도 중간</li>
@@ -267,10 +261,7 @@ Document.Properties["ScriptLog"] = u"%s 기준으로 %d개 차트를 전환했�
 
 ---
 
----
-
 ## 예제 3. 범례·제목·서식 일괄 통일
-
 
 <ul class="meta">
 <li class="badge risk-low">위험도 낮음</li>
@@ -387,10 +378,7 @@ Document.Properties["ScriptLog"] = u"산점도 %d개의 마커 크기를 조정�
 
 ---
 
----
-
 ## 예제 4. 여러 차트의 축 범위 동시 고정
-
 
 <ul class="meta">
 <li class="badge risk-low">위험도 낮음</li>
@@ -486,7 +474,6 @@ for page in Document.Pages:
 
 ## 예제 5. 모든 차트의 줌·축 범위 초기화
 
-
 <ul class="meta">
 <li class="badge risk-low">위험도 낮음</li>
 <li class="badge bulk">일괄 적용</li>
@@ -501,7 +488,7 @@ for page in Document.Pages:
 줌 슬라이더는 시각화마다 개별 상태이고, 한 번에 되돌리는 UI가 없습니다.
 북마크로 대신할 수 있지만 북마크는 필터·마킹까지 함께 되돌려서 부작용이 큽니다.
 
-**스크립트 매개변수**
+**스크립트 매개변수**  
 없음.
 
 ```python
@@ -541,10 +528,7 @@ Document.Properties["ScriptLog"] = u"%d개 축의 줌을 초기화했습니다."
 
 ---
 
----
-
 ## 예제 6. 시각화 유형 일괄 토글
-
 
 <ul class="meta">
 <li class="badge risk-mid">위험도 중간</li>
@@ -634,10 +618,7 @@ elif viz.TypeId == VisualTypeIdentifiers.BarChart:
 
 ---
 
----
-
 ## 예제 7. 모든 시각화의 데이터 테이블 일괄 교체
-
 
 <ul class="meta">
 <li class="badge risk-high">위험도 높음 · 사본에서</li>
@@ -736,9 +717,6 @@ Document.Properties["ScriptLog"] = msg
     - 실행 전에 **예제 18의 인벤토리를 뽑아 두면** 무엇이 바뀌었는지 대조할 수 있습니다.
     - 데이터 제한 표현식(`WhereClauseExpression`)도 컬럼을 참조하므로, 필요하면 축과 같은
       방식으로 저장·복원 대상에 추가하세요.
-
----
-
 
 ---
 

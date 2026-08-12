@@ -166,7 +166,6 @@ Spotfire의 이미지 내보내기는 <strong>한 번에 하나씩</strong>입�
 - 폴더가 없으면 <code>Directory.CreateDirectory</code>가 만들어 줍니다. 쓰기 권한은 확인하세요.</p>
 </div>
 <hr />
-<hr />
 <h2 id="15">예제 15. 여러 데이터 테이블을 한 번에 파일로 내보내기</h2>
 <ul class="meta">
 <li class="badge risk-low">위험도 낮음</li>
@@ -379,7 +378,6 @@ SpreadsheetDataSemicolonUtf8Writer
 </ul>
 </div>
 <hr />
-<hr />
 <h2 id="16">예제 16. 마킹한 행을 새 데이터 테이블로 스냅샷</h2>
 <ul class="meta">
 <li class="badge risk-mid">위험도 중간</li>
@@ -530,7 +528,7 @@ dataSource = StdfDataSource(stream)
 <p><strong>기본 기능으로 어려운 이유</strong><br />
 <code>파일 &gt; 데이터 다시 로드</code>가 있긴 하지만, <strong>어떤 테이블이 실제로 갱신이 필요한지</strong>
 가려서 처리하거나, 결과를 알림으로 남기거나, 일부만 골라 새로고침할 수는 없습니다.</p>
-<p><strong>스크립트 매개변수</strong>
+<p><strong>스크립트 매개변수</strong><br />
 없음.</p>
 <div class="codehilite"><pre><span></span><code><span class="c1"># -*- coding: utf-8 -*-</span>
 <span class="c1"># 새로고침 가능한 모든 데이터 테이블을 새로고침하고 결과를 알린다.</span>

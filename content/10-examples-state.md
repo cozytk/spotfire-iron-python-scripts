@@ -10,7 +10,6 @@
 
 ## 예제 8. 마킹 결과를 문서 속성으로 넘기기
 
-
 <ul class="meta">
 <li class="badge risk-low">위험도 낮음</li>
 <li class="badge">자주 묻는 질문</li>
@@ -107,10 +106,7 @@ ${MarkedInList} = "" or [Region] in (${MarkedInList})
 
 ---
 
----
-
 ## 예제 9. 키 컬럼으로 다른 테이블에 마킹 전파
-
 
 <ul class="meta">
 <li class="badge risk-low">위험도 낮음</li>
@@ -195,10 +191,7 @@ Document.Properties["ScriptLog"] = u"키 %d개 → '%s' 테이블 %d행 마킹" 
 
 ---
 
----
-
 ## 예제 10. 대시보드 전체 상태 초기화
-
 
 <ul class="meta">
 <li class="badge risk-low">위험도 낮음</li>
@@ -217,7 +210,7 @@ Document.Properties["ScriptLog"] = u"키 %d개 → '%s' 테이블 %d행 마킹" 
 
 이 예제는 **가장 자주 요청되는 스크립트**입니다.
 
-**스크립트 매개변수**
+**스크립트 매개변수**  
 없음.
 
 ```python
@@ -300,10 +293,7 @@ Document.Properties["ScriptLog"] = u" / ".join(log)
 
 ---
 
----
-
 ## 예제 11. 원하는 컬럼의 필터만 선택적으로 초기화
-
 
 <ul class="meta">
 <li class="badge risk-low">위험도 낮음</li>
@@ -420,7 +410,6 @@ Document.Properties["ScriptLog"] = u"%d개 필터를 초기화했습니다. (유
 
 ## 예제 12. 역할별 필터 패널 구성
 
-
 <ul class="meta">
 <li class="badge risk-low">위험도 낮음</li>
 <li class="badge bulk">일괄 적용</li>
@@ -521,10 +510,7 @@ Document.Properties["ActiveFilters"] = (
 
 ---
 
----
-
 ## 예제 13. 문서 속성 값으로 페이지 표시/숨김
-
 
 <ul class="meta">
 <li class="badge risk-low">위험도 낮음</li>
@@ -604,9 +590,6 @@ role = u"재무" if userName in FINANCE_USERS else u"영업"
     - 페이지를 숨긴 채로 저장하면 **다음에 열 때도 숨겨진 상태**입니다.
       문서를 열 때 자동 실행되는 초기화 스크립트에 이 로직을 넣어 두세요.
     - 사용자 이름 형식은 인증 방식에 따라 다릅니다. 먼저 출력해 보고 목록을 만드세요.
-
----
-
 
 ---
 

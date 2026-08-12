@@ -11,7 +11,6 @@
 
 ## 예제 14. 모든 페이지의 시각화를 PNG로 일괄 내보내기
 
-
 <ul class="meta">
 <li class="badge risk-low">위험도 낮음</li>
 <li class="badge analyst">Analyst 전용</li>
@@ -114,10 +113,7 @@ Document.Properties["ScriptLog"] = msg
 
 ---
 
----
-
 ## 예제 15. 여러 데이터 테이블을 한 번에 파일로 내보내기
-
 
 <ul class="meta">
 <li class="badge risk-low">위험도 낮음</li>
@@ -333,10 +329,7 @@ SpreadsheetDataSemicolonUtf8Writer
 
 ---
 
----
-
 ## 예제 16. 마킹한 행을 새 데이터 테이블로 스냅샷
-
 
 <ul class="meta">
 <li class="badge risk-mid">위험도 중간</li>
@@ -453,7 +446,6 @@ Document.Data.Tables.Add(u"필터 결과", source)
 
 ## 예제 17. 모든 데이터 테이블 일괄 새로고침
 
-
 <ul class="meta">
 <li class="badge risk-low">위험도 낮음</li>
 <li class="badge bulk">일괄 적용</li>
@@ -467,7 +459,7 @@ Document.Data.Tables.Add(u"필터 결과", source)
 `파일 > 데이터 다시 로드`가 있긴 하지만, **어떤 테이블이 실제로 갱신이 필요한지**
 가려서 처리하거나, 결과를 알림으로 남기거나, 일부만 골라 새로고침할 수는 없습니다.
 
-**스크립트 매개변수**
+**스크립트 매개변수**  
 없음.
 
 ```python
@@ -529,7 +521,6 @@ for table in Document.Data.Tables:
 ---
 
 다음 장은 **UI를 동적으로 제어**하는 예제입니다.
-
 
 ---
 

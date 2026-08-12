@@ -10,7 +10,6 @@
 
 ## 예제 18. 문서 전체 시각화 인벤토리 만들기
 
-
 <ul class="meta">
 <li class="badge risk-none">읽기 전용</li>
 <li class="badge hard">기본 기능으로 어려움</li>
@@ -26,7 +25,7 @@
 Spotfire UI에는 "이 데이터 테이블을 참조하는 시각화 목록"을 보여 주는 화면이 없습니다.
 시각화를 하나씩 열어 속성 대화상자를 확인하는 수밖에 없습니다.
 
-**스크립트 매개변수**
+**스크립트 매개변수**  
 없음.
 
 ```python
@@ -89,10 +88,7 @@ Document.Properties["InventoryReport"] = html
 
 ---
 
----
-
 ## 예제 19. 표현식 전수 검사 (문서 감사 리포트)
-
 
 <ul class="meta">
 <li class="badge risk-mid">위험도 중간</li>
@@ -247,10 +243,7 @@ else:
 
 ---
 
----
-
 ## 예제 20. 마킹한 값별로 시각화 자동 생성
-
 
 <ul class="meta">
 <li class="badge risk-high">위험도 높음 · 사본에서</li>
@@ -360,10 +353,7 @@ for index, value in enumerate(values):
 
 ---
 
----
-
 ## 예제 21. 산점도 매트릭스 자동 생성 (NxN 상관 분석)
-
 
 <ul class="meta">
 <li class="badge risk-high">위험도 높음 · 사본에서</li>
@@ -613,9 +603,6 @@ BeginSideBySideSection()          가로 분할
     - 컬럼을 6개 이상 고르면 36개 이상의 산점도가 생겨 **매우 느려집니다.**
       실무에서는 5개 정도로 제한하세요.
     - 재실행하면 기존 산점도를 지우고 다시 만듭니다. **그 페이지를 손으로 편집했다면 사라집니다.**
-
----
-
 
 ---
 

@@ -95,7 +95,7 @@ print vc.Data.DataTableReference     # 여기서 실패
 # 'HtmlTextArea' object has no attribute 'Data'
 ```
 
-**`As[VisualContent]()` 성공 여부로는 대상을 걸러낼 수 없습니다.**
+**`As[VisualContent]()` 성공 여부로는 대상을 걸러낼 수 없습니다.**  
 실측 결과입니다.
 
 | 시각화 | 캐스팅 | 실제 가진 속성 |
@@ -151,7 +151,7 @@ writer.Write(...)
 CreateDataWriter(self: DataManager, typeId: TypeIdentifier) -> DataWriter
 ```
 
-**"예외가 안 났다"와 "동작했다"는 다릅니다.**
+**"예외가 안 났다"와 "동작했다"는 다릅니다.**  
 반환값을 받는 호출은 반환값을 확인하세요.
 
 ```python
@@ -228,7 +228,7 @@ print imp.DataTableDataSource.__doc__
 # DataTableDataSource(dataTable: DataTable, dataSelection: DataSelection)
 ```
 
-**이 교안의 예제 16(마킹 스냅샷)은 이 한 줄로 해결됐습니다.**
+**이 교안의 예제 16(마킹 스냅샷)은 이 한 줄로 해결됐습니다.**  
 세 번째 오버로드를 발견하고 나서 20줄짜리 코드가 3줄이 되었습니다.
 
 !!! warning "시그니처가 맞다고 동작하는 것도 아닙니다"
