@@ -37,31 +37,24 @@
 
 ---
 
-## 지금 확인할 것 (6차 · 마지막)
+## 지금 확인할 것 (7차 · 마지막)
 
-### [`09_export_alternatives.py`](09_export_alternatives.py)
+### [`10_final_export.py`](10_final_export.py)
 
-5차에서 **예제 10의 정답**을 찾았습니다. `DataTableDataSource` 의 세 번째 오버로드입니다.
-
-```text
-DataTableDataSource(dataTable, dataSelection)
-```
-
-행 부분집합을 그대로 받으므로 writer 도, 메모리 스트림도 필요 없습니다.
-`DataSelection` 의 정확한 생성자 형태만 확인하면 예제 10을 교체할 수 있습니다.
+6차에서 예제 9의 답은 **확정**됐고, 예제 10은 방향이 잡혔습니다. 마지막 확인입니다.
 
 | 단계 | 내용 | 문서 변경 |
 |------|------|:---------:|
-| 1 | `DataSelection` / `RowSelection` / `ColumnSelection` 생성자 시그니처 | 없음 |
-| 2 | `DataSelection` 을 실제로 만들어 보기 (3가지 형태 시도) | 없음 |
-| 3 | `DataTableDataSource(table, selection)` 생성 | 없음 |
-| 4 | `DataWriterFactory`, `TablePlot.ExportText/ExportData`, `ExportDataToLibrary` 시그니처 | 없음 |
-| 5 | **실제 왕복** — 마킹 행만 새 테이블로 만들고 행 수 대조 후 삭제 | **있음** |
+| 1 | **마킹/필터링이 `DataSelection` 의 구체 클래스인가** — 예제 10의 열쇠 | 없음 |
+| 2 | `CreateDataWriter` 가 `None` 인 이유 — 라이선스 확인 | 없음 |
+| 3 | `TablePlot.ExportData` 를 **메모리로** 실행 (파일 안 씀) | 없음 |
+| 4 | **마킹 행만 새 테이블로** 만들고 행 수 대조 후 삭제 | **있음** |
 
-5단계가 핵심입니다. **행 수가 일치하면 예제 10이 완성**됩니다.
-부담스러우면 `RUN_ROUNDTRIP = False` 로 두고 1~4단계만 돌려 주세요.
+4단계가 핵심입니다. **행 수가 마킹된 행 수와 일치하면 예제 10이 완성**됩니다.
+실행 전에 **차트에서 몇 개 마킹해 두세요.** 마킹이 없으면 건너뜁니다.
 
-4단계를 위해 **표(Table) 시각화가 있는 페이지**에서 실행하면 좋습니다.
+3단계를 위해 **표(Table) 시각화가 있는 페이지**에서 실행하면 좋습니다.
+부담스러우면 `RUN_ROUNDTRIP = False` 로 두고 1~3단계만 돌려 주세요.
 
 ---
 
@@ -353,3 +346,89 @@ DataWriter    DataWriterFactory    DataWriterTypeIdentifiers    OutputFileTypes
 ```
 
 `DataWriter` 는 추상 클래스입니다 (`CanWriteFromReader`, `Write`, `WriteCore`).
+
+
+---
+
+### 6차 — 차트 페이지 재실행 + 내보내기 확정 (2026-08-12)
+
+**결과: 통과 17 / 21** (차트가 있는 페이지에서 실행하여 축 관련 항목이 모두 검증됨)
+
+#### 축 관련 항목 전부 확인
+
+| 항목 | 결과 |
+|------|------|
+| `YAxis.Expression` 쓰기 | 가능 (예제 3) |
+| `SizeAxis.Expression` 쓰기 | 가능 (예제 3) |
+| `MarkerSize` 쓰기 | 가능 (예제 4) |
+| `XAxis.ZoomRange` 쓰기 | 가능 (예제 6) |
+| `YAxis.Range` 쓰기 | 가능 (예제 7) |
+| `Trellis.PanelAxis.Expression` 읽기 | 가능 (예제 20) |
+| `Render` | 차트 4개 성공, 텍스트 영역만 실패 (예제 8) |
+
+#### 예제 18 확정 — 하네스 버그가 맞았음
+
+```text
+scheme[table][column]  ->  Step: (KB073100, KB268900, KB425000)
+Reset 존재: True
+```
+
+3차에서 실패로 나온 것은 검사 코드가 `Tables[0]` 을 썼기 때문이었고,
+**예제 18 본문은 정상**입니다.
+
+#### 예제 9의 답 — `ExportData` (시그니처 확정)
+
+```text
+ExportData(self: TablePlot, typeIdentifier: TypeIdentifier, stream: Stream)
+ExportText(self: TablePlotBase, writer: TextWriter)
+ExportDataToLibrary(self: DataTable, libraryItem: LibraryItem, title: str) -> LibraryItem
+```
+
+`CreateDataWriter` 를 거치지 않고 **식별자와 스트림을 직접** 넘길 수 있습니다.
+예제 9를 이 방식으로 재작성했습니다. `ExportDataEnabled` 는 `True` 였습니다.
+
+#### `CreateDataWriter` 가 `None` 인 이유 — 라이선스
+
+`DataWriterFactory` 의 멤버에 결정적 단서가 있었습니다.
+
+```text
+Create  CreateCore  DataWriterType  Description  DisplayName
+IsLicensed  IsUiVisible  SupportedFileExtension  TypeId  requiredLicenses
+```
+
+**`IsLicensed` 와 `requiredLicenses`** — writer 종류마다 라이선스가 걸려 있고,
+없으면 조용히 `None` 이 돌아오는 구조로 보입니다. 코드 문제가 아닙니다.
+
+#### 예제 10 — `DataSelection` 은 추상 클래스
+
+```text
+Cannot create instances of DataSelection because it is abstract
+```
+
+직접 만들 수 없습니다. 대신 **마킹과 필터링이 `DataSelection` 의 구체 클래스**일
+가능성이 높아, `DataTableDataSource(table, 마킹)` 형태를 7차에서 확인합니다.
+
+참고로 `ColumnSelection` 은 존재하지 않았고, `RowSelection` 생성자는 이렇습니다.
+
+```text
+RowSelection(rowCount: int, includedRows: IEnumerable[int])
+RowSelection(indexSet: IndexSet)
+```
+
+#### `IndexSet` 실제 멤버 — `AddIndex` 가 있다
+
+```text
+AddIndex  AddIndexes  RemoveIndex  RemoveIndexes  Item
+And  Or  Not  Xor  Subtract  Intersects
+Clear  Fill  Clone  Contains  HasIndex  Count  Capacity
+First  Last  IsEmpty  IsFull  GetNextIndex  GetPreviousIndex
+```
+
+`indexSet[i] = True` 인덱서도 동작하지만, **`AddIndex(i)` 가 의도가 더 분명**합니다.
+예제 12를 `AddIndex` 로 바꿨습니다.
+
+#### 남은 하네스 버그
+
+예제 1 검사가 `contents[0]` (첫 시각화)을 쓰는데, 그것이 텍스트 영역이면
+`'HtmlTextArea' object has no attribute 'Data'` 가 납니다.
+**예제 1 본문은 `try/except` 로 감싸므로 무관**합니다.

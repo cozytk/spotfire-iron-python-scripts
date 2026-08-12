@@ -242,48 +242,78 @@ Spotfire의 이미지 내보내기는 <strong>한 번에 하나씩</strong>입�
 </code></pre></div>
 
 <div class="admonition danger">
-<p class="admonition-title">이 예제는 확인 중입니다 — <code>CreateDataWriter</code> 가 <code>None</code> 을 반환합니다</p>
-<p>Spotfire 14.x 실측 결과, 메서드 시그니처 자체는 정상입니다.</p>
+<p class="admonition-title"><code>Document.Data.CreateDataWriter</code> 는 이 경로로 쓰지 마세요</p>
+<p>Spotfire 14.x 실측 결과, 메서드 시그니처는 정상인데 <strong>어떤 식별자를 넣어도
+<code>None</code> 이 돌아옵니다</strong>(Sbdf / Stdf / Excel / CSV 전부). 예외도 나지 않습니다.</p>
 <p><code>text
-CreateDataWriter(self: DataManager, typeId: TypeIdentifier) -&gt; DataWriter</code></p>
-<p>그런데 <strong>어떤 식별자를 넣어도 <code>None</code> 이 돌아옵니다</strong>(Sbdf / Stdf / Excel / CSV 전부).
-예외도 나지 않습니다. <code>Application.GetService[DataManager]()</code> 로 얻은 객체도
-<code>Document.Data</code> 와 같은 객체이고 결과도 같습니다.</p>
-<p>호출 방식 문제가 아니라 <strong>환경 쪽 제약</strong>일 가능성이 높습니다. 라이선스나 배포 설정으로
-데이터 내보내기가 비활성화된 상태로 보입니다. 표 시각화에 <code>ExportDataEnabled</code> 라는
-속성이 따로 있는 것이 그 방증입니다.</p>
-<p>아래 코드는 <strong>API 사용법으로는 맞지만 환경에 따라 동작하지 않을 수 있습니다.</strong>
-<code>'NoneType' object has no attribute 'Write'</code> 가 나온다면 코드를 고칠 것이 아니라
-<strong>관리자에게 데이터 내보내기 권한을 확인</strong>하세요.</p>
+CreateDataWriter(self: DataManager, typeId: TypeIdentifier) -&gt; DataWriter
+writer = Document.Data.CreateDataWriter(...)   # None</code></p>
+<p>원인은 <strong>라이선스</strong>로 보입니다. <code>DataWriterFactory</code> 에 <code>IsLicensed</code> 와
+<code>requiredLicenses</code> 멤버가 있는 것이 근거입니다. 즉 writer 종류마다 라이선스가
+걸려 있고, 없으면 조용히 <code>None</code> 이 돌아옵니다.</p>
+<p><strong>코드를 고칠 문제가 아닙니다.</strong> 아래의 검증된 경로를 쓰세요.</p>
 </div>
-<h3 id="exporttext">대안 — 표 시각화의 <code>ExportText</code></h3>
-<p>표(Table) 시각화가 있다면 이 경로가 있습니다.
-<code>ExportText</code> · <code>ExportData</code> · <code>ExportDataEnabled</code> 가 <strong>존재하는 것을 확인</strong>했습니다.</p>
+<h3 id="1-exportdata">방법 1 — 표 시각화의 <code>ExportData</code> (권장, 시그니처 확인됨)</h3>
+<p><code>CreateDataWriter</code> 를 거치지 않고 <strong>식별자와 스트림을 직접</strong> 넘깁니다.</p>
+<div class="codehilite"><pre><span></span><code>ExportData(self: TablePlot, typeIdentifier: TypeIdentifier, stream: Stream)
+</code></pre></div>
+
 <div class="codehilite"><pre><span></span><code><span class="c1"># -*- coding: utf-8 -*-</span>
-<span class="c1"># 표 시각화의 내용을 텍스트 파일로 내보낸다. (Analyst 전용)</span>
+<span class="c1"># 표 시각화의 데이터를 파일로 내보낸다. (Analyst 전용)</span>
 <span class="c1">#</span>
 <span class="c1"># 매개변수:</span>
 <span class="c1">#   vTable (Visualization) 표(Table) 시각화</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Visuals</span><span class="w"> </span><span class="kn">import</span> <span class="n">TablePlot</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">System.IO</span><span class="w"> </span><span class="kn">import</span> <span class="n">StreamWriter</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Data.Export</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataWriterTypeIdentifiers</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">System.IO</span><span class="w"> </span><span class="kn">import</span> <span class="n">FileStream</span><span class="p">,</span> <span class="n">FileMode</span>
+
+<span class="n">PATH</span> <span class="o">=</span> <span class="s2">&quot;C:/temp/export.csv&quot;</span>
 
 <span class="n">plot</span> <span class="o">=</span> <span class="n">vTable</span><span class="o">.</span><span class="n">As</span><span class="p">[</span><span class="n">TablePlot</span><span class="p">]()</span>
 
 <span class="k">if</span> <span class="ow">not</span> <span class="n">plot</span><span class="o">.</span><span class="n">ExportDataEnabled</span><span class="p">:</span>
     <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;이 시각화는 데이터 내보내기가 비활성화되어 있습니다.&quot;</span>
 <span class="k">else</span><span class="p">:</span>
-    <span class="n">writer</span> <span class="o">=</span> <span class="n">StreamWriter</span><span class="p">(</span><span class="s2">&quot;C:/temp/export.txt&quot;</span><span class="p">)</span>
+    <span class="n">stream</span> <span class="o">=</span> <span class="n">FileStream</span><span class="p">(</span><span class="n">PATH</span><span class="p">,</span> <span class="n">FileMode</span><span class="o">.</span><span class="n">Create</span><span class="p">)</span>
     <span class="k">try</span><span class="p">:</span>
-        <span class="n">plot</span><span class="o">.</span><span class="n">ExportText</span><span class="p">(</span><span class="n">writer</span><span class="p">)</span>
+        <span class="c1"># 한글이 있으면 Utf8 계열을 쓴다</span>
+        <span class="n">plot</span><span class="o">.</span><span class="n">ExportData</span><span class="p">(</span><span class="n">DataWriterTypeIdentifiers</span><span class="o">.</span><span class="n">SpreadsheetDataCsvUtf8Writer</span><span class="p">,</span> <span class="n">stream</span><span class="p">)</span>
     <span class="k">finally</span><span class="p">:</span>
-        <span class="n">writer</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
-    <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;내보내기 완료: C:/temp/export.txt&quot;</span>
+        <span class="n">stream</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
+    <span class="n">Document</span><span class="o">.</span><span class="n">Properties</span><span class="p">[</span><span class="s2">&quot;ScriptLog&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;내보내기 완료: &quot;</span> <span class="o">+</span> <span class="n">PATH</span>
 </code></pre></div>
 
-<p>데이터 테이블 자체에는 <code>ExportDataToLibrary</code> 메서드도 있습니다.
-로컬 파일이 아니라 Spotfire 라이브러리에 저장하므로 <strong>Web Player에서도 쓸 수 있는</strong>
-경로입니다. 정확한 시그니처는 확인 중입니다.</p>
+<h3 id="2-exporttext">방법 2 — 표 시각화의 <code>ExportText</code></h3>
+<p>텍스트로만 충분하면 더 간단합니다.</p>
+<div class="codehilite"><pre><span></span><code>ExportText(self: TablePlotBase, writer: TextWriter)
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">Spotfire.Dxp.Application.Visuals</span><span class="w"> </span><span class="kn">import</span> <span class="n">TablePlot</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">System.IO</span><span class="w"> </span><span class="kn">import</span> <span class="n">StreamWriter</span>
+
+<span class="n">writer</span> <span class="o">=</span> <span class="n">StreamWriter</span><span class="p">(</span><span class="s2">&quot;C:/temp/export.txt&quot;</span><span class="p">)</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">vTable</span><span class="o">.</span><span class="n">As</span><span class="p">[</span><span class="n">TablePlot</span><span class="p">]()</span><span class="o">.</span><span class="n">ExportText</span><span class="p">(</span><span class="n">writer</span><span class="p">)</span>
+<span class="k">finally</span><span class="p">:</span>
+    <span class="n">writer</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
+</code></pre></div>
+
+<h3 id="3-web-player">방법 3 — 라이브러리로 내보내기 (Web Player 안전)</h3>
+<p>로컬 파일이 아니라 Spotfire 라이브러리에 저장하므로 <strong>브라우저에서도 동작</strong>합니다.</p>
+<div class="codehilite"><pre><span></span><code>ExportDataToLibrary(self: DataTable, libraryItem: LibraryItem, title: str) -&gt; LibraryItem
+</code></pre></div>
+
+<p><code>LibraryItem</code>(대상 폴더)을 먼저 얻어야 하므로 라이브러리 접근 코드가 추가로 필요합니다.</p>
+<div class="admonition tip">
+<p class="admonition-title">표 시각화가 꼭 있어야 하나요</p>
+<p>방법 1·2는 <strong>표(Table) 시각화를 경유</strong>합니다. 데이터 테이블만 있고 표가 없다면,
+숨긴 페이지에 표를 하나 만들어 두고 그것을 매개변수로 넘기는 방식이 실무적입니다.</p>
+</div>
+<hr />
+<h3 id="_2">원래 코드 (참고 — 이 환경에서는 동작하지 않습니다)</h3>
+<p>아래는 널리 알려진 <code>CreateDataWriter</code> 방식입니다.
+라이선스가 있는 환경에서는 동작하므로 참고용으로 남겨 둡니다.</p>
 <div class="admonition note">
 <p class="admonition-title">검증 포인트</p>
 <ul>
@@ -384,44 +414,52 @@ Spotfire UI에는 "마킹된 행을 새 데이터 테이블로 저장" 기능이
         <span class="n">snapshotName</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">markedRows</span><span class="o">.</span><span class="n">Count</span><span class="p">)</span>
 </code></pre></div>
 
-<h3 id="_2">활용</h3>
+<h3 id="_3">활용</h3>
 <ul>
 <li><strong>What-if 비교</strong>: 조건을 바꿔 가며 마킹 → 스냅샷을 여러 개 만들어 나란히 비교</li>
 <li><strong>검토 목록 관리</strong>: 이상치를 마킹해 스냅샷으로 저장 → 그 테이블로만 표를 만들어 검토</li>
 <li><strong>원본 대비 고정</strong>: 필터를 바꿔도 스냅샷은 그대로 남습니다</li>
 </ul>
 <div class="admonition danger">
-<p class="admonition-title">이 예제는 곧 교체됩니다 — 훨씬 나은 방법을 찾았습니다</p>
+<p class="admonition-title">이 예제는 교체 중입니다 — 훨씬 단순한 방법이 있습니다</p>
 <p>위 코드에는 문제가 두 개 있습니다.</p>
 <ol>
 <li><strong><code>StdfDataSource</code> 라는 이름이 존재하지 않습니다</strong> (실측 확인)</li>
-<li><strong><code>CreateDataWriter</code> 가 <code>None</code> 을 반환합니다</strong> (예제 9 참조)</li>
+<li><strong><code>CreateDataWriter</code> 가 <code>None</code> 을 반환합니다</strong> — 라이선스 문제 (예제 9 참조)</li>
 </ol>
-<p>그런데 5차 확인에서 <strong>writer 가 아예 필요 없는 방법</strong>을 찾았습니다.
-<code>DataTableDataSource</code> 의 생성자 오버로드가 이렇습니다.</p>
+<p>그런데 <code>DataTableDataSource</code> 에 이런 오버로드가 있습니다.</p>
 <p><code>text
-DataTableDataSource(dataTable)
-DataTableDataSource(dataTable, updateBehavior)
-DataTableDataSource(dataTable, dataSelection)     &lt;- 이것</code></p>
-<p>세 번째가 <strong>행 부분집합을 그대로 받습니다.</strong> 메모리 스트림도, writer 도,
-STDF/SBDF 변환도 필요 없습니다. 예상되는 최종 형태는 이렇습니다.</p>
-<p>```python
-from Spotfire.Dxp.Data import DataSelection, RowSelection
-from Spotfire.Dxp.Data.Import import DataTableDataSource</p>
-<p>markedRows = Document.ActiveMarkingSelectionReference.GetSelection(sourceTable).AsIndexSet()
-selection = DataSelection(RowSelection(markedRows))
-source = DataTableDataSource(sourceTable, selection)</p>
+DataTableDataSource(dataTable, dataSelection)</code></p>
+<p>처음에는 <code>DataSelection</code> 을 직접 만들려 했지만 <strong>추상 클래스라 불가능</strong>했습니다.</p>
+<p><code>text
+Cannot create instances of DataSelection because it is abstract</code></p>
+<p>대신 <strong>마킹과 필터링이 곧 <code>DataSelection</code> 의 구체 클래스</strong>입니다.
+그렇다면 별도 객체를 만들 필요 없이 이렇게 됩니다.</p>
+<p>```python</p>
+<h1 id="-coding-utf-8-">-<em>- coding: utf-8 -</em>-</h1>
+<h1 id="checks10_final_exportpy">확인 중인 최종 형태 — checks/10_final_export.py 로 검증 중</h1>
+<p>from Spotfire.Dxp.Data.Import import DataTableDataSource</p>
+<p>source = DataTableDataSource(sourceTable, Document.ActiveMarkingSelectionReference)</p>
 <p>if Document.Data.Tables.Contains(snapshotName):
     Document.Data.Tables[snapshotName].ReplaceData(source)
 else:
     Document.Data.Tables.Add(snapshotName, source)
 ```</p>
-<p><code>DataSelection</code> 의 정확한 생성자 형태만 확인되면 이 예제를 위 코드로 교체합니다.
-이 방식은 <strong>환경 제약(내보내기 권한)의 영향도 받지 않습니다.</strong>
-확인용 스크립트는
-<a href="https://github.com/cozytk/spotfire-iron-python-scripts/blob/main/checks/09_export_alternatives.py"><code>checks/09_export_alternatives.py</code></a>
+<p>writer 도, 메모리 스트림도, STDF/SBDF 변환도 없습니다. <strong>세 줄입니다.</strong>
+게다가 라이선스 제약의 영향도 받지 않습니다.</p>
+<p>확인이 필요한 것은 두 가지입니다.</p>
+<ul>
+<li>마킹을 넘겼을 때 <strong>마킹된 행만</strong> 들어오는가 (전체가 복사되는 것은 아닌가)</li>
+<li>그 테이블이 <strong>고정(스냅샷)</strong> 인가, 마킹이 바뀌면 <strong>따라 바뀌는가</strong>
+  (<code>DataTableDataSourceUpdateBehavior</code> 로 조절할 수 있을 것으로 보입니다)</li>
+</ul>
+<p>검증 스크립트는
+<a href="https://github.com/cozytk/spotfire-iron-python-scripts/blob/main/checks/10_final_export.py"><code>checks/10_final_export.py</code></a>
 에 있습니다.</p>
 </div>
+<hr />
+<h3 id="_4">원래 코드 (참고 — 현재 동작하지 않습니다)</h3>
+<p>위 코드 블록이 그것입니다. <code>StdfDataSource</code> 와 <code>CreateDataWriter</code> 두 군데가 막혀 있습니다.</p>
 <div class="admonition note">
 <p class="admonition-title">검증 포인트</p>
 <ul>
@@ -614,7 +652,7 @@ Spotfire에서 테이블 간 마킹 연동은 <strong>데이터 테이블 관계
 <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">targetTable</span><span class="o">.</span><span class="n">GetRows</span><span class="p">(</span><span class="n">allTargetRows</span><span class="p">,</span> <span class="n">targetCursor</span><span class="p">):</span>
     <span class="n">value</span> <span class="o">=</span> <span class="n">targetCursor</span><span class="o">.</span><span class="n">CurrentValue</span>
     <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
-        <span class="n">hits</span><span class="p">[</span><span class="n">row</span><span class="o">.</span><span class="n">Index</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>        <span class="c1"># IndexSet 은 Add() 가 아니라 인덱서로 설정한다</span>
+        <span class="n">hits</span><span class="o">.</span><span class="n">AddIndex</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">Index</span><span class="p">)</span>      <span class="c1"># IndexSet 은 Add() 가 아니라 AddIndex() 를 쓴다</span>
         <span class="n">matched</span> <span class="o">+=</span> <span class="mi">1</span>
 
 <span class="c1"># 3) 대상 테이블에 마킹 적용</span>
@@ -690,7 +728,7 @@ Spotfire에서 테이블 간 마킹 연동은 <strong>데이터 테이블 관계
     <span class="n">ns</span><span class="o">.</span><span class="n">AddInformationNotification</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;데이터 새로고침&quot;</span><span class="p">,</span> <span class="n">summary</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
 </code></pre></div>
 
-<h3 id="_3">변형: 필요한 것만 새로고침</h3>
+<h3 id="_5">변형: 필요한 것만 새로고침</h3>
 <div class="codehilite"><pre><span></span><code><span class="k">for</span> <span class="n">table</span> <span class="ow">in</span> <span class="n">Document</span><span class="o">.</span><span class="n">Data</span><span class="o">.</span><span class="n">Tables</span><span class="p">:</span>
     <span class="k">if</span> <span class="n">table</span><span class="o">.</span><span class="n">IsRefreshable</span> <span class="ow">and</span> <span class="n">table</span><span class="o">.</span><span class="n">NeedsRefresh</span><span class="p">:</span>
         <span class="n">table</span><span class="o">.</span><span class="n">Refresh</span><span class="p">()</span>
@@ -724,17 +762,21 @@ Spotfire에서 테이블 간 마킹 연동은 <strong>데이터 테이블 관계
 <li><a href="#8-png">예제 8. 모든 페이지의 시각화를 PNG로 일괄 내보내기</a></li>
 <li><a href="#9">예제 9. 여러 데이터 테이블을 한 번에 파일로 내보내기</a><ul>
 <li><a href="#_1">변형: 특정 컬럼만 내보내기</a></li>
-<li><a href="#exporttext">대안 — 표 시각화의 ExportText</a></li>
+<li><a href="#1-exportdata">방법 1 — 표 시각화의 ExportData (권장, 시그니처 확인됨)</a></li>
+<li><a href="#2-exporttext">방법 2 — 표 시각화의 ExportText</a></li>
+<li><a href="#3-web-player">방법 3 — 라이브러리로 내보내기 (Web Player 안전)</a></li>
+<li><a href="#_2">원래 코드 (참고 — 이 환경에서는 동작하지 않습니다)</a></li>
 </ul>
 </li>
 <li><a href="#10">예제 10. 마킹한 행을 새 데이터 테이블로 스냅샷</a><ul>
-<li><a href="#_2">활용</a></li>
+<li><a href="#_3">활용</a></li>
+<li><a href="#_4">원래 코드 (참고 — 현재 동작하지 않습니다)</a></li>
 </ul>
 </li>
 <li><a href="#11">예제 11. 마킹 결과를 문서 속성으로 넘기기</a></li>
 <li><a href="#12">예제 12. 키 컬럼으로 다른 테이블에 마킹 전파</a></li>
 <li><a href="#13">예제 13. 모든 데이터 테이블 일괄 새로고침</a><ul>
-<li><a href="#_3">변형: 필요한 것만 새로고침</a></li>
+<li><a href="#_5">변형: 필요한 것만 새로고침</a></li>
 </ul>
 </li>
 </ul>

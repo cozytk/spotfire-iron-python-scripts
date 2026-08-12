@@ -281,11 +281,19 @@ for name in dir(VisualTypeIdentifiers):
 <div class="admonition warning">
 <p class="admonition-title"><code>IndexSet</code> 에는 <code>Add()</code> 가 없습니다</p>
 <p>실측 확인 결과 <code>hasattr(indexSet, "Add")</code> 는 <code>False</code> 입니다.
-파이썬 <code>set</code> 처럼 <code>Add(5)</code> 를 부르면 실패합니다.
-<strong>인덱서로 켜고 끕니다.</strong></p>
-<p><code>python
-indexSet[5] = True     # 6번째 행 켜기
-indexSet[5] = False    # 끄기</code></p>
+파이썬 <code>set</code> 처럼 <code>Add(5)</code> 를 부르면 실패합니다. <strong>두 가지 방법이 있습니다.</strong></p>
+<p>```python
+indexSet[5] = True        # 인덱서 — 켜고 끄기 모두 가능
+indexSet[5] = False</p>
+<p>indexSet.AddIndex(5)      # 전용 메서드 — 의도가 더 분명하다
+indexSet.RemoveIndex(5)
+```</p>
+<p>Spotfire 14.x에서 확인한 <code>IndexSet</code> 의 실제 멤버입니다.</p>
+<p><code>text
+AddIndex  AddIndexes  RemoveIndex  RemoveIndexes  Item
+And  Or  Not  Xor  Subtract  Intersects
+Clear  Fill  Clone  Contains  HasIndex  Count  Capacity
+First  Last  IsEmpty  IsFull  GetNextIndex  GetPreviousIndex</code></p>
 </div>
 <div class="codehilite"><pre><span></span><code><span class="n">combined</span> <span class="o">=</span> <span class="n">IndexSet</span><span class="o">.</span><span class="n">And</span><span class="p">(</span><span class="n">setA</span><span class="p">,</span> <span class="n">setB</span><span class="p">)</span>     <span class="c1"># 교집합</span>
 </code></pre></div>

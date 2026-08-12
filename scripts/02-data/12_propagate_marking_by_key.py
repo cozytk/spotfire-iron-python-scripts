@@ -37,7 +37,7 @@ matched = 0
 for row in targetTable.GetRows(allTargetRows, targetCursor):
     value = targetCursor.CurrentValue
     if value is not None and value.strip().upper() in keys:
-        hits[row.Index] = True        # IndexSet 은 Add() 가 아니라 인덱서로 설정한다
+        hits.AddIndex(row.Index)      # IndexSet 은 Add() 가 아니라 AddIndex() 를 쓴다
         matched += 1
 
 # 3) 대상 테이블에 마킹 적용

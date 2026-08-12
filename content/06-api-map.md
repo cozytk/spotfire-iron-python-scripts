@@ -238,12 +238,23 @@ selection = RowSelection(noRows)              # 마킹 API에 넘길 형태
 
 !!! warning "`IndexSet` 에는 `Add()` 가 없습니다"
     실측 확인 결과 `hasattr(indexSet, "Add")` 는 `False` 입니다.
-    파이썬 `set` 처럼 `Add(5)` 를 부르면 실패합니다.
-    **인덱서로 켜고 끕니다.**
+    파이썬 `set` 처럼 `Add(5)` 를 부르면 실패합니다. **두 가지 방법이 있습니다.**
 
     ```python
-    indexSet[5] = True     # 6번째 행 켜기
-    indexSet[5] = False    # 끄기
+    indexSet[5] = True        # 인덱서 — 켜고 끄기 모두 가능
+    indexSet[5] = False
+
+    indexSet.AddIndex(5)      # 전용 메서드 — 의도가 더 분명하다
+    indexSet.RemoveIndex(5)
+    ```
+
+    Spotfire 14.x에서 확인한 `IndexSet` 의 실제 멤버입니다.
+
+    ```text
+    AddIndex  AddIndexes  RemoveIndex  RemoveIndexes  Item
+    And  Or  Not  Xor  Subtract  Intersects
+    Clear  Fill  Clone  Contains  HasIndex  Count  Capacity
+    First  Last  IsEmpty  IsFull  GetNextIndex  GetPreviousIndex
     ```
 
 ```python

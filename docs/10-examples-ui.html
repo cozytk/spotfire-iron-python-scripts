@@ -535,13 +535,16 @@ Spotfire의 필터 초기화는 <strong>전체 아니면 개별 수동</strong>�
 <p class="admonition-title">검증 포인트</p>
 <ul>
 <li><code>filteringScheme[dataTable][column]</code> 이 <strong>핵심 문법</strong>입니다.
-  필터링 스킴에서 테이블 → 컬럼 순으로 인덱싱하면 해당 컬럼의 필터가 나옵니다.</li>
-<li>모든 스킴 × 모든 테이블 × 모든 컬럼을 순회하므로, 컬럼이 아주 많으면 잠깐 걸립니다.
-  대상 테이블이 정해져 있다면 <code>Document.Data.Tables</code> 대신 특정 테이블만 도세요.</li>
-<li>해당 스킴에 필터가 없으면 예외가 납니다. 정상이므로 위 코드처럼 건너뛰면 됩니다.</li>
-<li><strong>컬럼 이름은 대소문자를 구분합니다.</strong> 초기화가 안 되면 이름부터 확인하세요.</li>
-<li>필터 하나만 초기화하려면 스킴 하나만 지정해도 됩니다.</li>
+  필터링 스킴에서 테이블 → 컬럼 순으로 인덱싱하면 해당 컬럼의 필터가 나옵니다.
+  <strong>동작을 확인했습니다.</strong>(14.x) 반환값은 필터 객체이고 <code>Reset()</code> 을 가지고 있습니다.</li>
 </ul>
+<p><code>text
+  scheme[table][column]  -&gt;  Step: (KB073100, KB268900, KB425000)</code>
+- 모든 스킴 × 모든 테이블 × 모든 컬럼을 순회하므로, 컬럼이 아주 많으면 잠깐 걸립니다.
+  대상 테이블이 정해져 있다면 <code>Document.Data.Tables</code> 대신 특정 테이블만 도세요.
+- 해당 스킴에 필터가 없으면 예외가 납니다. 정상이므로 위 코드처럼 건너뛰면 됩니다.
+- <strong>컬럼 이름은 대소문자를 구분합니다.</strong> 초기화가 안 되면 이름부터 확인하세요.
+- 필터 하나만 초기화하려면 스킴 하나만 지정해도 됩니다.</p>
 <p><code>python
   Document.FilteringSchemes[0].ResetAllFilters()   # 첫 번째 스킴 전체 초기화</code></p>
 </div>

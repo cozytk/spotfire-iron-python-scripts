@@ -185,56 +185,95 @@ Document.Properties["ScriptLog"] = u"%s<br>저장 위치: %s" % (u"<br>".join(ex
 columnNames = [c.Name for c in table.Columns if "_internal" not in c.Name]
 ```
 
-!!! danger "이 예제는 확인 중입니다 — `CreateDataWriter` 가 `None` 을 반환합니다"
-    Spotfire 14.x 실측 결과, 메서드 시그니처 자체는 정상입니다.
+!!! danger "`Document.Data.CreateDataWriter` 는 이 경로로 쓰지 마세요"
+    Spotfire 14.x 실측 결과, 메서드 시그니처는 정상인데 **어떤 식별자를 넣어도
+    `None` 이 돌아옵니다**(Sbdf / Stdf / Excel / CSV 전부). 예외도 나지 않습니다.
 
     ```text
     CreateDataWriter(self: DataManager, typeId: TypeIdentifier) -> DataWriter
+    writer = Document.Data.CreateDataWriter(...)   # None
     ```
 
-    그런데 **어떤 식별자를 넣어도 `None` 이 돌아옵니다**(Sbdf / Stdf / Excel / CSV 전부).
-    예외도 나지 않습니다. `Application.GetService[DataManager]()` 로 얻은 객체도
-    `Document.Data` 와 같은 객체이고 결과도 같습니다.
+    원인은 **라이선스**로 보입니다. `DataWriterFactory` 에 `IsLicensed` 와
+    `requiredLicenses` 멤버가 있는 것이 근거입니다. 즉 writer 종류마다 라이선스가
+    걸려 있고, 없으면 조용히 `None` 이 돌아옵니다.
 
-    호출 방식 문제가 아니라 **환경 쪽 제약**일 가능성이 높습니다. 라이선스나 배포 설정으로
-    데이터 내보내기가 비활성화된 상태로 보입니다. 표 시각화에 `ExportDataEnabled` 라는
-    속성이 따로 있는 것이 그 방증입니다.
+    **코드를 고칠 문제가 아닙니다.** 아래의 검증된 경로를 쓰세요.
 
-    아래 코드는 **API 사용법으로는 맞지만 환경에 따라 동작하지 않을 수 있습니다.**
-    `'NoneType' object has no attribute 'Write'` 가 나온다면 코드를 고칠 것이 아니라
-    **관리자에게 데이터 내보내기 권한을 확인**하세요.
+### 방법 1 — 표 시각화의 `ExportData` (권장, 시그니처 확인됨)
 
-### 대안 — 표 시각화의 `ExportText`
+`CreateDataWriter` 를 거치지 않고 **식별자와 스트림을 직접** 넘깁니다.
 
-표(Table) 시각화가 있다면 이 경로가 있습니다.
-`ExportText` · `ExportData` · `ExportDataEnabled` 가 **존재하는 것을 확인**했습니다.
+```text
+ExportData(self: TablePlot, typeIdentifier: TypeIdentifier, stream: Stream)
+```
 
 ```python
 # -*- coding: utf-8 -*-
-# 표 시각화의 내용을 텍스트 파일로 내보낸다. (Analyst 전용)
+# 표 시각화의 데이터를 파일로 내보낸다. (Analyst 전용)
 #
 # 매개변수:
 #   vTable (Visualization) 표(Table) 시각화
 
 from Spotfire.Dxp.Application.Visuals import TablePlot
-from System.IO import StreamWriter
+from Spotfire.Dxp.Data.Export import DataWriterTypeIdentifiers
+from System.IO import FileStream, FileMode
+
+PATH = "C:/temp/export.csv"
 
 plot = vTable.As[TablePlot]()
 
 if not plot.ExportDataEnabled:
     Document.Properties["ScriptLog"] = u"이 시각화는 데이터 내보내기가 비활성화되어 있습니다."
 else:
-    writer = StreamWriter("C:/temp/export.txt")
+    stream = FileStream(PATH, FileMode.Create)
     try:
-        plot.ExportText(writer)
+        # 한글이 있으면 Utf8 계열을 쓴다
+        plot.ExportData(DataWriterTypeIdentifiers.SpreadsheetDataCsvUtf8Writer, stream)
     finally:
-        writer.Close()
-    Document.Properties["ScriptLog"] = u"내보내기 완료: C:/temp/export.txt"
+        stream.Close()
+    Document.Properties["ScriptLog"] = u"내보내기 완료: " + PATH
 ```
 
-데이터 테이블 자체에는 `ExportDataToLibrary` 메서드도 있습니다.
-로컬 파일이 아니라 Spotfire 라이브러리에 저장하므로 **Web Player에서도 쓸 수 있는**
-경로입니다. 정확한 시그니처는 확인 중입니다.
+### 방법 2 — 표 시각화의 `ExportText`
+
+텍스트로만 충분하면 더 간단합니다.
+
+```text
+ExportText(self: TablePlotBase, writer: TextWriter)
+```
+
+```python
+from Spotfire.Dxp.Application.Visuals import TablePlot
+from System.IO import StreamWriter
+
+writer = StreamWriter("C:/temp/export.txt")
+try:
+    vTable.As[TablePlot]().ExportText(writer)
+finally:
+    writer.Close()
+```
+
+### 방법 3 — 라이브러리로 내보내기 (Web Player 안전)
+
+로컬 파일이 아니라 Spotfire 라이브러리에 저장하므로 **브라우저에서도 동작**합니다.
+
+```text
+ExportDataToLibrary(self: DataTable, libraryItem: LibraryItem, title: str) -> LibraryItem
+```
+
+`LibraryItem`(대상 폴더)을 먼저 얻어야 하므로 라이브러리 접근 코드가 추가로 필요합니다.
+
+!!! tip "표 시각화가 꼭 있어야 하나요"
+    방법 1·2는 **표(Table) 시각화를 경유**합니다. 데이터 테이블만 있고 표가 없다면,
+    숨긴 페이지에 표를 하나 만들어 두고 그것을 매개변수로 넘기는 방식이 실무적입니다.
+
+---
+
+### 원래 코드 (참고 — 이 환경에서는 동작하지 않습니다)
+
+아래는 널리 알려진 `CreateDataWriter` 방식입니다.
+라이선스가 있는 환경에서는 동작하므로 참고용으로 남겨 둡니다.
 
 
 !!! note "검증 포인트"
@@ -333,31 +372,33 @@ else:
 - **검토 목록 관리**: 이상치를 마킹해 스냅샷으로 저장 → 그 테이블로만 표를 만들어 검토
 - **원본 대비 고정**: 필터를 바꿔도 스냅샷은 그대로 남습니다
 
-!!! danger "이 예제는 곧 교체됩니다 — 훨씬 나은 방법을 찾았습니다"
+!!! danger "이 예제는 교체 중입니다 — 훨씬 단순한 방법이 있습니다"
     위 코드에는 문제가 두 개 있습니다.
 
     1. **`StdfDataSource` 라는 이름이 존재하지 않습니다** (실측 확인)
-    2. **`CreateDataWriter` 가 `None` 을 반환합니다** (예제 9 참조)
+    2. **`CreateDataWriter` 가 `None` 을 반환합니다** — 라이선스 문제 (예제 9 참조)
 
-    그런데 5차 확인에서 **writer 가 아예 필요 없는 방법**을 찾았습니다.
-    `DataTableDataSource` 의 생성자 오버로드가 이렇습니다.
+    그런데 `DataTableDataSource` 에 이런 오버로드가 있습니다.
 
     ```text
-    DataTableDataSource(dataTable)
-    DataTableDataSource(dataTable, updateBehavior)
-    DataTableDataSource(dataTable, dataSelection)     <- 이것
+    DataTableDataSource(dataTable, dataSelection)
     ```
 
-    세 번째가 **행 부분집합을 그대로 받습니다.** 메모리 스트림도, writer 도,
-    STDF/SBDF 변환도 필요 없습니다. 예상되는 최종 형태는 이렇습니다.
+    처음에는 `DataSelection` 을 직접 만들려 했지만 **추상 클래스라 불가능**했습니다.
+
+    ```text
+    Cannot create instances of DataSelection because it is abstract
+    ```
+
+    대신 **마킹과 필터링이 곧 `DataSelection` 의 구체 클래스**입니다.
+    그렇다면 별도 객체를 만들 필요 없이 이렇게 됩니다.
 
     ```python
-    from Spotfire.Dxp.Data import DataSelection, RowSelection
+    # -*- coding: utf-8 -*-
+    # 확인 중인 최종 형태 — checks/10_final_export.py 로 검증 중
     from Spotfire.Dxp.Data.Import import DataTableDataSource
 
-    markedRows = Document.ActiveMarkingSelectionReference.GetSelection(sourceTable).AsIndexSet()
-    selection = DataSelection(RowSelection(markedRows))
-    source = DataTableDataSource(sourceTable, selection)
+    source = DataTableDataSource(sourceTable, Document.ActiveMarkingSelectionReference)
 
     if Document.Data.Tables.Contains(snapshotName):
         Document.Data.Tables[snapshotName].ReplaceData(source)
@@ -365,11 +406,25 @@ else:
         Document.Data.Tables.Add(snapshotName, source)
     ```
 
-    `DataSelection` 의 정확한 생성자 형태만 확인되면 이 예제를 위 코드로 교체합니다.
-    이 방식은 **환경 제약(내보내기 권한)의 영향도 받지 않습니다.**
-    확인용 스크립트는
-    [`checks/09_export_alternatives.py`](https://github.com/cozytk/spotfire-iron-python-scripts/blob/main/checks/09_export_alternatives.py)
+    writer 도, 메모리 스트림도, STDF/SBDF 변환도 없습니다. **세 줄입니다.**
+    게다가 라이선스 제약의 영향도 받지 않습니다.
+
+    확인이 필요한 것은 두 가지입니다.
+
+    - 마킹을 넘겼을 때 **마킹된 행만** 들어오는가 (전체가 복사되는 것은 아닌가)
+    - 그 테이블이 **고정(스냅샷)** 인가, 마킹이 바뀌면 **따라 바뀌는가**
+      (`DataTableDataSourceUpdateBehavior` 로 조절할 수 있을 것으로 보입니다)
+
+    검증 스크립트는
+    [`checks/10_final_export.py`](https://github.com/cozytk/spotfire-iron-python-scripts/blob/main/checks/10_final_export.py)
     에 있습니다.
+
+---
+
+### 원래 코드 (참고 — 현재 동작하지 않습니다)
+
+위 코드 블록이 그것입니다. `StdfDataSource` 와 `CreateDataWriter` 두 군데가 막혀 있습니다.
+
 
 !!! note "검증 포인트"
     - 스냅샷 테이블은 **문서에 포함되어 저장**됩니다. 행이 많으면 파일 크기가 커집니다.
@@ -536,7 +591,7 @@ matched = 0
 for row in targetTable.GetRows(allTargetRows, targetCursor):
     value = targetCursor.CurrentValue
     if value is not None and value.strip().upper() in keys:
-        hits[row.Index] = True        # IndexSet 은 Add() 가 아니라 인덱서로 설정한다
+        hits.AddIndex(row.Index)      # IndexSet 은 Add() 가 아니라 AddIndex() 를 쓴다
         matched += 1
 
 # 3) 대상 테이블에 마킹 적용
